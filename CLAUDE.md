@@ -9,14 +9,15 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 (`IMPLEMENTATION_ROADMAP.md`, `ARCHITECTURE.md`, `PROJECT_AUDIT.md`). Nach jeder Etappe aktualisieren.
 
 ## Technik
-- Statische Web-App: Vite 8 + React 19 + TypeScript + Tailwind CSS v4, React Router (HashRouter). Tests: Vitest + Testing Library (jsdom), `fake-indexeddb`.
+- Statische Web-App: Vite 8 + React 19 + TypeScript + Tailwind CSS v4, React Router (HashRouter), `@supabase/supabase-js` v2, `perfect-freehand`, `qrcode`. Tests: Vitest + Testing Library (jsdom), `fake-indexeddb`.
+- Server: dieselbe Supabase-Datenbank und dieselben Lehrkraft-Konten wie Quizzo und Klassenfunk (Frankfurt). URL und publishable-Schlüssel in `.env.production` und `.env.development` (beide eingecheckt, nur öffentlicher Schlüssel).
 - Hosting (geplant): GitHub Pages unter https://kt-gymbruvi.github.io/Lehrraum/ (Basis-Pfad `/Lehrraum/`), Deploy per GitHub Actions (`.github/workflows/deploy.yml`: `npm ci`, `npm test`, `npm run build`).
 - Bibliotheken werden über npm eingebaut; im Betrieb wird nichts von fremden Servern geladen.
 - Code:
   - `src/kern/` – reine Logik ohne React und ohne Browser-Speicher: `modell.ts` (Datenmodell, Versionen, Prüfung), `befehle.ts` (Rückgängig/Wiederholen), `geometrie.ts` (Kamera, Radierer-Treffer, Strichpfade).
-  - `src/speicher/` – IndexedDB auf dem Gerät (`datenbank.ts`).
+  - `src/speicher/` – `datenbank.ts` (IndexedDB auf dem Gerät), `server.ts` (einziger Ort für Serverzugriffe: Anmeldung, Quizze, Präsentationen, Spiel/Sitzung starten und beenden), `supabase.ts`, `plattform.ts` (Adressen der Schwesteranwendungen, Liste der Lernangebote).
   - `src/tafel/` – `Tafel.tsx` (Seite, Autospeichern, Tastatur), `Zeichenflaeche.tsx` (Eingabe und Zeichnen), `Werkzeugleiste.tsx`.
-  - `src/fenster/` – Fenster über der Tafel: `Fenster.tsx` (Rahmen, Verschieben), `Fensterebene.tsx` (Ebene und rechte Leiste), `Inhalte.tsx` (Uhr, Timer, Stoppuhr, Würfel, Notiz); Logik in `src/kern/fenster.ts`.
+  - `src/fenster/` – Fenster über der Tafel: `Fenster.tsx` (Rahmen, Verschieben), `Fensterebene.tsx` (Ebene und rechte Leiste), `Inhalte.tsx` (Uhr, Timer, Stoppuhr, Würfel, Notiz), `Anwendungen.tsx` (Quizzo, Klassenfunk, Lernangebote per iframe, Anmeldung); Logik in `src/kern/fenster.ts`.
   - `src/ui/` – wiederverwendbare Bausteine (`Symbol.tsx`).
   - `src/test/` – Tests.
 
@@ -31,7 +32,8 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 
 ## Datenschutz und Sicherheit
 - Tafelbilder und (später) Klassen mit Schülernamen liegen **nur auf dem Gerät** (IndexedDB). Nie in ein Repository, nie in eine Adresse, nie im Klartext auf einen Server.
-- Keine Trackingdienste, keine KI-Aufrufe, keine API-Schlüssel. Kommt Supabase dazu: nur der publishable-Schlüssel, RLS auf jeder Tabelle, Präfix `lr_`.
+- Keine Trackingdienste, keine KI-Aufrufe. Supabase: nur der publishable-Schlüssel (nie secret/service_role), eigene Tabellen später mit RLS und Präfix `lr_`. Serverzugriffe nur über `src/speicher/server.ts`; Tests ersetzen dieses Modul und sprechen nie mit dem echten Server.
+- Quizzo und Klassenfunk werden eingebettet, nicht nachgebaut, und in ihren Repos nicht geändert, ohne dass es eine eigene Etappe dort ist. In Adressen nur geprüfte Kennungen (`istZiel`).
 - Importierte Dateien sind Daten und werden geprüft, nie ausgeführt.
 
 ## Arbeitsweise

@@ -18,6 +18,12 @@ const ZEICHNUNGEN = {
   ausklappen: 'M6 9l6 6 6-6',
   start: 'M8 5l11 7-11 7z',
   pause: 'M8 5v14M16 5v14',
+  quizzo: 'M12 3a9 9 0 1 0 0 18 9 9 0 0 0 0-18zM9.5 9.5a2.5 2.5 0 1 1 3.6 2.2c-.7.4-1.1 1-1.1 1.8M12 17h.01',
+  klassenfunk: 'M12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM7.8 7.8a6 6 0 0 0 0 8.4M16.2 7.8a6 6 0 0 1 0 8.4M4.9 4.9a10 10 0 0 0 0 14.2M19.1 4.9a10 10 0 0 1 0 14.2',
+  lernangebote: 'M12 6c-2-1.5-5-2-8-2v14c3 0 6 .5 8 2 2-1.5 5-2 8-2V4c-3 0-6 .5-8 2zM12 6v14',
+  gross: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
+  klein: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
+  qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18v2M18 18h2v2',
 } as const
 
 export type SymbolName = keyof typeof ZEICHNUNGEN

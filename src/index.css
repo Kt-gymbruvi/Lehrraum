@@ -285,7 +285,7 @@ body {
 .leisten-knopf.mit-text {
   flex-direction: column;
   gap: 0.1rem;
-  width: 4.25rem;
+  width: 5.25rem;
   height: 4rem;
   font: inherit;
   font-size: 0.7rem;

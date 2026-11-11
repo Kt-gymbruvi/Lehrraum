@@ -2,7 +2,7 @@
 // Reine Funktionen. Die Reihenfolge der Liste ist die Stapelfolge: das letzte Fenster liegt vorne.
 import { neueId } from './modell.ts'
 
-export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'wuerfel', 'notiz'] as const
+export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'wuerfel', 'notiz', 'quizzo', 'klassenfunk', 'lernangebote'] as const
 export type FensterArt = (typeof FENSTERARTEN)[number]
 
 export const NOTIZFARBEN = ['gelb', 'gruen', 'rosa', 'blau'] as const
@@ -18,9 +18,18 @@ export type FensterZustand = {
   /** nur Notiz */
   text?: string
   farbe?: NotizFarbe
+  /** nur Anwendungsfenster: was gerade läuft – Kennung des Spiels bzw. der Sitzung, oder der Ordner des Lernangebots */
+  ziel?: string
+  /** nur Anwendungsfenster: füllt die ganze Tafelfläche */
+  gross?: boolean
 }
 
-export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', wuerfel: 'Würfel', notiz: 'Notiz' }
+export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', wuerfel: 'Würfel', notiz: 'Notiz', quizzo: 'Quizzo', klassenfunk: 'Klassenfunk', lernangebote: 'Lernangebote' }
+
+/** Fenster, die eine andere Anwendung der Plattform zeigen (größer, lassen sich auf die ganze Fläche vergrößern) */
+export const ANWENDUNGEN: ReadonlySet<FensterArt> = new Set(['quizzo', 'klassenfunk', 'lernangebote'])
+/** Kennung eines Spiels, einer Sitzung oder ein Ordnername – nur solche Zeichen gelangen in eine Adresse */
+export const istZiel = (x: unknown): x is string => typeof x === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(x)
 
 /** Von diesen Arten kann es mehrere Fenster geben; alle anderen höchstens einmal. */
 export const MEHRFACH: ReadonlySet<FensterArt> = new Set(['notiz'])
@@ -79,6 +88,10 @@ export function pruefeFenster(roh: unknown): FensterZustand[] {
     if (art === 'notiz') {
       f.text = typeof x.text === 'string' ? x.text.slice(0, MAX_NOTIZTEXT) : ''
       f.farbe = NOTIZFARBEN.find((n) => n === x.farbe) ?? 'gelb'
+    }
+    if (ANWENDUNGEN.has(art)) {
+      if (istZiel(x.ziel)) f.ziel = x.ziel
+      if (x.gross === true) f.gross = true
     }
     liste.push(f)
   }
