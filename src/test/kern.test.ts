@@ -1,6 +1,6 @@
 import { anwenden, ausfuehren, entfernenBefehl, leererVerlauf, MAX_SCHRITTE, rueckgaengig, wiederholen } from '../kern/befehle.ts'
 import { abstandZurStrecke, pfadAusPunkten, pfadAusUmriss, stiftUmriss, trifftStrich, verschiebe, zoomeUm, zuTafel } from '../kern/geometrie.ts'
-import { neueId, neuesTafelbild, pruefeTafel, ZOOM_MAX, ZOOM_MIN, type Strich } from '../kern/modell.ts'
+import { neueId, neueSeite, neuesTafelbild, pruefeTafel, ZOOM_MAX, ZOOM_MIN, type Element, type Strich } from '../kern/modell.ts'
 
 const strich = (id: string, punkte: [number, number, number][] = [[0, 0, 0.5], [100, 0, 0.5]], mehr: Partial<Strich> = {}): Strich => ({
   art: 'strich', id, werkzeug: 'stift', farbe: '#0b1f4d', staerke: 6, druckEcht: false, punkte, ...mehr,
@@ -16,12 +16,14 @@ describe('Modell', () => {
   it('neues Tafelbild ist gültig und leer', () => {
     const t = neuesTafelbild()
     expect(pruefeTafel(t)).toEqual(t)
-    expect(t.elemente).toEqual([])
+    expect(t.seiten).toHaveLength(1)
+    expect(t.seiten[0].elemente).toEqual([])
+    expect(t.seiteNr).toBe(0)
     expect(t.kamera).toEqual({ x: 0, y: 0, zoom: 1 })
   })
 
   it('übersteht Speichern als JSON', () => {
-    const t = { ...neuesTafelbild('7b'), elemente: [strich('a'), strich('b', [[1, 2, 0.9]], { werkzeug: 'marker', druckEcht: true })] }
+    const t = { ...neuesTafelbild('7b'), seiten: [neueSeite([strich('a'), strich('b', [[1, 2, 0.9]], { werkzeug: 'marker', druckEcht: true })]), neueSeite()], seiteNr: 1 }
     expect(pruefeTafel(JSON.parse(JSON.stringify(t)))).toEqual(t)
   })
 
@@ -29,23 +31,24 @@ describe('Modell', () => {
     expect(pruefeTafel(null)).toBeNull()
     expect(pruefeTafel('tafel')).toBeNull()
     expect(pruefeTafel({ ...neuesTafelbild(), schema: 'etwas/anderes' })).toBeNull()
-    expect(pruefeTafel({ ...neuesTafelbild(), version: 2 })).toBeNull()
+    expect(pruefeTafel({ ...neuesTafelbild(), version: 3 })).toBeNull()
     expect(pruefeTafel({ ...neuesTafelbild(), id: '' })).toBeNull()
   })
 
   it('lässt kaputte Elemente weg, statt das ganze Bild zu verwerfen', () => {
     const t = pruefeTafel({
       ...neuesTafelbild(),
-      elemente: [strich('gut'), { art: 'bild', id: 'x' }, { ...strich('farbe'), farbe: 'red' }, { ...strich('leer'), punkte: [] }, { ...strich('nan'), punkte: [[NaN, 0, 0.5]] }, 7],
+      seiten: [{ id: 's', elemente: [strich('gut'), { art: 'bild', id: 'x' }, { ...strich('farbe'), farbe: 'red' }, { ...strich('leer'), punkte: [] }, { ...strich('nan'), punkte: [[NaN, 0, 0.5]] }, 7] }],
     })
-    expect(t?.elemente.map((e) => e.id)).toEqual(['gut'])
+    expect(t?.seiten[0].elemente.map((e) => e.id)).toEqual(['gut'])
   })
 
   it('begrenzt Zoom und Druck, ergänzt fehlende Werte', () => {
-    const t = pruefeTafel({ ...neuesTafelbild(), titel: '  ', kamera: { x: 'a', zoom: 99 }, elemente: [{ ...strich('a'), punkte: [[1, 2, 7], [3, 4]] }] })
+    const t = pruefeTafel({ ...neuesTafelbild(), titel: '  ', kamera: { x: 'a', zoom: 99 }, seiteNr: 7, seiten: [{ id: 's', elemente: [{ ...strich('a'), punkte: [[1, 2, 7], [3, 4]] }] }] })
+    expect(t?.seiteNr).toBe(0)
     expect(t?.kamera).toEqual({ x: 0, y: 0, zoom: ZOOM_MAX })
     expect(t?.titel).toBe('Tafel')
-    expect(t?.elemente[0].punkte).toEqual([[1, 2, 1], [3, 4, 0.5]])
+    expect((t?.seiten[0].elemente[0] as Strich).punkte).toEqual([[1, 2, 1], [3, 4, 0.5]])
   })
 })
 
@@ -97,7 +100,7 @@ describe('Rückgängig und Wiederholen', () => {
     const alle = [strich('a')]
     anwenden(alle, { art: 'hinzufuegen', elemente: [strich('b')] })
     expect(alle).toHaveLength(1)
-    let z = { elemente: [] as Strich[], verlauf: leererVerlauf() }
+    let z = { elemente: [] as Element[], verlauf: leererVerlauf() }
     for (let i = 0; i < MAX_SCHRITTE + 20; i++) z = ausfuehren(z.elemente, z.verlauf, { art: 'hinzufuegen', elemente: [strich('s' + i)] })
     expect(z.verlauf.zurueck).toHaveLength(MAX_SCHRITTE)
     expect(z.elemente).toHaveLength(MAX_SCHRITTE + 20)

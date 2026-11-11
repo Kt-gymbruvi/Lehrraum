@@ -20,7 +20,7 @@
   --fokus: #1d5fd1;
   --umgebung: #dfe4ee;
   --fehler: #b3261e;
-  --tipp: 3.5rem;
+  --tipp: 3rem;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-design='hell']) {
@@ -168,7 +168,7 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.2rem;
   padding-bottom: 0.5rem;
   border-bottom: 1px solid var(--linie);
 }
@@ -204,16 +204,23 @@ body {
   border-radius: 50%;
   background: currentColor;
 }
-.werkzeugleiste .farben {
+/* Linke Leiste: zwei Knöpfe nebeneinander, damit alle Werkzeuge ohne Rollen sichtbar bleiben */
+.werkzeugleiste.links .gruppe {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 0.2rem;
+  justify-items: center;
+}
+.werkzeugleiste.links .gruppe.drei {
+  grid-template-columns: 1fr 1fr 1fr;
+}
+.leisten-knopf.schmal {
+  width: calc(var(--tipp) * 2 / 3);
 }
 .farb-knopf {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: calc(var(--tipp) / 2 - 0.1rem);
+  width: var(--tipp);
   height: 2.25rem;
   padding: 0;
   border: 0;
@@ -527,5 +534,105 @@ body {
   }
   .leisten-knopf.mit-text span {
     display: none;
+  }
+}
+
+/* ---------- Mitte: Fläche und Seitenleiste ---------- */
+.tafel-spalte {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.zeichenflaeche.werkzeug-auswahl {
+  cursor: default;
+}
+.zeichenflaeche.werkzeug-text {
+  cursor: text;
+}
+.text-eingabe {
+  position: absolute;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: 2px dashed #1d5fd1;
+  outline-offset: 4px;
+  background: rgb(255 255 255 / 0.85);
+  resize: none;
+  overflow: hidden;
+  white-space: pre;
+  touch-action: auto;
+  user-select: text;
+  -webkit-user-select: text;
+}
+.seitenleiste {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  flex-shrink: 0;
+  padding: 0.25rem 0.5rem;
+  overflow-x: auto;
+  background: var(--leiste);
+  border-top: 1px solid var(--linie);
+  scrollbar-width: none;
+}
+.seitenzahl {
+  margin: 0 0.25rem;
+  font-weight: 800;
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+.seitenleiste .trenner {
+  align-self: stretch;
+  width: 1px;
+  margin: 0.25rem 0.35rem;
+  background: var(--linie);
+}
+.seitenleiste .rueckfrage {
+  margin-left: 0.5rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+.s-knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 700;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.s-knopf .symbol {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.s-knopf:hover:not(:disabled) {
+  background: var(--leiste-2);
+}
+.s-knopf:disabled {
+  color: var(--linie);
+  cursor: default;
+}
+.s-knopf.gefahr {
+  background: var(--fehler);
+  color: var(--leiste);
+}
+@media (max-width: 60rem) {
+  .s-knopf.mit-text {
+    font-size: 0;
+    gap: 0;
+  }
+  .s-knopf.mit-text:not(:has(.symbol)) {
+    font-size: 0.95rem;
   }
 }

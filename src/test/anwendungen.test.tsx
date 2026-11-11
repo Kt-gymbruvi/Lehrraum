@@ -1,7 +1,7 @@
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { pruefeFenster, schalte } from '../kern/fenster.ts'
-import { neuesTafelbild } from '../kern/modell.ts'
+import { neueSeite, neuesTafelbild } from '../kern/modell.ts'
 import { ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
 
@@ -169,7 +169,7 @@ describe('Quizzo aus der Tafel', () => {
 
   it('lässt sich auf die ganze Fläche vergrößern; die Tafel bleibt erhalten', async () => {
     const nutzer = userEvent.setup()
-    await speichereTafel({ ...neuesTafelbild(), elemente: [{ art: 'strich', id: 's', werkzeug: 'stift', farbe: '#0b1f4d', staerke: 6, druckEcht: false, punkte: [[1, 1, 0.5], [9, 9, 0.5]] }] })
+    await speichereTafel({ ...neuesTafelbild(), seiten: [neueSeite([{ art: 'strich', id: 's', werkzeug: 'stift', farbe: '#0b1f4d', staerke: 6, druckEcht: false, punkte: [[1, 1, 0.5], [9, 9, 0.5]] }])] })
     render(<Tafel />)
     await bereit()
     await nutzer.click(leiste().getByRole('button', { name: 'Quizzo' }))
@@ -179,7 +179,7 @@ describe('Quizzo aus der Tafel', () => {
     expect(screen.getByRole('region', { name: 'Quizzo' })).not.toHaveClass('gross')
     await nutzer.click(screen.getByRole('button', { name: 'Quizzo schließen' }))
     await waitFor(async () => expect(await gespeichert()).toEqual([]))
-    expect((await ladeLetzteTafel())?.elemente).toHaveLength(1)
+    expect((await ladeLetzteTafel())?.seiten[0].elemente).toHaveLength(1)
   })
 })
 

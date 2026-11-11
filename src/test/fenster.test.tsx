@@ -117,7 +117,7 @@ describe('Fenster über der Tafel', () => {
     zieh(450)
     await waitFor(async () => {
       const t = await ladeLetzteTafel()
-      expect(t?.elemente).toHaveLength(2)
+      expect(t?.seiten[0].elemente).toHaveLength(2)
       expect(t?.fenster.map((x) => x.art)).toEqual(['wuerfel', 'stoppuhr'])
     })
   })

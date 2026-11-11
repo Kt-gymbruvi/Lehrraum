@@ -1,8 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { neuesTafelbild, type Strich } from '../kern/modell.ts'
+import { neueSeite, neuesTafelbild, type Strich } from '../kern/modell.ts'
 import { ladeLetzteTafel, ladeTafel, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
+import { vergissStift } from '../tafel/Zeichenflaeche.tsx'
 
 // jsdom kann nicht zeichnen: Canvas und Path2D durch Attrappen ersetzen. Geprüft wird hier die Bedienung
 // (Eingabe → Striche → Speicher), nicht das Bild selbst.
@@ -12,6 +13,7 @@ beforeAll(() => {
   globalThis.Path2D = class {} as unknown as typeof Path2D
   HTMLElement.prototype.setPointerCapture = () => undefined
 })
+beforeEach(vergissStift)
 
 const strich = (id: string): Strich => ({ art: 'strich', id, werkzeug: 'stift', farbe: '#0b1f4d', staerke: 6, druckEcht: false, punkte: [[10, 10, 0.5], [200, 10, 0.5]] })
 
@@ -25,13 +27,13 @@ function ziehe(von: [number, number], nach: [number, number], zeiger: Partial<Po
   fireEvent.pointerUp(f, { ...basis, clientX: nach[0], clientY: nach[1] })
 }
 
-const gespeichert = async () => (await ladeLetzteTafel())?.elemente ?? []
+const gespeichert = async () => ((await ladeLetzteTafel())?.seiten[0].elemente ?? []) as Strich[]
 const bereit = () => screen.findByText('Auf diesem Gerät gespeichert')
 
 describe('Speicher', () => {
   it('speichert und lädt ein Tafelbild, merkt sich das letzte', async () => {
     expect(await ladeLetzteTafel()).toBeNull()
-    const a = { ...neuesTafelbild('A'), elemente: [strich('x')] }
+    const a = { ...neuesTafelbild('A'), seiten: [neueSeite([strich('x')])] }
     const b = neuesTafelbild('B')
     await speichereTafel(a)
     await speichereTafel(b)
@@ -49,7 +51,7 @@ describe('Tafel', () => {
     expect(screen.getByRole('button', { name: 'Textmarker' })).toHaveAttribute('aria-pressed', 'false')
     expect(screen.getByRole('button', { name: 'Rückgängig' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Wiederholen' })).toBeDisabled()
-    expect(screen.getByRole('button', { name: 'Tafel leeren' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: 'Seite leeren' })).toBeDisabled()
   })
 
   it('zeichnet einen Strich mit gewählter Farbe und Stärke und speichert ihn von selbst', async () => {
@@ -97,7 +99,7 @@ describe('Tafel', () => {
     await waitFor(async () => expect(await gespeichert()).toHaveLength(1))
     expect((await gespeichert())[0].punkte[0][1]).toBe(300)
 
-    await nutzer.click(screen.getByRole('button', { name: 'Tafel leeren' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Seite leeren' }))
     await waitFor(async () => expect(await gespeichert()).toHaveLength(0))
     await nutzer.click(screen.getByRole('button', { name: 'Rückgängig' }))
     await nutzer.click(screen.getByRole('button', { name: 'Rückgängig' }))
@@ -105,11 +107,11 @@ describe('Tafel', () => {
   })
 
   it('stellt die zuletzt benutzte Tafel nach dem Schließen wieder her', async () => {
-    await speichereTafel({ ...neuesTafelbild('Herz und Kreislauf'), elemente: [strich('a'), strich('b')], kamera: { x: 5, y: 6, zoom: 2 } })
+    await speichereTafel({ ...neuesTafelbild('Herz und Kreislauf'), seiten: [neueSeite([strich('a'), strich('b')])], kamera: { x: 5, y: 6, zoom: 2 } })
     render(<Tafel />)
     expect(await screen.findByRole('heading', { name: 'Herz und Kreislauf' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ansicht zurücksetzen' })).toHaveTextContent('200 %')
-    expect(screen.getByRole('button', { name: 'Tafel leeren' })).toBeEnabled()
+    expect(screen.getByRole('button', { name: 'Seite leeren' })).toBeEnabled()
     expect(screen.getByRole('button', { name: 'Rückgängig' })).toBeDisabled() // der Verlauf beginnt neu
   })
 

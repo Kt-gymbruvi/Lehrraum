@@ -6,6 +6,8 @@ export type Befehl =
   | { art: 'hinzufuegen'; elemente: Element[] }
   /** stellen: an welcher Stelle der Liste das Element lag (für das Wiederherstellen in gleicher Reihenfolge) */
   | { art: 'entfernen'; eintraege: { stelle: number; element: Element }[] }
+  /** Elemente durch geänderte Fassungen mit derselben Kennung ersetzen (verschieben, umfärben, Text ändern) */
+  | { art: 'ersetzen'; vorher: Element[]; nachher: Element[] }
 
 export type Verlauf = { zurueck: Befehl[]; vor: Befehl[] }
 
@@ -21,8 +23,14 @@ export function entfernenBefehl(elemente: Element[], ids: Iterable<string>): Bef
   return eintraege.length ? { art: 'entfernen', eintraege } : null
 }
 
+const tausche = (elemente: Element[], neu: Element[]): Element[] => {
+  const nach = new Map(neu.map((e) => [e.id, e]))
+  return elemente.map((e) => nach.get(e.id) ?? e)
+}
+
 export function anwenden(elemente: Element[], b: Befehl): Element[] {
   if (b.art === 'hinzufuegen') return [...elemente, ...b.elemente]
+  if (b.art === 'ersetzen') return tausche(elemente, b.nachher)
   const weg = new Set(b.eintraege.map((e) => e.element.id))
   return elemente.filter((e) => !weg.has(e.id))
 }
@@ -32,6 +40,7 @@ export function zuruecknehmen(elemente: Element[], b: Befehl): Element[] {
     const weg = new Set(b.elemente.map((e) => e.id))
     return elemente.filter((e) => !weg.has(e.id))
   }
+  if (b.art === 'ersetzen') return tausche(elemente, b.vorher)
   // Entferntes wieder an die alte Stelle setzen (aufsteigend, damit die Stellen stimmen)
   const neu = [...elemente]
   for (const { stelle, element } of [...b.eintraege].sort((a, c) => a.stelle - c.stelle)) {
