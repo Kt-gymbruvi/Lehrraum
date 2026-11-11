@@ -1,6 +1,6 @@
 # Projektstand – Lehrraum
 
-Stand: 11.11.2026 · **nur lokal**, noch kein GitHub-Repository, nicht veröffentlicht.
+Stand: 11.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (seit 11.11.2026, Stand `b36ef9b`) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
 Tests: 6 Testdateien, 92 Tests grün (`npm test`); Build grün (`npm run build`).
 
 ## Implementiert (Etappen 1.3, 2a, 2b, 2c, 3a und 5a der Roadmap)
@@ -35,6 +35,7 @@ Tests: 6 Testdateien, 92 Tests grün (`npm test`); Build grün (`npm run build`)
 ## Getestet / nicht getestet
 - Automatisch: Datenmodell und Prüfung, Rückgängig/Wiederholen, Geometrie, Speicher, Bedienung der Tafel (Zeichnen, Farbe, Stärke, Textmarker, Radierer, Leeren, Tastatur, Wiederherstellen, Handballen-Schutz, Zoom), Fenster (Logik, Öffnen/Schließen, Verschieben, Einklappen, Timer und Stoppuhr mit gestellter Zeit, Würfel, Notiz speichern), Anwendungen mit ersetztem Server (Anmeldung mit falschem und richtigem Passwort, Quiz im Teammodus starten, Beenden mit Rückfrage, Fehler beim Starten, Vergrößern, Klassenfunk-Sitzung, Lernangebote filtern/öffnen/QR), Version-1-Umwandlung, Seiten (Logik und Bedienung), Text (schreiben, ändern, verwerfen), Formen, Auswahl (verschieben, umfärben, duplizieren, löschen), Radierer auf Text und Formen, Bilder und Hintergründe im Datenmodell, Seitenmaß für den Export, Dateispeicher (Aufräumen), Bedienung von Bild einfügen/PDF öffnen/PDF speichern/Teilen mit ersetztem Bild- und PDF-Modul.
 - Von Hand in der Vorschau (Desktop-Browser): Zeichnen mit der Maus, nachgestellte Stifteingabe mit wechselndem Druck, Textmarker, Radierer, Neuladen; alle fünf Fenster geöffnet, verschoben, Timer gestartet, gewürfelt, Notiz geschrieben; Lernangebote: alle 41 geladen, eines geöffnet und vergrößert; Quizzo-Fenster zeigt die Anmeldung; Text geschrieben, Rechteck, Ellipse und Pfeil gezeichnet, Element ausgewählt, Seite angelegt; eine gespeicherte Tafel der Version 1 wurde dabei geladen und umgewandelt; **mit echten Dateien:** ein PNG eingefügt, zwei Seiten als PDF erzeugt (gültiges PDF 1.7) und dieses PDF wieder geöffnet – beide Seiten erschienen als Hintergrund.
+- Veröffentlichte Fassung geprüft (Desktop-Browser): Zeichnen und Speichern, Lernangebote-Fenster lädt alle 41 Einträge von derselben Adresse, Quizzo-Fenster zeigt die Anmeldung, keine Fehler in der Konsole.
 - **Nicht getestet – wichtig:** Quizzo und Klassenfunk gegen den echten Server. Es wurde nicht angemeldet, kein echtes Spiel und keine echte Sitzung gestartet. Ob die eingebettete Beamer-Ansicht im Fenster gut bedienbar ist, zeigt sich erst mit Anmeldung.
 - **Nicht getestet:** große oder gescannte PDFs aus dem Unterricht (Tempo, Speicher), kennwortgeschützte PDFs, das Teilen-Menü und der Weg zu Goodnotes am iPad, Einfügen aus der Zwischenablage mit echten Bildern, Speichergrenzen bei vielen Bildern.
 - **Nicht getestet:** echtes iPad mit Apple Pencil, Smartboard, Fingerbedienung, Zwei-Finger-Zoom am Gerät, Schreibgefühl und Verzögerung, sehr viele Striche (Tempo), Signalton des Timers (in der Vorschau nicht hörbar geprüft; iPad-Browser geben Ton erst nach einer Berührung frei – der Start-Knopf zählt als solche).
@@ -50,7 +51,7 @@ Tests: 6 Testdateien, 92 Tests grün (`npm test`); Build grün (`npm run build`)
 - Die Größe von Text wird für Auswahl und Radierer geschätzt; bei sehr breiten oder schmalen Buchstaben sitzt der Auswahlrahmen nicht genau.
 - Der Radierer löscht ganze Elemente, keine Teilstücke. Rechteck und Ellipse werden nur am Rand getroffen.
 - Bei jeder Änderung werden alle Striche neu gezeichnet – bei sehr vollen Tafeln eventuell zu langsam (am Gerät prüfen).
-- Der Knopf „Zur Startseite“ führt auf `/` – in der lokalen Vorschau also nicht auf die Startseite.
+- Der Knopf „Zur Startseite“ führt auf die veröffentlichte Startseite – das ist noch die alte („Lernen mit Spaß“), und von dort führt noch kein Weg zur Tafel.
 - In der lokalen Vorschau zeigen die Anwendungsfenster auf die veröffentlichte Plattform (`kt-gymbruvi.github.io`); dort ist man getrennt angemeldet, Quizzo fragt im Fenster also noch einmal nach dem Konto. Veröffentlicht entfällt das.
 - Schließt man ein Anwendungsfenster, während ein Spiel läuft, bleibt das Spiel auf dem Server (Quizzo räumt es nach 6 Stunden auf). Sauber beendet wird es über „Beenden“.
 - Die Lernangebote-Liste beachtet die in `lernen/#bearbeiten` gespeicherte Ordnung (Datenbank) noch nicht, nur `angebote.js`.
@@ -62,7 +63,7 @@ Tests: 6 Testdateien, 92 Tests grün (`npm test`); Build grün (`npm run build`)
 - Noch nicht in der rechten Leiste: Zufallsschüler, Gruppen (brauchen Klassen, Phase 4), Lautstärkeampel, Arbeitsauftrag, Stundenablauf, QR-Code (3b).
 
 ## Nächste Schritte
-1. **Erprobung am iPad und am Smartboard** (Roadmap: vor allem Weiteren). Dafür muss die App veröffentlicht oder im WLAN erreichbar sein.
+1. **Erprobung am iPad und am Smartboard** durch die Lehrkraft unter https://kt-gymbruvi.github.io/Lehrraum/ (Stift, Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF öffnen, Teilen an Goodnotes, Quizzo mit Anmeldung).
 2. Je nach Ergebnis nachbessern (Glättung, Strichstärken, Handballen-Schutz).
 3. Quizzo und Klassenfunk mit echter Anmeldung ausprobieren (Lehrkraft).
 4. Phase 4: Klassen, Zufall und Gruppen, Goodnotes-Link, Klassen-Kacheln auf der Startseite. Danach 2d (Hintergründe, Vorlagen) und 3b.

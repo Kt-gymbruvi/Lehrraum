@@ -11,7 +11,7 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 ## Technik
 - Statische Web-App: Vite 8 + React 19 + TypeScript + Tailwind CSS v4, React Router (HashRouter), `@supabase/supabase-js` v2, `perfect-freehand`, `qrcode`, `pdfjs-dist` (PDF lesen) und `pdf-lib` (PDF schreiben) – die beiden letzten werden erst bei Bedarf geladen. Tests: Vitest + Testing Library (jsdom), `fake-indexeddb`.
 - Server: dieselbe Supabase-Datenbank und dieselben Lehrkraft-Konten wie Quizzo und Klassenfunk (Frankfurt). URL und publishable-Schlüssel in `.env.production` und `.env.development` (beide eingecheckt, nur öffentlicher Schlüssel).
-- Hosting (geplant): GitHub Pages unter https://kt-gymbruvi.github.io/Lehrraum/ (Basis-Pfad `/Lehrraum/`), Deploy per GitHub Actions (`.github/workflows/deploy.yml`: `npm ci`, `npm test`, `npm run build`).
+- Hosting: GitHub Pages unter https://kt-gymbruvi.github.io/Lehrraum/ (Basis-Pfad `/Lehrraum/`), Deploy per GitHub Actions (`.github/workflows/deploy.yml`: `npm ci`, `npm test`, `npm run build`).
 - Bibliotheken werden über npm eingebaut; im Betrieb wird nichts von fremden Servern geladen.
 - Code:
   - `src/kern/` – reine Logik ohne React und ohne Browser-Speicher: `modell.ts` (Datenmodell Version 2: Seiten mit Strich/Text/Form, Prüfung, Umwandlung von Version 1), `befehle.ts` (Rückgängig/Wiederholen: hinzufügen, entfernen, ersetzen), `geometrie.ts` (Kamera, Treffer, Rahmen, Pfade), `seiten.ts` (Seiten anlegen, duplizieren, löschen, schieben), `fenster.ts`.
@@ -41,4 +41,4 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 ## Arbeitsweise
 - Nach jeder Etappe: `npm test` und `npm run build` (enthält die TypeScript-Prüfung); zusammenfassen, was getestet wurde und was nicht. Zeichnen und Stift lassen sich nur am echten Gerät beurteilen – das immer dazusagen.
 - Lokal ansehen: `npm run dev`, dann http://localhost:5173/Lehrraum/ (oder Vorschau-Eintrag „lehrraum“ im Startseiten-Repo, Port 5200).
-- Nichts veröffentlichen (GitHub-Repository anlegen, Push, Deployment) und nichts löschen ohne ausdrückliche Zustimmung der Lehrkraft.
+- Nichts veröffentlichen (Push auf `main` löst das Deployment aus) und nichts löschen ohne ausdrückliche Zustimmung der Lehrkraft. Auf diesem Rechner gibt es kein `gh`; den Stand eines Laufs zeigt https://api.github.com/repos/Kt-gymbruvi/Lehrraum/actions/runs.
