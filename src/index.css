@@ -636,3 +636,17 @@ body {
     font-size: 0.95rem;
   }
 }
+
+/* Hinweise zu Bildern und PDF in der Kopfzeile */
+.speicherstand.hinweis {
+  color: #ffffff;
+  font-weight: 700;
+}
+.kopf-knopf:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.kopf-knopf .symbol {
+  width: 1.4rem;
+  height: 1.4rem;
+}

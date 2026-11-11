@@ -5,13 +5,17 @@
 //   benutzt wurde – danach verschiebt er die Ansicht (Handballen-Schutz). Zwei Finger verschieben und zoomen immer.
 //   Mausrad verschiebt, Strg + Mausrad zoomt. Mit dem Auswahlwerkzeug verschiebt Ziehen auf freier Fläche die Ansicht.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { breite, gesamtRahmen, oberstesBei, pfadAusPunkten, pfadAusUmriss, pfeilspitze, stiftUmriss, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel } from '../kern/geometrie.ts'
-import { MARKER_DECKKRAFT, MAX_TEXT, neueId, schriftgroesse, type Element, type Form, type Formart, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
+import { gesamtRahmen, oberstesBei, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel } from '../kern/geometrie.ts'
+import { MAX_TEXT, neueId, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
+import { beiBildGeladen } from './bildquellen.ts'
+import { SCHRIFT, zeichne, zeichneHintergrund } from './zeichnen.ts'
 
 export type Werkzeug = 'auswahl' | Zeichenwerkzeug | 'radierer' | 'text' | Formart
 
 type Props = {
   elemente: Element[]
+  /** z. B. eine importierte PDF-Seite; liegt unter allem und lässt sich nicht verändern */
+  hintergrund?: Hintergrund
   kamera: Kamera
   werkzeug: Werkzeug
   farbe: string
@@ -29,7 +33,6 @@ type Props = {
 const RADIERER_RADIUS = 14
 const FANG_RADIUS = 8
 const DOPPELTIPP_MS = 450
-export const SCHRIFT = 'ui-rounded, "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
 
 type Aktiv =
   | { art: 'zeichnen'; zeiger: number; strich: Strich }
@@ -48,63 +51,16 @@ export const vergissStift = () => {
   stiftGesehen = false
 }
 
-const pfade = new WeakMap<Strich, Path2D>()
-const strichPfad = (s: Strich) => new Path2D(s.werkzeug === 'marker' ? pfadAusPunkten(s) : pfadAusUmriss(stiftUmriss(s)))
-
-function zeichne(ctx: CanvasRenderingContext2D, e: Element, frisch = false) {
-  if (e.art === 'text') {
-    ctx.fillStyle = e.farbe
-    ctx.font = `${e.groesse}px ${SCHRIFT}`
-    ctx.textBaseline = 'top'
-    e.text.split('\n').forEach((zeile, i) => ctx.fillText(zeile, e.x, e.y + (i * ZEILENHOEHE + (ZEILENHOEHE - 1) / 2) * e.groesse))
-    return
-  }
-  ctx.lineCap = 'round'
-  ctx.lineJoin = 'round'
-  if (e.art === 'form') {
-    ctx.strokeStyle = e.farbe
-    ctx.lineWidth = e.staerke
-    ctx.beginPath()
-    if (e.form === 'rechteck') ctx.rect(Math.min(e.x1, e.x2), Math.min(e.y1, e.y2), Math.abs(e.x2 - e.x1), Math.abs(e.y2 - e.y1))
-    else if (e.form === 'ellipse') ctx.ellipse((e.x1 + e.x2) / 2, (e.y1 + e.y2) / 2, Math.abs(e.x2 - e.x1) / 2, Math.abs(e.y2 - e.y1) / 2, 0, 0, Math.PI * 2)
-    else {
-      ctx.moveTo(e.x1, e.y1)
-      ctx.lineTo(e.x2, e.y2)
-      if (e.form === 'pfeil') {
-        const [a, b] = pfeilspitze(e)
-        ctx.moveTo(a[0], a[1])
-        ctx.lineTo(e.x2, e.y2)
-        ctx.lineTo(b[0], b[1])
-      }
-    }
-    ctx.stroke()
-    return
-  }
-  // Der entstehende oder bewegte Strich ändert sich ständig – seinen Pfad nicht merken
-  let p = frisch ? undefined : pfade.get(e)
-  if (!p) {
-    p = strichPfad(e)
-    if (!frisch) pfade.set(e, p)
-  }
-  if (e.werkzeug === 'marker') {
-    ctx.globalAlpha = MARKER_DECKKRAFT
-    ctx.strokeStyle = e.farbe
-    ctx.lineWidth = breite(e)
-    ctx.stroke(p)
-    ctx.globalAlpha = 1
-  } else {
-    ctx.fillStyle = e.farbe
-    ctx.fill(p)
-  }
-}
-
-export function Zeichenflaeche({ elemente, kamera, werkzeug, farbe, staerke, auswahl, beiHinzu, beiRadieren, beiErsetzen, beiAuswahl, beiKamera }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, auswahl, beiHinzu, beiRadieren, beiErsetzen, beiAuswahl, beiKamera }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
   const [groesse, setGroesse] = useState({ b: 0, h: 0, dpr: 1 })
   const [versteckt, setVersteckt] = useState<Set<string>>(new Set())
   const [editor, setEditor] = useState<Editor | null>(null)
+  // Bilder werden nachgeladen; ist eines da, neu zeichnen
+  const [bildStand, setBildStand] = useState(0)
+  useEffect(() => beiBildGeladen(() => setBildStand((n) => n + 1)), [])
 
   // Aktuelle Werte für die Eingabe-Funktionen (die sich sonst bei jedem Zeichnen neu anmelden müssten)
   const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, auswahl, editor })
@@ -141,9 +97,10 @@ export function Zeichenflaeche({ elemente, kamera, werkzeug, farbe, staerke, aus
   useEffect(() => {
     const ctx = ebene(unten.current, kamera)
     if (!ctx) return
+    if (hintergrund) zeichneHintergrund(ctx, hintergrund)
     for (const e of elemente) if (!versteckt.has(e.id)) zeichne(ctx, e)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elemente, kamera, groesse, versteckt])
+  }, [elemente, hintergrund, kamera, groesse, versteckt, bildStand])
 
   function zeichneOben() {
     const s = stand.current

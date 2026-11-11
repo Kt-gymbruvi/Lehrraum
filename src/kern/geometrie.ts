@@ -1,6 +1,6 @@
 // Geometrie der Tafel: Kamera (Verschieben, Zoomen), Treffer des Radierers, Umriss eines Strichs als Pfad.
 import { getStroke } from 'perfect-freehand'
-import { MARKER_FAKTOR, ZOOM_MAX, ZOOM_MIN, type Element, type Form, type Kamera, type Strich, type Text } from './modell.ts'
+import { MARKER_FAKTOR, ZOOM_MAX, ZOOM_MIN, type Element, type Form, type Kamera, type Seite, type Strich, type Text } from './modell.ts'
 
 /** Bildschirmpunkt (Pixel in der Zeichenfläche) → Tafel-Koordinaten */
 export function zuTafel(k: Kamera, sx: number, sy: number): [number, number] {
@@ -95,6 +95,7 @@ export function textMass(t: Text): [number, number] {
 
 /** Umschließendes Rechteck [links, oben, rechts, unten] eines Elements, einschließlich Strichbreite */
 export function rahmen(e: Element): [number, number, number, number] {
+  if (e.art === 'bild') return [e.x, e.y, e.x + e.b, e.y + e.h]
   if (e.art === 'text') {
     const [b, h] = textMass(e)
     return [e.x, e.y, e.x + b, e.y + h]
@@ -154,7 +155,7 @@ export function oberstesBei(elemente: Element[], x: number, y: number, r: number
 /** Dasselbe Element (gleiche Kennung), um dx/dy verschoben */
 export function verschoben<T extends Element>(e: T, dx: number, dy: number): T {
   if (e.art === 'strich') return { ...e, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]) }
-  if (e.art === 'text') return { ...e, x: e.x + dx, y: e.y + dy }
+  if (e.art === 'text' || e.art === 'bild') return { ...e, x: e.x + dx, y: e.y + dy }
   return { ...e, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy }
 }
 
@@ -164,4 +165,32 @@ export function pfeilspitze(f: Form): [[number, number], [number, number]] {
   const laenge = Math.min(Math.hypot(f.x2 - f.x1, f.y2 - f.y1) * 0.6, 10 + f.staerke * 3)
   const ecke = (w: number): [number, number] => [f.x2 - laenge * Math.cos(winkel + w), f.y2 - laenge * Math.sin(winkel + w)]
   return [ecke(0.45), ecke(-0.45)]
+}
+
+// ---------- Seitenmaß für den PDF-Export ----------
+
+/** A4 quer bei 96 Punkten pro Zoll – so groß ist eine Seite mindestens, wenn sie keinen Hintergrund hat */
+export const A4_QUER: [number, number] = [1123, 794]
+const SEITENRAND = 24
+
+/**
+ * Der Ausschnitt [links, oben, Breite, Höhe], der beim Export zu einer PDF-Seite wird:
+ * mit Hintergrund genau dessen Fläche (plus was darüber hinausragt), sonst mindestens A4 quer ab (0, 0)
+ * und alles Gezeichnete mit etwas Rand.
+ */
+export function seitenMass(s: Seite): [number, number, number, number] {
+  const inhalt = gesamtRahmen(s.elemente)
+  const basis: [number, number, number, number] = s.hintergrund ? [0, 0, s.hintergrund.b, s.hintergrund.h] : [0, 0, A4_QUER[0], A4_QUER[1]]
+  if (!inhalt) return [basis[0], basis[1], basis[2] - basis[0], basis[3] - basis[1]]
+  const l = Math.min(basis[0], inhalt[0] - SEITENRAND)
+  const o = Math.min(basis[1], inhalt[1] - SEITENRAND)
+  const r = Math.max(basis[2], inhalt[2] + SEITENRAND)
+  const u = Math.max(basis[3], inhalt[3] + SEITENRAND)
+  return [Math.floor(l), Math.floor(o), Math.ceil(r - l), Math.ceil(u - o)]
+}
+
+/** Größe (Breite, Höhe), in der ein neues Bild auf die Tafel kommt: höchstens maxB breit bzw. maxH hoch, nie vergrößert */
+export function einpassen(b: number, h: number, maxB: number, maxH: number): [number, number] {
+  const f = Math.min(1, maxB / b, maxH / h)
+  return [Math.round(b * f), Math.round(h * f)]
 }

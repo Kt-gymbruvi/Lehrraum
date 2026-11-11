@@ -4,10 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Fensterebene, Schnellleiste } from '../fenster/Fensterebene.tsx'
 import { ausfuehren, entfernenBefehl, leererVerlauf, rueckgaengig, wiederholen, type Befehl, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
-import { zoomeUm } from '../kern/geometrie.ts'
-import { FARBEN, STAERKEN, neuesTafelbild, schriftgroesse, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
-import { gehe, kopie, seiteDazu, seiteDoppelt, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
+import { einpassen, zoomeUm, zuTafel } from '../kern/geometrie.ts'
+import { benutzteDateien, FARBEN, MAX_SEITEN, STAERKEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
+import { gehe, kopie, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
 import { bitteUmDauerhaftenSpeicher, ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { raeumeDateienAuf } from '../speicher/dateien.ts'
+import { istBilddatei, nimmBild } from './bilder.ts'
+import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 import { Seitenleiste } from './Seitenleiste.tsx'
 import { WERKZEUGE, Werkzeugleiste } from './Werkzeugleiste.tsx'
@@ -38,6 +41,12 @@ export default function Tafel() {
   const [staerke, setStaerke] = useState<number>(STAERKEN[1].wert)
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
+  /** Hinweis in der Kopfzeile: Fortschritt, Erfolg oder Fehler bei Bildern und PDF */
+  const [meldung, setMeldung] = useState<{ text: string; fehler?: boolean; laeuft?: boolean } | null>(null)
+  const flaeche = useRef<HTMLDivElement>(null)
+  const bildWahl = useRef<HTMLInputElement>(null)
+  const pdfWahl = useRef<HTMLInputElement>(null)
+  const [teilbar] = useState(kannTeilen)
 
   const seite = buch.seiten[buch.nr] ?? LEER
   const verlauf = buch.verlaeufe[seite.id] ?? leererVerlauf()
@@ -58,6 +67,8 @@ export default function Tafel() {
         setKamera(t.kamera)
         setFenster(t.fenster)
         setSpeicher('gespeichert')
+        // Bilder, die kein Tafelbild mehr braucht, jetzt wegräumen (später könnte Rückgängig sie noch brauchen)
+        if (gefunden) void raeumeDateienAuf(benutzteDateien(t.seiten)).catch(() => undefined)
       })
     return () => {
       abgebrochen = true
@@ -158,13 +169,13 @@ export default function Tafel() {
   const waehleFarbe = (f: string) => {
     setFarbe(f)
     if (werkzeug === 'radierer') setWerkzeug('stift')
-    const andere = gewaehlte.filter((e) => e.farbe !== f)
+    const andere = gewaehlte.filter((e): e is Exclude<Element, Bild> => e.art !== 'bild' && e.farbe !== f)
     if (andere.length) beiErsetzen(andere, andere.map((e) => ({ ...e, farbe: f })))
   }
   /** Stärke wählen: gilt für Neues – und ändert Strichbreite bzw. Schriftgröße der Auswahl */
   const waehleStaerke = (s: number) => {
     setStaerke(s)
-    const neu = gewaehlte.map((e): Element => (e.art === 'text' ? { ...e, groesse: schriftgroesse(s) } : { ...e, staerke: s }))
+    const neu = gewaehlte.map((e): Element => (e.art === 'bild' ? e : e.art === 'text' ? { ...e, groesse: schriftgroesse(s) } : { ...e, staerke: s }))
     const geaendert = gewaehlte.filter((e, i) => JSON.stringify(e) !== JSON.stringify(neu[i]))
     if (geaendert.length) beiErsetzen(geaendert, neu.filter((_, i) => geaendert.includes(gewaehlte[i])))
   }
@@ -178,6 +189,92 @@ export default function Tafel() {
     setAuswahl([])
     setBuch((alt) => ({ ...alt, ...tun(alt) }))
   }
+
+  // ---------- Bilder und PDF ----------
+  useEffect(() => {
+    if (!meldung || meldung.laeuft) return
+    const t = setTimeout(() => setMeldung(null), meldung.fehler ? 9000 : 5000)
+    return () => clearTimeout(t)
+  }, [meldung])
+  const fehlerMeldung = (e: unknown) => setMeldung({ text: e instanceof Error ? e.message : 'Das hat nicht geklappt.', fehler: true })
+
+  /** Legt Bilder in die Mitte des sichtbaren Ausschnitts (mehrere leicht versetzt) und wählt das letzte aus. */
+  async function fuegeBilderEin(dateien: Blob[]) {
+    if (!dateien.length) return
+    setMeldung({ text: dateien.length === 1 ? 'Bild wird eingefügt …' : 'Bilder werden eingefügt …', laeuft: true })
+    try {
+      const b = flaeche.current?.clientWidth || 800
+      const h = flaeche.current?.clientHeight || 600
+      const [mx, my] = zuTafel(kamera, b / 2, h / 2)
+      let letzte = ''
+      for (const [i, datei] of dateien.entries()) {
+        const fertig = await nimmBild(datei)
+        const [bb, bh] = einpassen(fertig.b, fertig.h, (b * 0.6) / kamera.zoom, (h * 0.6) / kamera.zoom)
+        const bild: Bild = { art: 'bild', id: neueId(), x: Math.round(mx - bb / 2 + i * 24), y: Math.round(my - bh / 2 + i * 24), b: bb, h: bh, dateiId: fertig.dateiId }
+        beiHinzu(bild)
+        letzte = bild.id
+      }
+      setWerkzeug('auswahl')
+      setAuswahl([letzte])
+      setMeldung(null)
+    } catch (e) {
+      fehlerMeldung(e)
+    }
+  }
+
+  async function oeffnePdf(datei: Blob) {
+    const platz = buch.seiten.length === 1 && !seite.elemente.length && !seite.hintergrund ? MAX_SEITEN : MAX_SEITEN - buch.seiten.length
+    if (platz <= 0) return setMeldung({ text: `Mehr als ${MAX_SEITEN} Seiten gehen nicht.`, fehler: true })
+    setMeldung({ text: 'PDF wird geöffnet …', laeuft: true })
+    try {
+      const { seiten, ausgelassen } = await importierePdf(datei, platz, (nr, von) => setMeldung({ text: `PDF: Seite ${nr} von ${von} …`, laeuft: true }))
+      blaettern((b) => seitenDazu(b, seiten))
+      setKamera({ x: 0, y: 0, zoom: 1 })
+      setMeldung({ text: (seiten.length === 1 ? '1 Seite eingefügt.' : `${seiten.length} Seiten eingefügt.`) + (ausgelassen ? ` ${ausgelassen} weitere passen nicht mehr (höchstens ${MAX_SEITEN}).` : ''), fehler: ausgelassen > 0 })
+    } catch (e) {
+      fehlerMeldung(e)
+    }
+  }
+
+  async function alsPdf(weitergeben: boolean) {
+    setMeldung({ text: 'PDF wird erstellt …', laeuft: true })
+    try {
+      const titel = kopf?.titel ?? 'Tafel'
+      const pdf = await exportierePdf(buch.seiten, titel, (nr, von) => setMeldung({ text: `PDF: Seite ${nr} von ${von} …`, laeuft: true }))
+      if (weitergeben) {
+        setMeldung(null)
+        await teile(pdf, pdfName(titel), titel)
+      } else {
+        ladeHerunter(pdf, pdfName(titel))
+        setMeldung({ text: 'PDF gespeichert.' })
+      }
+    } catch (e) {
+      fehlerMeldung(e)
+    }
+  }
+
+  /** Dateien aus Auswahl, Zwischenablage oder Hineinziehen: Bilder kommen auf die Seite, ein PDF wird zu neuen Seiten. */
+  function nimmDateien(dateien: File[]) {
+    const pdf = dateien.find(istPdf)
+    const bilder = dateien.filter(istBilddatei)
+    if (pdf) void oeffnePdf(pdf)
+    else if (bilder.length) void fuegeBilderEin(bilder)
+    else if (dateien.length) setMeldung({ text: 'Diese Datei lässt sich nicht einfügen (möglich sind Bilder und PDF).', fehler: true })
+  }
+  const dateien = useRef(nimmDateien)
+  dateien.current = nimmDateien
+  useEffect(() => {
+    const einfuegen = (e: ClipboardEvent) => {
+      const ziel = e.target as HTMLElement | null
+      if (ziel && (ziel.tagName === 'INPUT' || ziel.tagName === 'TEXTAREA')) return
+      const gefunden = [...(e.clipboardData?.files ?? [])]
+      if (!gefunden.length) return
+      e.preventDefault()
+      dateien.current(gefunden)
+    }
+    window.addEventListener('paste', einfuegen)
+    return () => window.removeEventListener('paste', einfuegen)
+  }, [])
 
   // ---------- Tastatur ----------
   const tasten = useRef({ zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, auswahl })
@@ -221,9 +318,24 @@ export default function Tafel() {
           <Symbol name="haus" />
         </a>
         <h1>{kopf?.titel ?? 'Tafel'}</h1>
-        <p className={'speicherstand ' + speicher} role="status">
-          {SPEICHERTEXT[speicher]}
+        <p className={'speicherstand ' + (meldung ? (meldung.fehler ? 'fehler' : 'hinweis') : speicher)} role="status">
+          {meldung?.text ?? SPEICHERTEXT[speicher]}
         </p>
+        <div className="zoom" role="group" aria-label="PDF">
+          <button type="button" className="kopf-knopf" aria-label="PDF öffnen" title="PDF öffnen – jede Seite wird eine Tafelseite zum Beschriften" disabled={meldung?.laeuft} onClick={() => pdfWahl.current?.click()}>
+            <Symbol name="pdfOeffnen" />
+          </button>
+          <button type="button" className="kopf-knopf" aria-label="Als PDF speichern" title="Alle Seiten als PDF speichern" disabled={meldung?.laeuft} onClick={() => void alsPdf(false)}>
+            <Symbol name="pdfSpeichern" />
+          </button>
+          {teilbar && (
+            <button type="button" className="kopf-knopf" aria-label="Als PDF teilen" title="Als PDF teilen, z. B. an Goodnotes" disabled={meldung?.laeuft} onClick={() => void alsPdf(true)}>
+              <Symbol name="teilen" />
+            </button>
+          )}
+        </div>
+        <input ref={pdfWahl} type="file" accept="application/pdf,.pdf" hidden aria-label="PDF-Datei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
+        <input ref={bildWahl} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden aria-label="Bilddatei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
         <div className="zoom" role="group" aria-label="Ansicht">
           <button type="button" className="kopf-knopf" aria-label="Verkleinern" onClick={() => zoomen(1 / 1.25)}>
             −
@@ -253,12 +365,23 @@ export default function Tafel() {
           beiLeeren={() => entferne(seite.elemente.map((e) => e.id))}
           beiDoppeln={dopple}
           beiLoeschen={loescheAuswahl}
+          beiBild={() => bildWahl.current?.click()}
         />
         <div className="tafel-spalte">
-          <div className="tafel-flaeche">
+          <div
+            className="tafel-flaeche"
+            ref={flaeche}
+            onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
+            onDrop={(e) => {
+              if (!e.dataTransfer.files.length) return
+              e.preventDefault()
+              nimmDateien([...e.dataTransfer.files])
+            }}
+          >
             <Zeichenflaeche
               key={seite.id}
               elemente={seite.elemente}
+              hintergrund={seite.hintergrund}
               kamera={kamera}
               werkzeug={werkzeug}
               farbe={farbe}
@@ -275,7 +398,7 @@ export default function Tafel() {
           <Seitenleiste
             nr={buch.nr}
             anzahl={buch.seiten.length}
-            beschrieben={seite.elemente.length > 0}
+            beschrieben={seite.elemente.length > 0 || seite.hintergrund !== undefined}
             beiGehe={(nr) => blaettern((b) => gehe(b, nr))}
             beiNeu={() => blaettern(seiteDazu)}
             beiDoppelt={() => blaettern(seiteDoppelt)}

@@ -51,9 +51,24 @@ export type Form = {
   staerke: number
 }
 
-export type Element = Strich | Text | Form
+export type Bild = {
+  art: 'bild'
+  id: string
+  /** linke obere Ecke, Breite, Höhe in Tafel-Einheiten */
+  x: number
+  y: number
+  b: number
+  h: number
+  /** Kennung der Bilddatei im Gerätespeicher (speicher/dateien.ts) */
+  dateiId: string
+}
 
-export type Seite = { id: string; elemente: Element[] }
+export type Element = Strich | Text | Form | Bild
+
+/** Hintergrund einer Seite, z. B. eine importierte PDF-Seite: liegt bei (0, 0), lässt sich nicht auswählen oder radieren */
+export type Hintergrund = { dateiId: string; b: number; h: number }
+
+export type Seite = { id: string; elemente: Element[]; hintergrund?: Hintergrund }
 
 export type Kamera = { x: number; y: number; zoom: number }
 
@@ -106,7 +121,27 @@ export function neueId(): string {
   return Array.from(z, (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
-export const neueSeite = (elemente: Element[] = []): Seite => ({ id: neueId(), elemente })
+export const neueSeite = (elemente: Element[] = [], hintergrund?: Hintergrund): Seite => ({ id: neueId(), elemente, ...(hintergrund ? { hintergrund } : {}) })
+
+/** Kennungen von Dateien – nur solche Zeichen */
+export const istDateiId = (x: unknown): x is string => typeof x === 'string' && /^[0-9a-f]{8,64}$/.test(x)
+const istMass = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x > 0 && x <= 100000
+
+function pruefeHintergrund(x: unknown): Hintergrund | undefined {
+  if (typeof x !== 'object' || x === null) return undefined
+  const h = x as Record<string, unknown>
+  return istDateiId(h.dateiId) && istMass(h.b) && istMass(h.h) ? { dateiId: h.dateiId, b: h.b, h: h.h } : undefined
+}
+
+/** Alle Dateien, die ein Tafelbild braucht (Bilder und Hintergründe) */
+export function benutzteDateien(seiten: Seite[]): Set<string> {
+  const ids = new Set<string>()
+  for (const s of seiten) {
+    if (s.hintergrund) ids.add(s.hintergrund.dateiId)
+    for (const e of s.elemente) if (e.art === 'bild') ids.add(e.dateiId)
+  }
+  return ids
+}
 
 export function neuesTafelbild(titel = 'Tafel'): Tafelbild {
   return {
@@ -128,7 +163,12 @@ const istFarbe = (x: unknown): x is string => typeof x === 'string' && /^#[0-9a-
 const istStaerke = (x: unknown): x is number => istZahl(x) && x > 0 && x <= 200
 
 function pruefeElement(x: unknown): Element | null {
-  if (!istObjekt(x) || typeof x.id !== 'string' || !x.id || !istFarbe(x.farbe)) return null
+  if (!istObjekt(x) || typeof x.id !== 'string' || !x.id) return null
+  if (x.art === 'bild') {
+    if (!istZahl(x.x) || !istZahl(x.y) || !istMass(x.b) || !istMass(x.h) || !istDateiId(x.dateiId)) return null
+    return { art: 'bild', id: x.id, x: x.x, y: x.y, b: x.b, h: x.h, dateiId: x.dateiId }
+  }
+  if (!istFarbe(x.farbe)) return null
   if (x.art === 'strich') {
     if (x.werkzeug !== 'stift' && x.werkzeug !== 'marker') return null
     if (!istStaerke(x.staerke) || !Array.isArray(x.punkte) || x.punkte.length === 0) return null
@@ -171,7 +211,8 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
     seiten = (Array.isArray(roh.seiten) ? roh.seiten : []).slice(0, MAX_SEITEN).flatMap((s): Seite[] => {
       if (!istObjekt(s) || typeof s.id !== 'string' || !s.id || ids.has(s.id)) return []
       ids.add(s.id)
-      return [{ id: s.id, elemente: pruefeElemente(s.elemente) }]
+      const hintergrund = pruefeHintergrund(s.hintergrund)
+      return [{ id: s.id, elemente: pruefeElemente(s.elemente), ...(hintergrund ? { hintergrund } : {}) }]
     })
     if (!seiten.length) seiten = [neueSeite()]
   } else return null

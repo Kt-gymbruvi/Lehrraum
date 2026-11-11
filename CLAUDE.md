@@ -9,14 +9,14 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 (`IMPLEMENTATION_ROADMAP.md`, `ARCHITECTURE.md`, `PROJECT_AUDIT.md`). Nach jeder Etappe aktualisieren.
 
 ## Technik
-- Statische Web-App: Vite 8 + React 19 + TypeScript + Tailwind CSS v4, React Router (HashRouter), `@supabase/supabase-js` v2, `perfect-freehand`, `qrcode`. Tests: Vitest + Testing Library (jsdom), `fake-indexeddb`.
+- Statische Web-App: Vite 8 + React 19 + TypeScript + Tailwind CSS v4, React Router (HashRouter), `@supabase/supabase-js` v2, `perfect-freehand`, `qrcode`, `pdfjs-dist` (PDF lesen) und `pdf-lib` (PDF schreiben) – die beiden letzten werden erst bei Bedarf geladen. Tests: Vitest + Testing Library (jsdom), `fake-indexeddb`.
 - Server: dieselbe Supabase-Datenbank und dieselben Lehrkraft-Konten wie Quizzo und Klassenfunk (Frankfurt). URL und publishable-Schlüssel in `.env.production` und `.env.development` (beide eingecheckt, nur öffentlicher Schlüssel).
 - Hosting (geplant): GitHub Pages unter https://kt-gymbruvi.github.io/Lehrraum/ (Basis-Pfad `/Lehrraum/`), Deploy per GitHub Actions (`.github/workflows/deploy.yml`: `npm ci`, `npm test`, `npm run build`).
 - Bibliotheken werden über npm eingebaut; im Betrieb wird nichts von fremden Servern geladen.
 - Code:
   - `src/kern/` – reine Logik ohne React und ohne Browser-Speicher: `modell.ts` (Datenmodell Version 2: Seiten mit Strich/Text/Form, Prüfung, Umwandlung von Version 1), `befehle.ts` (Rückgängig/Wiederholen: hinzufügen, entfernen, ersetzen), `geometrie.ts` (Kamera, Treffer, Rahmen, Pfade), `seiten.ts` (Seiten anlegen, duplizieren, löschen, schieben), `fenster.ts`.
-  - `src/speicher/` – `datenbank.ts` (IndexedDB auf dem Gerät), `server.ts` (einziger Ort für Serverzugriffe: Anmeldung, Quizze, Präsentationen, Spiel/Sitzung starten und beenden), `supabase.ts`, `plattform.ts` (Adressen der Schwesteranwendungen, Liste der Lernangebote).
-  - `src/tafel/` – `Tafel.tsx` (Zustand, Autospeichern, Tastatur), `Zeichenflaeche.tsx` (Eingabe und Zeichnen aller Werkzeuge, Text-Eingabefeld), `Werkzeugleiste.tsx` (links), `Seitenleiste.tsx` (unten).
+  - `src/speicher/` – `datenbank.ts` (IndexedDB auf dem Gerät: Tafeln, Einstellungen), `dateien.ts` (Bilder und PDF-Seiten als Dateien), `server.ts` (einziger Ort für Serverzugriffe: Anmeldung, Quizze, Präsentationen, Spiel/Sitzung starten und beenden), `supabase.ts`, `plattform.ts` (Adressen der Schwesteranwendungen, Liste der Lernangebote).
+  - `src/tafel/` – `Tafel.tsx` (Zustand, Autospeichern, Tastatur), `Zeichenflaeche.tsx` (Eingabe und Zeichnen aller Werkzeuge, Text-Eingabefeld), `Werkzeugleiste.tsx` (links), `Seitenleiste.tsx` (unten), `zeichnen.ts` (Elemente auf ein Canvas zeichnen – für Fläche und Export), `bildquellen.ts` (geladene Bilder), `bilder.ts` (Bilddateien annehmen), `pdf.ts` (PDF öffnen, speichern, teilen).
   - `src/fenster/` – Fenster über der Tafel: `Fenster.tsx` (Rahmen, Verschieben), `Fensterebene.tsx` (Ebene und rechte Leiste), `Inhalte.tsx` (Uhr, Timer, Stoppuhr, Würfel, Notiz), `Anwendungen.tsx` (Quizzo, Klassenfunk, Lernangebote per iframe, Anmeldung); Logik in `src/kern/fenster.ts`.
   - `src/ui/` – wiederverwendbare Bausteine (`Symbol.tsx`).
   - `src/test/` – Tests.
@@ -35,7 +35,8 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 - Tafelbilder und (später) Klassen mit Schülernamen liegen **nur auf dem Gerät** (IndexedDB). Nie in ein Repository, nie in eine Adresse, nie im Klartext auf einen Server.
 - Keine Trackingdienste, keine KI-Aufrufe. Supabase: nur der publishable-Schlüssel (nie secret/service_role), eigene Tabellen später mit RLS und Präfix `lr_`. Serverzugriffe nur über `src/speicher/server.ts`; Tests ersetzen dieses Modul und sprechen nie mit dem echten Server.
 - Quizzo und Klassenfunk werden eingebettet, nicht nachgebaut, und in ihren Repos nicht geändert, ohne dass es eine eigene Etappe dort ist. In Adressen nur geprüfte Kennungen (`istZiel`).
-- Importierte Dateien sind Daten und werden geprüft, nie ausgeführt.
+- Importierte Dateien sind Daten und werden geprüft, nie ausgeführt (SVG wird beim Einfügen zu einem Pixelbild). Bilder und PDFs bleiben auf dem Gerät.
+- Tests ersetzen `tafel/bilder.ts` und `tafel/pdf.ts` (jsdom kann keine Bilder oder PDFs verarbeiten); Änderungen dort immer mit echten Dateien im Browser prüfen.
 
 ## Arbeitsweise
 - Nach jeder Etappe: `npm test` und `npm run build` (enthält die TypeScript-Prüfung); zusammenfassen, was getestet wurde und was nicht. Zeichnen und Stift lassen sich nur am echten Gerät beurteilen – das immer dazusagen.

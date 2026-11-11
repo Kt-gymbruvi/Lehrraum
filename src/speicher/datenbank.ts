@@ -1,10 +1,11 @@
 // Lokaler Speicher der Tafel: IndexedDB auf diesem Gerät. Nichts davon wird an einen Server geschickt.
 //   tafeln         – Tafelbilder (Schlüssel: id)
 //   einstellungen  – einzelne Werte, z. B. welche Tafel zuletzt offen war
+//   dateien        – Bilder und importierte PDF-Seiten (siehe dateien.ts)
 import { pruefeTafel, type Tafelbild } from '../kern/modell.ts'
 
 const NAME = 'lehrraum'
-const VERSION = 1
+const VERSION = 2
 const LETZTE = 'letzte-tafel'
 
 let offen: Promise<IDBDatabase> | null = null
@@ -16,6 +17,7 @@ function oeffne(): Promise<IDBDatabase> {
       const db = anfrage.result
       if (!db.objectStoreNames.contains('tafeln')) db.createObjectStore('tafeln', { keyPath: 'id' })
       if (!db.objectStoreNames.contains('einstellungen')) db.createObjectStore('einstellungen')
+      if (!db.objectStoreNames.contains('dateien')) db.createObjectStore('dateien', { keyPath: 'id' }) // seit Version 2
     }
     anfrage.onsuccess = () => ok(anfrage.result)
     anfrage.onerror = () => {
@@ -26,7 +28,7 @@ function oeffne(): Promise<IDBDatabase> {
   return offen
 }
 
-function vorgang<T>(lager: string, art: IDBTransactionMode, tun: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
+export function vorgang<T>(lager: string, art: IDBTransactionMode, tun: (s: IDBObjectStore) => IDBRequest<T>): Promise<T> {
   return oeffne().then(
     (db) =>
       new Promise<T>((ok, fehler) => {

@@ -3,6 +3,17 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-11 – Bilder und PDF (Rest von 2b, Etappe 2c)
+- **Bilddaten getrennt vom Tafelbild:** IndexedDB-Lager `dateien` (Datenbank-Version 2), das Tafelbild speichert nur `dateiId`. So bleibt das automatische Speichern klein und schnell, auch mit vielen Bildern.
+- **Aufräumen nur beim Öffnen der Tafel:** Dann gibt es keinen Rückgängig-Verlauf, der ein gelöschtes Bild zurückholen könnte.
+- **PDF-Seiten werden als Bild (JPEG, doppelte Auflösung) zum Seitenhintergrund** (`Seite.hintergrund`). Der Hintergrund ist kein Element: nicht auswählbar, nicht radierbar, „Seite leeren“ lässt ihn stehen. Verworfen: das PDF bei jedem Zeichnen neu rendern (langsam, PDF.js müsste immer geladen sein).
+- **Export als Bild je Seite** (JPEG in pdf-lib) statt als Vektoren: ein Zeichenweg für Tafel und Export (`zeichnen.ts`), dafür nicht durchsuchbar und größer. Reicht für Goodnotes und zum Ausdrucken.
+- **PDF.js und pdf-lib werden erst bei Bedarf geladen** (eigene Dateien im Paket, zusammen rund 2 MB) – die Tafel startet ohne sie. Beide stammen aus dem eigenen Paket, nichts von fremden Servern.
+- **Seitengröße beim Export:** PDF-Seiten behalten ihre Größe; Seiten ohne Hintergrund sind mindestens A4 quer ab der Ecke (0, 0) und wachsen mit dem Gezeichneten. Solange es kein sichtbares Seitenformat gibt, geht so nichts verloren.
+- **Goodnotes über das Teilen-Menü** (`navigator.share` mit Datei) – die dokumentierte Betriebssystemfunktion. Der Knopf erscheint nur, wo das Gerät Dateien teilen kann; sonst bleibt „Als PDF speichern“.
+- **Große Bilder werden auf 2400 px verkleinert**, SVG wird beim Einfügen in ein Pixelbild umgewandelt (kein fremder Code im Speicher).
+- **Bild- und PDF-Verarbeitung stecken in `tafel/bilder.ts` und `tafel/pdf.ts`**; Tests ersetzen beide Module, weil die Testumgebung weder Bilder entschlüsseln noch PDFs zeichnen kann. Der echte Weg wurde von Hand im Browser geprüft.
+
 ## 2026-11-11 – Text, Formen, Auswahl und Seiten (Etappe 2b)
 - **Datenmodell Version 2:** Ein Tafelbild hat Seiten (`seiten`, `seiteNr`), jede mit eigenen Elementen. `pruefeTafel` versteht Version 1 und wandelt sie in eine Seite um; die alte Fassung wird erst beim nächsten Speichern überschrieben. Elemente sind `strich`, `text`, `form`.
 - **Neuer Befehl `ersetzen`** (vorher/nachher mit gleicher Kennung) für Verschieben, Umfärben, Größe und Textänderung – ein Schritt im Verlauf, Reihenfolge der Elemente bleibt.
