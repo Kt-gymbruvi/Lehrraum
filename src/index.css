@@ -1,0 +1,271 @@
+@import "tailwindcss";
+
+/* Farben wie in gemeinsam/tokens.css der Startseite (dort die Quelle; hier als Kopie für den Build). */
+@theme {
+  --color-navy: #0b1f4d;
+  --color-navy-hell: #16327a;
+  --color-navy-dunkel: #061233;
+  --color-gelb: #ffc928;
+}
+
+:root {
+  color-scheme: light;
+  --leiste: #ffffff;
+  --leiste-2: #e8ecf3;
+  --text: #0b1f4d;
+  --text-2: #46557a;
+  --linie: #cdd5e3;
+  --gewaehlt: #0b1f4d;
+  --gewaehlt-text: #ffffff;
+  --fokus: #1d5fd1;
+  --umgebung: #dfe4ee;
+  --fehler: #b3261e;
+  --tipp: 3.5rem;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-design='hell']) {
+    color-scheme: dark;
+    --leiste: #0f2558;
+    --leiste-2: #16327a;
+    --text: #ffffff;
+    --text-2: #c3cce3;
+    --linie: #2a4489;
+    --gewaehlt: #ffc928;
+    --gewaehlt-text: #0b1f4d;
+    --fokus: #ffc928;
+    --umgebung: #061233;
+    --fehler: #ffb4ab;
+  }
+}
+:root[data-design='dunkel'] {
+  color-scheme: dark;
+  --leiste: #0f2558;
+  --leiste-2: #16327a;
+  --text: #ffffff;
+  --text-2: #c3cce3;
+  --linie: #2a4489;
+  --gewaehlt: #ffc928;
+  --gewaehlt-text: #0b1f4d;
+  --fokus: #ffc928;
+  --umgebung: #061233;
+  --fehler: #ffb4ab;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+body {
+  margin: 0;
+  overflow: hidden; /* die Tafel füllt genau den Bildschirm */
+  overscroll-behavior: none;
+  background: var(--umgebung);
+  color: var(--text);
+  font-family: ui-rounded, "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible {
+  outline: 3px solid var(--fokus);
+  outline-offset: 2px;
+}
+.symbol {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/* ---------- Aufbau ---------- */
+.tafel {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+}
+.tafel-kopf {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+  padding: 0.35rem 0.75rem;
+  padding-left: max(0.75rem, env(safe-area-inset-left));
+  padding-right: max(0.75rem, env(safe-area-inset-right));
+  background: #0b1f4d;
+  color: #fff;
+}
+.tafel-kopf h1 {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 800;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speicherstand {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 0.9rem;
+  color: #c3cce3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.speicherstand.fehler {
+  color: #ffb4ab;
+  font-weight: 700;
+}
+.zoom {
+  display: flex;
+  gap: 0.25rem;
+}
+.kopf-knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 2.75rem;
+  height: 2.75rem;
+  flex-shrink: 0;
+  padding: 0 0.5rem;
+  border: 0;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.12);
+  color: #fff;
+  font: inherit;
+  font-size: 1.1rem;
+  font-weight: 800;
+  text-decoration: none;
+  cursor: pointer;
+}
+.kopf-knopf.breit {
+  min-width: 4.5rem;
+  font-size: 0.95rem;
+}
+.kopf-knopf:hover {
+  background: rgb(255 255 255 / 0.22);
+}
+.tafel-kopf :focus-visible {
+  outline-color: #ffc928;
+}
+.tafel-mitte {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
+
+/* ---------- Linke Werkzeugleiste ---------- */
+.werkzeugleiste {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+  padding: 0.5rem;
+  padding-left: max(0.5rem, env(safe-area-inset-left));
+  overflow-y: auto;
+  background: var(--leiste);
+  border-right: 1px solid var(--linie);
+  scrollbar-width: none;
+}
+.werkzeugleiste .gruppe {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid var(--linie);
+}
+.werkzeugleiste .gruppe:last-child {
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+.leisten-knopf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--tipp);
+  height: var(--tipp);
+  flex-shrink: 0;
+  border: 0;
+  border-radius: 0.9rem;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+.leisten-knopf:hover:not(:disabled) {
+  background: var(--leiste-2);
+}
+.leisten-knopf[aria-pressed='true'] {
+  background: var(--gewaehlt);
+  color: var(--gewaehlt-text);
+}
+.leisten-knopf:disabled {
+  color: var(--linie);
+  cursor: default;
+}
+.staerke-punkt {
+  border-radius: 50%;
+  background: currentColor;
+}
+.werkzeugleiste .farben {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.2rem;
+}
+.farb-knopf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: calc(var(--tipp) / 2 - 0.1rem);
+  height: 2.25rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.6rem;
+  background: transparent;
+  cursor: pointer;
+}
+.farb-knopf span {
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.5);
+}
+.farb-knopf[aria-pressed='true'] {
+  background: var(--leiste-2);
+  box-shadow: inset 0 0 0 2px var(--gewaehlt);
+}
+
+/* ---------- Zeichenfläche ---------- */
+.zeichenflaeche {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  background: #ffffff; /* die Tafel bleibt weiß, auch im dunklen Modus */
+  touch-action: none; /* der Browser soll hier nicht selbst scrollen oder zoomen */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+  cursor: crosshair;
+}
+.zeichenflaeche.werkzeug-radierer {
+  cursor: cell;
+}
+.zeichenflaeche canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+/* Niedrige Bildschirme (Handy quer): kleinere Knöpfe, damit die Leiste passt */
+@media (max-height: 34rem) {
+  :root {
+    --tipp: 2.75rem;
+  }
+  .werkzeugleiste {
+    gap: 0.25rem;
+  }
+}
+/* Schmale Bildschirme: Speicherhinweis weglassen */
+@media (max-width: 30rem) {
+  .speicherstand {
+    visibility: hidden;
+  }
+}

@@ -1,0 +1,15 @@
+# Entscheidungen – Lehrraum
+
+Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
+Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
+
+## 2026-11-11 – Zeichenfläche (Etappe 2a)
+- **Eigene Zeichenfläche auf Canvas**, Striche mit `perfect-freehand` (MIT). Zwei Ebenen: unten alle fertigen Striche, oben nur der entstehende Strich – so muss beim Schreiben nicht alles neu gezeichnet werden.
+- **Pointer Events für Maus, Finger und Stift.** Druck nur vom Stift (`pointerType: 'pen'`); bei Maus/Finger schätzt die Bibliothek ihn aus dem Tempo. Zwischenpunkte über `getCoalescedEvents`.
+- **Handballen-Schutz:** Sobald einmal ein Stift benutzt wurde, verschieben Finger nur noch. Verworfen: Finger immer zeichnen lassen (Handballen malt mit) oder nie (dann wäre die Tafel am Smartboard ohne Stift unbenutzbar).
+- **Radierer löscht ganze Striche.** Einfach, schnell, sauber rückgängig zu machen. Teilweises Radieren würde Striche zerschneiden; bei Bedarf später.
+- **Textmarker als gleichmäßig breite, durchscheinende Linie** statt als Umriss – sonst entstehen dunkle Stellen, wo sich der Umriss überlappt.
+- **Eine Kamera für alles:** Koordinaten der Striche sind Tafel-Einheiten, die Ansicht (Verschieben, Zoom 20–500 %) ist getrennt. Damit sind Seiten- und Whiteboardmodus später dieselben Daten.
+- **Rückgängig über Befehle** (hinzufügen/entfernen mit Stelle), nicht über Kopien des ganzen Bildes; der Verlauf wird nicht gespeichert.
+- **Speicher:** IndexedDB `lehrraum` (`tafeln`, `einstellungen`), Speichern 0,7 s nach der letzten Änderung und beim Wegschalten. `localStorage` wäre für Tafelbilder zu klein.
+- **Noch keine Anmeldung und kein Supabase:** Die Tafel braucht beides nicht; es kommt mit dem ersten Baustein, der Serverdaten liest (Quiz starten, Phase 5a).
