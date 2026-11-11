@@ -233,10 +233,15 @@ body {
 }
 
 /* ---------- Zeichenfläche ---------- */
-.zeichenflaeche {
+.tafel-flaeche {
   position: relative;
   flex: 1;
   min-width: 0;
+  overflow: hidden;
+}
+.zeichenflaeche {
+  position: absolute;
+  inset: 0;
   background: #ffffff; /* die Tafel bleibt weiß, auch im dunklen Modus */
   touch-action: none; /* der Browser soll hier nicht selbst scrollen oder zoomen */
   user-select: none;
@@ -267,5 +272,260 @@ body {
 @media (max-width: 30rem) {
   .speicherstand {
     visibility: hidden;
+  }
+}
+
+/* ---------- Rechte Leiste ---------- */
+.werkzeugleiste.rechts {
+  border-right: 0;
+  border-left: 1px solid var(--linie);
+  padding-left: 0.5rem;
+  padding-right: max(0.5rem, env(safe-area-inset-right));
+}
+.leisten-knopf.mit-text {
+  flex-direction: column;
+  gap: 0.1rem;
+  width: 4.25rem;
+  height: 4rem;
+  font: inherit;
+  font-size: 0.7rem;
+  font-weight: 700;
+}
+
+/* ---------- Fenster über der Tafel ---------- */
+.fensterebene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none; /* zwischen den Fenstern bleibt die Tafel beschreibbar */
+}
+.fenster {
+  position: absolute;
+  width: max-content;
+  max-width: calc(100% - 1rem);
+  pointer-events: auto;
+  border-radius: 1rem;
+  background: var(--leiste);
+  color: var(--text);
+  border: 1px solid var(--linie);
+  box-shadow: 0 6px 24px rgb(6 18 51 / 0.22);
+}
+.fenster-titel {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.75rem;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  color: var(--text-2);
+}
+.fenster-titel:active {
+  cursor: grabbing;
+}
+.fenster-titel .symbol {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.fenster-titel h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+.fenster-knopf {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.fenster-knopf:hover {
+  background: var(--leiste-2);
+}
+.fenster-inhalt {
+  padding: 0 1rem 1rem;
+  text-align: center;
+}
+.fenster .grosse-zahl {
+  margin: 0;
+  font-size: 3.5rem;
+  font-weight: 900;
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.fenster .sekunden {
+  margin-left: 0.3rem;
+  font-size: 1.5rem;
+  color: var(--text-2);
+}
+.fenster .datum,
+.fenster .hinweis {
+  margin: 0.25rem 0 0;
+  color: var(--text-2);
+  font-weight: 700;
+}
+.fenster .reihe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+.fenster .reihe.eng {
+  gap: 0.25rem;
+}
+.fenster .reihe .reihe {
+  margin-top: 0;
+}
+.f-knopf {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  min-height: 3rem;
+  padding: 0.25rem 1.1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--leiste-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.f-knopf .symbol {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.f-knopf.haupt,
+.f-knopf[aria-pressed='true'] {
+  background: var(--gewaehlt);
+  color: var(--gewaehlt-text);
+}
+.f-knopf.klein {
+  min-width: 2.75rem;
+  min-height: 2.75rem;
+  padding: 0 0.5rem;
+}
+.f-knopf:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.timer .balken {
+  height: 0.5rem;
+  margin-top: 0.5rem;
+  border-radius: 999px;
+  background: var(--leiste-2);
+  overflow: hidden;
+}
+.timer .balken span {
+  display: block;
+  height: 100%;
+  background: var(--gewaehlt);
+}
+.timer.fertig .grosse-zahl,
+.timer.fertig .hinweis {
+  color: var(--fehler);
+}
+.timer.fertig .grosse-zahl {
+  animation: blinken 1s steps(2, jump-none) 6;
+}
+@keyframes blinken {
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .timer.fertig .grosse-zahl {
+    animation: none;
+  }
+}
+.wuerfel-feld {
+  display: flex;
+  justify-content: center;
+  gap: 0.75rem;
+}
+.wuerfel-bild {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.2rem;
+  width: 5rem;
+  height: 5rem;
+  padding: 0.6rem;
+  border-radius: 1rem;
+  background: #ffffff;
+  border: 2px solid #0b1f4d;
+}
+.wuerfel-bild.leer {
+  border-style: dashed;
+  border-color: var(--linie);
+  background: transparent;
+}
+.wuerfel-bild i {
+  border-radius: 50%;
+}
+.wuerfel-bild .auge {
+  background: #0b1f4d;
+}
+
+/* Notizen sehen in beiden Modi wie Klebezettel aus */
+.fenster-notiz {
+  color: #2b2400;
+  border-color: rgb(0 0 0 / 0.12);
+}
+.fenster-notiz .fenster-titel {
+  color: #4d4300;
+}
+.fenster-notiz .fenster-knopf:hover {
+  background: rgb(0 0 0 / 0.08);
+}
+.notiz-gelb { background: #fff3a6; }
+.notiz-gruen { background: #cdeec4; }
+.notiz-rosa { background: #ffd3e0; }
+.notiz-blau { background: #cfe4ff; }
+.notiz textarea {
+  display: block;
+  width: 16rem;
+  max-width: 100%;
+  height: 9rem;
+  padding: 0.25rem;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 1.25rem;
+  line-height: 1.35;
+  resize: both;
+}
+.notiz textarea::placeholder {
+  color: rgb(0 0 0 / 0.4);
+}
+.notiz-farbe {
+  width: 2rem;
+  height: 2rem;
+  border-radius: 50%;
+  border: 2px solid rgb(0 0 0 / 0.25);
+  cursor: pointer;
+}
+.notiz-farbe[aria-pressed='true'] {
+  border-color: #0b1f4d;
+  box-shadow: 0 0 0 2px #0b1f4d;
+}
+
+@media (max-height: 34rem) {
+  .leisten-knopf.mit-text {
+    width: 3.25rem;
+    height: 3rem;
+  }
+  .leisten-knopf.mit-text span {
+    display: none;
   }
 }

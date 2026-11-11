@@ -3,6 +3,15 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-11 – Fenster über der Tafel (Etappe 3a)
+- **Fenster sind eine eigene Ebene über der Zeichenfläche** und gehören nicht zu den Tafelelementen: Sie werden nicht mitgezoomt, nicht radiert und stehen nicht im Rückgängig-Verlauf. Gespeichert werden sie aber mit der Tafel (`fenster` im Tafelbild), damit die Aufstellung beim nächsten Öffnen wieder da ist.
+- **Die Ebene fängt keine Eingaben ab** (`pointer-events: none`), nur die Fenster selbst – so bleibt die Tafel daneben beschreibbar.
+- **Uhr, Timer, Stoppuhr, Würfel je einmal** (der Leistenknopf schaltet ein/aus), **Notizen beliebig oft** (höchstens 12 Fenster).
+- **Eingeklappte Fenster bleiben eingebaut**, nur versteckt – ein laufender Timer läuft weiter.
+- **Timer als eigene Komponente** statt das Werkzeug der Startseite per iframe einzubetten: Ein kleines Fenster braucht eine andere Aufteilung als die Beamer-Seite, und so bleibt die Tafel ohne zweite Seite ladbar. Der Timer der Startseite bleibt unverändert bestehen.
+- **Laufende Zeiten werden nicht gespeichert:** Ein Timer, der nach dem Neuladen „irgendwo“ weiterläuft, wäre verwirrender als einer, der neu gestellt wird.
+- **Würfel mit `crypto.getRandomValues` und Verwerfen schiefer Werte** – jede Augenzahl gleich wahrscheinlich.
+
 ## 2026-11-11 – Zeichenfläche (Etappe 2a)
 - **Eigene Zeichenfläche auf Canvas**, Striche mit `perfect-freehand` (MIT). Zwei Ebenen: unten alle fertigen Striche, oben nur der entstehende Strich – so muss beim Schreiben nicht alles neu gezeichnet werden.
 - **Pointer Events für Maus, Finger und Stift.** Druck nur vom Stift (`pointerType: 'pen'`); bei Maus/Finger schätzt die Bibliothek ihn aus dem Tempo. Zwischenpunkte über `getCoalescedEvents`.

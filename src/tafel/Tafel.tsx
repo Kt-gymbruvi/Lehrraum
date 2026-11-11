@@ -1,7 +1,9 @@
-// Die Tafel: Kopfzeile, linke Werkzeugleiste, Zeichenfläche. Speichert automatisch auf diesem Gerät
+// Die Tafel: Kopfzeile, linke Werkzeugleiste, Zeichenfläche mit Fenstern darüber, rechte Schnellzugriffsleiste. Speichert automatisch auf diesem Gerät
 // und stellt beim Öffnen die zuletzt benutzte Tafel wieder her.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { ausfuehren, entfernenBefehl, leererVerlauf, rueckgaengig, wiederholen, type Befehl, type Verlauf } from '../kern/befehle.ts'
+import { Fensterebene, Schnellleiste } from '../fenster/Fensterebene.tsx'
+import type { FensterZustand } from '../kern/fenster.ts'
 import { zoomeUm } from '../kern/geometrie.ts'
 import { FARBEN, STAERKEN, neuesTafelbild, type Element, type Kamera, type Strich, type Tafelbild } from '../kern/modell.ts'
 import { bitteUmDauerhaftenSpeicher, ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
@@ -24,6 +26,7 @@ export default function Tafel() {
   const [kopf, setKopf] = useState<Pick<Tafelbild, 'schema' | 'version' | 'id' | 'titel'> | null>(null)
   const [inhalt, setInhalt] = useState<{ elemente: Element[]; verlauf: Verlauf }>({ elemente: [], verlauf: leererVerlauf() })
   const [kamera, setKamera] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
+  const [fenster, setFenster] = useState<FensterZustand[]>([])
   const [werkzeug, setWerkzeug] = useState<Werkzeug>('stift')
   const [farbe, setFarbe] = useState<string>(FARBEN[0].wert)
   const [staerke, setStaerke] = useState<number>(STAERKEN[1].wert)
@@ -40,6 +43,7 @@ export default function Tafel() {
         setKopf({ schema: t.schema, version: t.version, id: t.id, titel: t.titel })
         setInhalt({ elemente: t.elemente, verlauf: leererVerlauf() })
         setKamera(t.kamera)
+        setFenster(t.fenster)
         setSpeicher('gespeichert')
       })
     return () => {
@@ -67,7 +71,7 @@ export default function Tafel() {
 
   useEffect(() => {
     if (!kopf) return
-    aktuell.current = { ...kopf, elemente: inhalt.elemente, kamera, geaendertAm: '' }
+    aktuell.current = { ...kopf, elemente: inhalt.elemente, kamera, fenster, geaendertAm: '' }
     if (!geladen.current) {
       geladen.current = true // der erste Durchlauf ist das Laden selbst, keine Änderung
       return
@@ -76,7 +80,7 @@ export default function Tafel() {
     setSpeicher('ungespeichert')
     const warten = setTimeout(jetztSpeichern, SPEICHERN_NACH_MS)
     return () => clearTimeout(warten)
-  }, [kopf, inhalt.elemente, kamera, jetztSpeichern])
+  }, [kopf, inhalt.elemente, kamera, fenster, jetztSpeichern])
 
   // Beim Verlassen oder Wegschalten sofort speichern (Schutz vor versehentlichem Schließen)
   useEffect(() => {
@@ -182,7 +186,11 @@ export default function Tafel() {
           beiVor={vor}
           beiLeeren={leeren}
         />
-        <Zeichenflaeche elemente={inhalt.elemente} kamera={kamera} werkzeug={werkzeug} farbe={farbe} staerke={staerke} beiStrich={beiStrich} beiRadieren={beiRadieren} beiKamera={setKamera} />
+        <div className="tafel-flaeche">
+          <Zeichenflaeche elemente={inhalt.elemente} kamera={kamera} werkzeug={werkzeug} farbe={farbe} staerke={staerke} beiStrich={beiStrich} beiRadieren={beiRadieren} beiKamera={setKamera} />
+          <Fensterebene fenster={fenster} beiAendern={setFenster} />
+        </div>
+        <Schnellleiste fenster={fenster} beiAendern={setFenster} />
       </div>
     </div>
   )

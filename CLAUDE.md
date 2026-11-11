@@ -16,6 +16,7 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
   - `src/kern/` – reine Logik ohne React und ohne Browser-Speicher: `modell.ts` (Datenmodell, Versionen, Prüfung), `befehle.ts` (Rückgängig/Wiederholen), `geometrie.ts` (Kamera, Radierer-Treffer, Strichpfade).
   - `src/speicher/` – IndexedDB auf dem Gerät (`datenbank.ts`).
   - `src/tafel/` – `Tafel.tsx` (Seite, Autospeichern, Tastatur), `Zeichenflaeche.tsx` (Eingabe und Zeichnen), `Werkzeugleiste.tsx`.
+  - `src/fenster/` – Fenster über der Tafel: `Fenster.tsx` (Rahmen, Verschieben), `Fensterebene.tsx` (Ebene und rechte Leiste), `Inhalte.tsx` (Uhr, Timer, Stoppuhr, Würfel, Notiz); Logik in `src/kern/fenster.ts`.
   - `src/ui/` – wiederverwendbare Bausteine (`Symbol.tsx`).
   - `src/test/` – Tests.
 
@@ -24,6 +25,7 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 - Neue Funktion = Etappe: Code + Tests + `docs/` aktualisieren. Logik gehört nach `src/kern/` und wird dort ohne Browser getestet.
 - Gespeicherte Daten tragen `schema` und `version`; geladen wird nur über die Prüffunktion (`pruefeTafel`). Formatänderungen = neue Version mit Umwandlung der alten, nie stilles Umdeuten.
 - Jede Änderung am Tafelinhalt läuft als Befehl über `befehle.ts`, damit sie sich zurücknehmen lässt.
+- Neues Fenster: Art in `kern/fenster.ts` (`FENSTERARTEN`, Name, Prüfung), Inhalt in `fenster/Inhalte.tsx`, Symbol in `ui/Symbol.tsx`, Tests. Fenster dürfen die Tafel nie verändern oder zurücksetzen.
 - Design: Dunkelblau als Hauptfarbe, helle Flächen, heller/dunkler Modus (Auswahl aus `localStorage` „lehrraum-design“, gemeinsam mit der Startseite). Die Zeichenfläche bleibt weiß. Farbwerte wie in `../Kt-gymbruvi.github.io/gemeinsam/tokens.css`. Symbole als eigene SVG-Zeichnungen (`src/ui/Symbol.tsx`), keine Emojis.
 - Bedienelemente an der Tafel mindestens 56 px groß; alles muss mit Maus, Finger und Stift gehen. Beide Werkzeugleisten bleiben dauerhaft sichtbar.
 

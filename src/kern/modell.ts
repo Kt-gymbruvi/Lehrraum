@@ -1,6 +1,8 @@
 // Datenmodell der Tafel (Version 1). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht.
 
+import { pruefeFenster, type FensterZustand } from './fenster.ts'
+
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
 export const TAFEL_VERSION = 1
 
@@ -33,6 +35,8 @@ export type Tafelbild = {
   titel: string
   elemente: Element[]
   kamera: Kamera
+  /** Offene Fenster über der Tafel (Uhr, Timer, Notizen …) – gehören nicht zum Tafelbild selbst */
+  fenster: FensterZustand[]
   geaendertAm: string
 }
 
@@ -73,6 +77,7 @@ export function neuesTafelbild(titel = 'Tafel'): Tafelbild {
     titel,
     elemente: [],
     kamera: { x: 0, y: 0, zoom: 1 },
+    fenster: [],
     geaendertAm: new Date().toISOString(),
   }
 }
@@ -112,6 +117,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
     titel: typeof roh.titel === 'string' && roh.titel.trim() ? roh.titel.trim().slice(0, 200) : 'Tafel',
     elemente,
     kamera: { x: istZahl(k.x) ? k.x : 0, y: istZahl(k.y) ? k.y : 0, zoom },
+    fenster: pruefeFenster(roh.fenster), // fehlt bei Tafeln aus der ersten Fassung: dann leer
     geaendertAm: typeof roh.geaendertAm === 'string' ? roh.geaendertAm : new Date().toISOString(),
   }
 }
