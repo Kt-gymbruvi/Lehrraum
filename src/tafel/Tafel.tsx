@@ -7,7 +7,7 @@ import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, zoomeUm, zuTafel } from '../kern/geometrie.ts'
 import { benutzteDateien, FARBEN, MAX_SEITEN, STAERKEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
 import { gehe, kopie, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
-import { bitteUmDauerhaftenSpeicher, ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { bitteUmDauerhaftenSpeicher, ladeAlleTafeln, ladeFreieTafel, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
@@ -31,7 +31,8 @@ const SPEICHERN_NACH_MS = 700
 type Buch = Seitenfolge & { verlaeufe: Record<string, Verlauf> }
 const LEER: Seite = { id: '', elemente: [] }
 
-export default function Tafel() {
+/** Ohne `klasseId` öffnet sich die freie Tafel, sonst die Tafel dieser Klasse (wird beim ersten Öffnen angelegt). */
+export default function Tafel({ klasseId }: { klasseId?: string }) {
   const [kopf, setKopf] = useState<Pick<Tafelbild, 'schema' | 'version' | 'id' | 'titel'> | null>(null)
   const [buch, setBuch] = useState<Buch>({ seiten: [LEER], nr: 0, verlaeufe: {} })
   const [kamera, setKamera] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
@@ -41,6 +42,8 @@ export default function Tafel() {
   const [staerke, setStaerke] = useState<number>(STAERKEN[1].wert)
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
+  /** Die Klasse aus der Adresse gibt es auf diesem Gerät nicht */
+  const [fehlt, setFehlt] = useState(false)
   /** Hinweis in der Kopfzeile: Fortschritt, Erfolg oder Fehler bei Bildern und PDF */
   const [meldung, setMeldung] = useState<{ text: string; fehler?: boolean; laeuft?: boolean } | null>(null)
   const flaeche = useRef<HTMLDivElement>(null)
@@ -57,23 +60,30 @@ export default function Tafel() {
   // ---------- Laden: zuletzt benutzte Tafel oder eine neue ----------
   useEffect(() => {
     let abgebrochen = false
-    ladeLetzteTafel()
+    ;(klasseId ? oeffneKlassenTafel(klasseId) : ladeFreieTafel())
       .catch(() => null)
-      .then((gefunden) => {
+      .then(async (gefunden) => {
         if (abgebrochen) return
+        if (klasseId && !gefunden) {
+          setFehlt(true)
+          return
+        }
         const t = gefunden ?? neuesTafelbild()
+        if (!gefunden) void merkeFreieTafel(t.id).catch(() => undefined) // neue freie Tafel: gleich festhalten, welche es ist
         setKopf({ schema: t.schema, version: t.version, id: t.id, titel: t.titel })
         setBuch({ seiten: t.seiten, nr: t.seiteNr, verlaeufe: {} })
         setKamera(t.kamera)
         setFenster(t.fenster)
         setSpeicher('gespeichert')
-        // Bilder, die kein Tafelbild mehr braucht, jetzt wegräumen (später könnte Rückgängig sie noch brauchen)
-        if (gefunden) void raeumeDateienAuf(benutzteDateien(t.seiten)).catch(() => undefined)
+        // Bilder wegräumen, die keine Tafel mehr braucht – dabei ALLE Tafeln berücksichtigen, nicht nur diese
+        void ladeAlleTafeln()
+          .then((alle) => raeumeDateienAuf(new Set([...alle, t].flatMap((x) => [...benutzteDateien(x.seiten)]))))
+          .catch(() => undefined)
       })
     return () => {
       abgebrochen = true
     }
-  }, [])
+  }, [klasseId])
 
   // ---------- Automatisch speichern ----------
   const aktuell = useRef<Tafelbild | null>(null)
@@ -311,11 +321,31 @@ export default function Tafel() {
   const zoomen = (faktor: number) => setKamera((k) => zoomeUm(k, window.innerWidth / 2, window.innerHeight / 2, faktor))
   const ansichtZurueck = () => setKamera({ x: 0, y: 0, zoom: 1 })
 
+  if (fehlt) {
+    return (
+      <main className="hinweisseite">
+        <h1>Diese Klasse gibt es auf diesem Gerät nicht</h1>
+        <p>Klassen und ihre Tafeln werden nur auf dem Gerät gespeichert, auf dem sie angelegt wurden.</p>
+        <p>
+          <a className="f-knopf haupt" href="#/klassen">
+            Zu meinen Klassen
+          </a>{' '}
+          <a className="f-knopf" href="#/tafel">
+            Freie Tafel öffnen
+          </a>
+        </p>
+      </main>
+    )
+  }
+
   return (
     <div className="tafel">
       <header className="tafel-kopf">
         <a className="kopf-knopf" href="/" aria-label="Zur Startseite Lehrraum" title="Zur Startseite">
           <Symbol name="haus" />
+        </a>
+        <a className="kopf-knopf" href="#/klassen" aria-label="Meine Klassen" title="Meine Klassen">
+          <Symbol name="klassen" />
         </a>
         <h1>{kopf?.titel ?? 'Tafel'}</h1>
         <p className={'speicherstand ' + (meldung ? (meldung.fehler ? 'fehler' : 'hinweis') : speicher)} role="status">

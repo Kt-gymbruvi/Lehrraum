@@ -3,6 +3,16 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-12 – Meine Klassen und eine Tafel je Klasse (Etappe 4.1)
+- **Klassen sind ein eigenes Datenmodell** (`lehrraum/klasse`, Version 1) im IndexedDB-Lager `klassen` (Datenbank-Version 3): Bezeichnung, Fach, Jahrgang, archiviert, `tafelId`. Nur auf dem Gerät. Schülernamen kommen später in dasselbe Modell (neue Version).
+- **Die Klasse zeigt auf ihre Tafel** (`tafelId`), nicht umgekehrt – eine Tafel bleibt ein eigenständiges Dokument. Angelegt wird sie erst beim ersten Öffnen.
+- **Adresse `#/tafel?klasse=<Kennung>`:** So kann die Startseite direkt in die Tafel einer Klasse verlinken. In die Adresse gelangt nur die zufällige Kennung, kein Name.
+- **Die freie Tafel wird festgehalten** (`freie-tafel` in den Einstellungen). Ohne Festlegung gilt die zuletzt benutzte Tafel, sofern sie keiner Klasse gehört – so bleibt erhalten, was vor den Klassen gezeichnet wurde. Vor dem Anlegen einer Klassentafel wird die freie Tafel festgehalten.
+- **Gleichzeitiges Öffnen derselben Klasse teilt sich ein Ergebnis** (`oeffneKlassenTafel`). Beim Ausprobieren waren sonst zwei Tafeln für eine Klasse entstanden (doppelt ausgeführte Ladeschritte).
+- **Aufräumen der Bilddateien berücksichtigt alle Tafeln**, nicht mehr nur die geöffnete – sonst hätte das Öffnen einer Tafel die Bilder der anderen gelöscht.
+- **Löschen einer Klasse löscht ihre Tafel** (mit Rückfrage); Archivieren behält sie. Kopieren übernimmt nur die Angaben, nicht die Tafel (gedacht fürs neue Schuljahr).
+- **Die Startseite liest die Klassen mit** (`gemeinsam/klassen.js` dort): gleiche Adresse, gleiche Datenbank, nur lesend, und sie schließt die Verbindung sofort wieder. Ändert sich das Format der Klassen, muss das Skript der Startseite mitgeändert werden.
+
 ## 2026-11-11 – Bilder und PDF (Rest von 2b, Etappe 2c)
 - **Bilddaten getrennt vom Tafelbild:** IndexedDB-Lager `dateien` (Datenbank-Version 2), das Tafelbild speichert nur `dateiId`. So bleibt das automatische Speichern klein und schnell, auch mit vielen Bildern.
 - **Aufräumen nur beim Öffnen der Tafel:** Dann gibt es keinen Rückgängig-Verlauf, der ein gelöschtes Bild zurückholen könnte.

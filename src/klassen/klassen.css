@@ -1,0 +1,144 @@
+/* Seite „Meine Klassen“ und Hinweisseite (ergänzt index.css). Diese Seiten dürfen rollen – anders als die Tafel. */
+.klassen-seite,
+.hinweisseite {
+  height: 100dvh;
+  overflow-y: auto;
+}
+.klassen-seite main,
+.hinweisseite {
+  width: min(70rem, 100% - 2rem);
+  margin-inline: auto;
+  padding: 1.5rem 0 3rem;
+}
+.hinweisseite h1 {
+  font-size: 1.6rem;
+}
+.klassen-seite .tafel-kopf {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.klassen-seite h2 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.2rem;
+}
+.klassen-seite .hinweis,
+.hinweisseite p {
+  color: var(--text-2);
+}
+.klassen-seite .hinweis.fuss {
+  margin-top: 2rem;
+  font-size: 0.95rem;
+}
+.klassen-seite .fehler {
+  color: var(--fehler);
+  font-weight: 700;
+}
+.klassen-liste {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+}
+.klassen-karte {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.1rem;
+  border-radius: 1rem;
+  background: var(--leiste);
+  border: 1px solid var(--linie);
+}
+.klassen-karte.archiviert {
+  opacity: 0.8;
+}
+.klassen-karte.neu {
+  justify-content: center;
+  border-style: dashed;
+  background: transparent;
+}
+.klassen-kopf h3 {
+  margin: 0;
+  font-size: 1.6rem;
+  font-weight: 900;
+  overflow-wrap: anywhere;
+}
+.klassen-kopf p {
+  margin: 0;
+  color: var(--text-2);
+  font-weight: 700;
+}
+.klassen-karte .reihe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.4rem;
+}
+.klassen-karte .reihe.klein .f-knopf {
+  min-height: 2.5rem;
+  padding: 0.1rem 0.8rem;
+  font-size: 0.9rem;
+}
+.f-knopf.breit {
+  width: 100%;
+  text-decoration: none;
+}
+a.f-knopf {
+  text-decoration: none;
+}
+.f-knopf.gefahr {
+  background: var(--fehler);
+  color: var(--leiste);
+}
+.rueckfrage {
+  flex-basis: 100%;
+  font-weight: 800;
+}
+.neu-knopf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  width: 100%;
+  min-height: 9rem;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.neu-knopf:hover {
+  background: var(--leiste-2);
+}
+.klassen-formular {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.klassen-formular label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-weight: 700;
+}
+.klassen-formular small {
+  font-weight: 400;
+  color: var(--text-2);
+}
+.klassen-formular input {
+  min-height: 3rem;
+  padding: 0.25rem 0.75rem;
+  border: 2px solid var(--linie);
+  border-radius: 0.75rem;
+  background: var(--leiste);
+  color: var(--text);
+  font: inherit;
+}
+.klassen-formular .fehler {
+  margin: 0;
+}

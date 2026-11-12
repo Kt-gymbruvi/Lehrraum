@@ -1,9 +1,11 @@
 # Projektstand – Lehrraum
 
-Stand: 11.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (seit 11.11.2026, Stand `b36ef9b`) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 6 Testdateien, 92 Tests grün (`npm test`); Build grün (`npm run build`).
+Stand: 12.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ ist der Stand vom 11.11.2026 (`c8924a7`, ohne Klassen). **Lokal weiter, noch nicht veröffentlicht:** „Meine Klassen“ und eine Tafel je Klasse · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Tests: 7 Testdateien, 108 Tests grün (`npm test`); Build grün (`npm run build`).
 
-## Implementiert (Etappen 1.3, 2a, 2b, 2c, 3a und 5a der Roadmap)
+## Implementiert (Etappen 1.3, 2a, 2b, 2c, 3a, 4.1 und 5a der Roadmap)
+- **Meine Klassen** (`#/klassen`, noch nicht veröffentlicht): Klassen mit Bezeichnung, Fach und Jahrgang anlegen, bearbeiten, kopieren, archivieren und wiederherstellen, löschen (mit Rückfrage, samt Tafel). `#/klassen?neu=1` öffnet gleich das Formular. Alles liegt nur auf dem Gerät.
+- **Eine Tafel je Klasse** (`#/tafel?klasse=<Kennung>`): wird beim ersten Öffnen angelegt und heißt wie die Klasse („7b Biologie“). `#/tafel` ohne Klasse ist die freie Tafel; was vor den Klassen gezeichnet wurde, bleibt dort. In der Kopfzeile der Tafel führt ein Knopf zu den Klassen.
 - **Gerüst:** Vite/React/TypeScript/Tailwind wie Quizzo, HashRouter, Deploy-Workflow vorbereitet (läuft erst nach einem Push).
 - **Tafel** (`#/tafel`):
   - Stift (dicker bei mehr Druck; bei Maus und Finger wird der Druck aus dem Tempo geschätzt), Textmarker (breit, durchscheinend), Radierer (entfernt ganze Striche, die er berührt).
@@ -33,15 +35,19 @@ Tests: 6 Testdateien, 92 Tests grün (`npm test`); Build grün (`npm run build`)
 - **Datenmodell Version 2** (`lehrraum/tafel`): Titel, Seiten mit Elementen (Strich, Text, Form, Bild) und optionalem Hintergrund, gezeigte Seite, Kamera, Fenster; Prüfung beim Laden. Tafeln der Version 1 (eine Fläche ohne Seiten) werden beim Laden in eine Seite umgewandelt und beim nächsten Speichern als Version 2 abgelegt.
 
 ## Getestet / nicht getestet
-- Automatisch: Datenmodell und Prüfung, Rückgängig/Wiederholen, Geometrie, Speicher, Bedienung der Tafel (Zeichnen, Farbe, Stärke, Textmarker, Radierer, Leeren, Tastatur, Wiederherstellen, Handballen-Schutz, Zoom), Fenster (Logik, Öffnen/Schließen, Verschieben, Einklappen, Timer und Stoppuhr mit gestellter Zeit, Würfel, Notiz speichern), Anwendungen mit ersetztem Server (Anmeldung mit falschem und richtigem Passwort, Quiz im Teammodus starten, Beenden mit Rückfrage, Fehler beim Starten, Vergrößern, Klassenfunk-Sitzung, Lernangebote filtern/öffnen/QR), Version-1-Umwandlung, Seiten (Logik und Bedienung), Text (schreiben, ändern, verwerfen), Formen, Auswahl (verschieben, umfärben, duplizieren, löschen), Radierer auf Text und Formen, Bilder und Hintergründe im Datenmodell, Seitenmaß für den Export, Dateispeicher (Aufräumen), Bedienung von Bild einfügen/PDF öffnen/PDF speichern/Teilen mit ersetztem Bild- und PDF-Modul.
+- Automatisch: Datenmodell und Prüfung, Rückgängig/Wiederholen, Geometrie, Speicher, Bedienung der Tafel (Zeichnen, Farbe, Stärke, Textmarker, Radierer, Leeren, Tastatur, Wiederherstellen, Handballen-Schutz, Zoom), Fenster (Logik, Öffnen/Schließen, Verschieben, Einklappen, Timer und Stoppuhr mit gestellter Zeit, Würfel, Notiz speichern), Anwendungen mit ersetztem Server (Anmeldung mit falschem und richtigem Passwort, Quiz im Teammodus starten, Beenden mit Rückfrage, Fehler beim Starten, Vergrößern, Klassenfunk-Sitzung, Lernangebote filtern/öffnen/QR), Version-1-Umwandlung, Seiten (Logik und Bedienung), Text (schreiben, ändern, verwerfen), Formen, Auswahl (verschieben, umfärben, duplizieren, löschen), Radierer auf Text und Formen, Bilder und Hintergründe im Datenmodell, Seitenmaß für den Export, Dateispeicher (Aufräumen), Bedienung von Bild einfügen/PDF öffnen/PDF speichern/Teilen mit ersetztem Bild- und PDF-Modul, Klassen (Logik, Speicher, Seite mit Anlegen/Bearbeiten/Kopieren/Archivieren/Löschen), Tafel je Klasse getrennt von der freien Tafel, kein doppeltes Anlegen, Bilder anderer Tafeln bleiben beim Aufräumen erhalten.
 - Von Hand in der Vorschau (Desktop-Browser): Zeichnen mit der Maus, nachgestellte Stifteingabe mit wechselndem Druck, Textmarker, Radierer, Neuladen; alle fünf Fenster geöffnet, verschoben, Timer gestartet, gewürfelt, Notiz geschrieben; Lernangebote: alle 41 geladen, eines geöffnet und vergrößert; Quizzo-Fenster zeigt die Anmeldung; Text geschrieben, Rechteck, Ellipse und Pfeil gezeichnet, Element ausgewählt, Seite angelegt; eine gespeicherte Tafel der Version 1 wurde dabei geladen und umgewandelt; **mit echten Dateien:** ein PNG eingefügt, zwei Seiten als PDF erzeugt (gültiges PDF 1.7) und dieses PDF wieder geöffnet – beide Seiten erschienen als Hintergrund.
 - Veröffentlichte Fassung geprüft (Desktop-Browser): Zeichnen und Speichern, Lernangebote-Fenster lädt alle 41 Einträge von derselben Adresse, Quizzo-Fenster zeigt die Anmeldung, keine Fehler in der Konsole.
+- Klassen von Hand in der Vorschau: Klasse angelegt, ihre Tafel geöffnet (Titel stimmt), freie Tafel daneben, Klasse gelöscht.
 - **Nicht getestet – wichtig:** Quizzo und Klassenfunk gegen den echten Server. Es wurde nicht angemeldet, kein echtes Spiel und keine echte Sitzung gestartet. Ob die eingebettete Beamer-Ansicht im Fenster gut bedienbar ist, zeigt sich erst mit Anmeldung.
 - **Nicht getestet:** große oder gescannte PDFs aus dem Unterricht (Tempo, Speicher), kennwortgeschützte PDFs, das Teilen-Menü und der Weg zu Goodnotes am iPad, Einfügen aus der Zwischenablage mit echten Bildern, Speichergrenzen bei vielen Bildern.
 - **Nicht getestet:** echtes iPad mit Apple Pencil, Smartboard, Fingerbedienung, Zwei-Finger-Zoom am Gerät, Schreibgefühl und Verzögerung, sehr viele Striche (Tempo), Signalton des Timers (in der Vorschau nicht hörbar geprüft; iPad-Browser geben Ton erst nach einer Berührung frei – der Start-Knopf zählt als solche).
 
 ## Bekannte Grenzen
-- Es gibt genau eine Tafel; kein Titel ändern, keine neue Tafel, kein Export.
+- Je Klasse gibt es genau eine Tafel (mit beliebig vielen Seiten), dazu die freie Tafel; kein Titel ändern, keine zweite Tafel pro Klasse.
+- **Klassen haben noch keine Schülerliste**, keine Sitzordnung, keine Gruppen und keinen Goodnotes-Link; Zufallsschüler und Gruppen fehlen deshalb weiter in der rechten Leiste.
+- Klassen und Tafeln liegen nur auf dem Gerät und im jeweiligen Browser; es gibt keine Übertragung auf ein anderes Gerät.
+- Wird eine Klasse archiviert, bleibt ihre Tafel erhalten, ist aber erst nach „Wiederherstellen“ wieder erreichbar.
 - Bilder lassen sich nicht skalieren, drehen oder zuschneiden. Animierte GIFs stehen still.
 - PDF-Seiten werden als Bild übernommen: Text im PDF ist danach nicht mehr markierbar, und das exportierte PDF enthält ebenfalls Bilder (größer als ein Text-PDF, nicht durchsuchbar).
 - Der Export verwendet die Schrift des jeweiligen Geräts; Text kann im PDF minimal anders umbrechen als auf der Tafel eines anderen Geräts.
@@ -66,4 +72,4 @@ Tests: 6 Testdateien, 92 Tests grün (`npm test`); Build grün (`npm run build`)
 1. **Erprobung am iPad und am Smartboard** durch die Lehrkraft unter https://kt-gymbruvi.github.io/Lehrraum/ (Stift, Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF öffnen, Teilen an Goodnotes, Quizzo mit Anmeldung).
 2. Je nach Ergebnis nachbessern (Glättung, Strichstärken, Handballen-Schutz).
 3. Quizzo und Klassenfunk mit echter Anmeldung ausprobieren (Lehrkraft).
-4. Phase 4: Klassen, Zufall und Gruppen, Goodnotes-Link, Klassen-Kacheln auf der Startseite. Danach 2d (Hintergründe, Vorlagen) und 3b.
+4. Veröffentlichen (Lehrraum und neue Startseite gehören zusammen, siehe Startseiten-Repo). Dann Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.

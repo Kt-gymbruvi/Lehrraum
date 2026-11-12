@@ -14,9 +14,10 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 - Hosting: GitHub Pages unter https://kt-gymbruvi.github.io/Lehrraum/ (Basis-Pfad `/Lehrraum/`), Deploy per GitHub Actions (`.github/workflows/deploy.yml`: `npm ci`, `npm test`, `npm run build`).
 - Bibliotheken werden über npm eingebaut; im Betrieb wird nichts von fremden Servern geladen.
 - Code:
-  - `src/kern/` – reine Logik ohne React und ohne Browser-Speicher: `modell.ts` (Datenmodell Version 2: Seiten mit Strich/Text/Form, Prüfung, Umwandlung von Version 1), `befehle.ts` (Rückgängig/Wiederholen: hinzufügen, entfernen, ersetzen), `geometrie.ts` (Kamera, Treffer, Rahmen, Pfade), `seiten.ts` (Seiten anlegen, duplizieren, löschen, schieben), `fenster.ts`.
-  - `src/speicher/` – `datenbank.ts` (IndexedDB auf dem Gerät: Tafeln, Einstellungen), `dateien.ts` (Bilder und PDF-Seiten als Dateien), `server.ts` (einziger Ort für Serverzugriffe: Anmeldung, Quizze, Präsentationen, Spiel/Sitzung starten und beenden), `supabase.ts`, `plattform.ts` (Adressen der Schwesteranwendungen, Liste der Lernangebote).
+  - `src/kern/` – reine Logik ohne React und ohne Browser-Speicher: `modell.ts` (Datenmodell Version 2: Seiten mit Strich/Text/Form, Prüfung, Umwandlung von Version 1), `befehle.ts` (Rückgängig/Wiederholen: hinzufügen, entfernen, ersetzen), `geometrie.ts` (Kamera, Treffer, Rahmen, Pfade), `seiten.ts` (Seiten anlegen, duplizieren, löschen, schieben), `fenster.ts`, `klassen.ts` (Klassen: Modell, Prüfung, Sortierung).
+  - `src/speicher/` – `datenbank.ts` (IndexedDB auf dem Gerät: Tafeln, Einstellungen, Klassen; freie Tafel und Tafel je Klasse), `dateien.ts` (Bilder und PDF-Seiten als Dateien), `server.ts` (einziger Ort für Serverzugriffe: Anmeldung, Quizze, Präsentationen, Spiel/Sitzung starten und beenden), `supabase.ts`, `plattform.ts` (Adressen der Schwesteranwendungen, Liste der Lernangebote).
   - `src/tafel/` – `Tafel.tsx` (Zustand, Autospeichern, Tastatur), `Zeichenflaeche.tsx` (Eingabe und Zeichnen aller Werkzeuge, Text-Eingabefeld), `Werkzeugleiste.tsx` (links), `Seitenleiste.tsx` (unten), `zeichnen.ts` (Elemente auf ein Canvas zeichnen – für Fläche und Export), `bildquellen.ts` (geladene Bilder), `bilder.ts` (Bilddateien annehmen), `pdf.ts` (PDF öffnen, speichern, teilen).
+  - `src/klassen/` – `Klassen.tsx` (Seite „Meine Klassen“, `#/klassen`).
   - `src/fenster/` – Fenster über der Tafel: `Fenster.tsx` (Rahmen, Verschieben), `Fensterebene.tsx` (Ebene und rechte Leiste), `Inhalte.tsx` (Uhr, Timer, Stoppuhr, Würfel, Notiz), `Anwendungen.tsx` (Quizzo, Klassenfunk, Lernangebote per iframe, Anmeldung); Logik in `src/kern/fenster.ts`.
   - `src/ui/` – wiederverwendbare Bausteine (`Symbol.tsx`).
   - `src/test/` – Tests.
@@ -32,7 +33,8 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 - Bedienelemente an der Tafel mindestens 56 px groß; alles muss mit Maus, Finger und Stift gehen. Beide Werkzeugleisten bleiben dauerhaft sichtbar.
 
 ## Datenschutz und Sicherheit
-- Tafelbilder und (später) Klassen mit Schülernamen liegen **nur auf dem Gerät** (IndexedDB). Nie in ein Repository, nie in eine Adresse, nie im Klartext auf einen Server.
+- Die Startseite (`../Kt-gymbruvi.github.io/gemeinsam/klassen.js`) liest das Lager `klassen` direkt aus IndexedDB. Änderungen am Format der Klassen oder am Namen von Datenbank/Lager dort mitziehen.
+- Tafelbilder und Klassen (später mit Schülernamen) liegen **nur auf dem Gerät** (IndexedDB). Nie in ein Repository, nie in eine Adresse, nie im Klartext auf einen Server.
 - Keine Trackingdienste, keine KI-Aufrufe. Supabase: nur der publishable-Schlüssel (nie secret/service_role), eigene Tabellen später mit RLS und Präfix `lr_`. Serverzugriffe nur über `src/speicher/server.ts`; Tests ersetzen dieses Modul und sprechen nie mit dem echten Server.
 - Quizzo und Klassenfunk werden eingebettet, nicht nachgebaut, und in ihren Repos nicht geändert, ohne dass es eine eigene Etappe dort ist. In Adressen nur geprüfte Kennungen (`istZiel`).
 - Importierte Dateien sind Daten und werden geprüft, nie ausgeführt (SVG wird beim Einfügen zu einem Pixelbild). Bilder und PDFs bleiben auf dem Gerät.
