@@ -215,7 +215,8 @@ describe('Eine Tafel je Klasse', () => {
     expect((await ladeFreieTafel())?.seiten[0].elemente.map((e) => e.id)).toEqual(['f'])
     zeige('/tafel')
     expect(await screen.findByRole('heading', { name: 'Tafel' })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Seite leeren' })).toBeEnabled()
+    // (die Überschrift steht schon vor dem Laden da – auf den Inhalt warten)
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Seite leeren' })).toBeEnabled())
   })
 
   it('legt auch bei doppeltem Öffnen nur eine Tafel an (z. B. schnelles Neuladen)', async () => {
