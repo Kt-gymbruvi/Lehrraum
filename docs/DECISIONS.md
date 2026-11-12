@@ -3,6 +3,29 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-12 – Schreiben am SMART Board, erster Teil (Spezifikation P1, P2)
+- **Gezeichnet wird höchstens einmal je Bildwechsel** (`requestAnimationFrame`): Stiftmeldungen sammeln nur Punkte, das Zeichnen folgt gebündelt. Beim Aufsetzen und Abheben wird sofort gezeichnet. Grund: Bisher wurde bei jeder Meldung der ganze Strich neu berechnet und die Ebene neu gezeichnet; ein langsames Gerät kommt damit nicht hinterher.
+- **Auch die Ansicht wird gebündelt weitergemeldet** (Verschieben mit Finger, Auswahl-Werkzeug, Mausrad): Jede Änderung der Ansicht zeichnet alle Elemente neu, das soll nicht öfter als einmal je Bild geschehen. Beim Loslassen gilt sofort der letzte Stand.
+- **Die untere Ebene wird ergänzt, wenn nur etwas hinzukommt.** Erkannt wird das daran, dass die bisherigen Elemente unverändert vorne in der Liste stehen und sich sonst nichts geändert hat (Ansicht, Größe, Verstecktes, Bilder). Der beim Abheben schon eingezeichnete Strich wird nicht doppelt gezeichnet; nach jedem vollständigen Neuzeichnen gilt dieser Merker nicht mehr (sonst fehlte der Strich nach Rückgängig + Wiederholen).
+- **Prüfansicht als eigene Adresse `#/pruefen`** auf der freien Tafel statt als Knopf in der Leiste: Sie wird selten gebraucht und soll im Unterricht nicht im Weg sein. Sie misst über eigene Zuhörer am Fenster und greift nicht in die Eingabe ein. Die Zeichenfläche meldet ihre Rechenzeiten nur, solange die Prüfansicht offen ist (`tafel/messung.ts`).
+- **Messwerte nur auf dem Bildschirm**, kein Speichern, kein Senden, kein Kopier-Knopf – die Lehrkraft fotografiert sie. So bleibt es bei „keine Trackingdienste“.
+- **Schalter „Schärfe voll/halb“ nur in der Prüfansicht:** ein Versuch am Gerät, ob die Auflösung der Zeichenfläche (4K) bremst. Erst wenn das Messwerte zeigen, wird die Auflösung im Normalbetrieb begrenzt.
+- Zurückgestellt, bis Messwerte vom SMART Board vorliegen: langen Strich nur am Ende neu berechnen (Gefahr sichtbarer Nahtstellen), Vorhersage der Stiftposition, Zeichenebene ohne Abgleich mit dem Bildaufbau (`desynchronized`, kann flackern).
+
+## 2026-11-12 – Spezifikation Zeichenwerkzeuge und Auswahl freigegeben
+Einzelheiten und Abnahmekriterien in `docs/SPEC-zeichenwerkzeuge-und-auswahl.md`. Entschieden von der Lehrkraft:
+- **Zuerst das Schreiben am SMART Board**, dann Auswahl, Radierer, Stift, Laserpointer und Einstellungen. Grund: Die Verzögerung dort stört den täglichen Gebrauch am meisten.
+- **Mehrfachauswahl per Rahmen** mit dem Auswahl-Werkzeug; ausgewählt wird, was der Rahmen berührt. Ziehen auf freier Fläche verschiebt die Ansicht dann nicht mehr – dafür ein eigenes **Hand-Werkzeug**. Verworfen: Lasso.
+- **Größe ändern:** Eckgriffe proportional, Seitengriffe frei; Bilder und Text immer proportional; die Strichstärke wächst am Eckgriff mit. **Drehen** über einen Drehgriff.
+- **Griffe an der Auswahl: mindestens 44 px Trefferfläche** (neue Regel neben den 56 px für Knöpfe, auch in `CLAUDE.md`).
+- **Kopieren und Einfügen auch zwischen Tafeln**, die Kopie bleibt auf dem Gerät. Nicht nach außen in andere Programme.
+- **Zwei Radierer:** Schwamm (Teilstücke von Handschrift, lässt Text, Formen und Bilder stehen) und Element-Radierer (wie bisher), Größe wählbar.
+- **Am SMART Board schreibt der Stift immer und die Faust radiert immer**; am iPad löscht der Handballen nie. Wie die Tafel beides unterscheidet, wird am Gerät geklärt; notfalls ein Schalter je Gerät.
+- **Farben:** sechs in der Leiste, dazu „Mehr“ mit größerer Palette, Farbwähler und eigenen Plätzen. **Stärken:** drei Knöpfe plus Regler.
+- **Begradigen durch Halten** zu Linie, Rechteck, Kreis/Ellipse und Dreieck.
+- Außerdem: Gruppieren, Reihenfolge, Laserpointer, Einstellungen merken.
+- Nicht gewünscht: eigene Farbe und Stärke je Werkzeug, Radieren über Stifttaste, automatischer Wechsel zur Auswahl nach einer Form.
+
 ## 2026-11-12 – Meine Klassen und eine Tafel je Klasse (Etappe 4.1)
 - **Klassen sind ein eigenes Datenmodell** (`lehrraum/klasse`, Version 1) im IndexedDB-Lager `klassen` (Datenbank-Version 3): Bezeichnung, Fach, Jahrgang, archiviert, `tafelId`. Nur auf dem Gerät. Schülernamen kommen später in dasselbe Modell (neue Version).
 - **Die Klasse zeigt auf ihre Tafel** (`tafelId`), nicht umgekehrt – eine Tafel bleibt ein eigenständiges Dokument. Angelegt wird sie erst beim ersten Öffnen.

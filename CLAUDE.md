@@ -4,7 +4,7 @@ Lehrraum ist die Lehrkraft-App der Unterrichtsplattform kt-gymbruvi.github.io: d
 Klassenverwaltung („Unterrichten“) und Bibliothek. Schwesterprojekte (eigene Repos, gleiche Adresse):
 Startseite (`../Kt-gymbruvi.github.io`), Quizzo (`../Quizzo`), Klassenfunk (`../Klassenfunk`).
 
-**Projektgedächtnis:** Stand und nächste Schritte in `docs/PROJECT-STATUS.md`, Entscheidungen in `docs/DECISIONS.md`.
+**Projektgedächtnis:** Stand und nächste Schritte in `docs/PROJECT-STATUS.md`, Entscheidungen in `docs/DECISIONS.md`, freigegebene Spezifikationen in `docs/SPEC-*.md`.
 Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruvi.github.io/docs/`
 (`IMPLEMENTATION_ROADMAP.md`, `ARCHITECTURE.md`, `PROJECT_AUDIT.md`). Nach jeder Etappe aktualisieren.
 
@@ -14,9 +14,9 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 - Hosting: GitHub Pages unter https://kt-gymbruvi.github.io/Lehrraum/ (Basis-Pfad `/Lehrraum/`), Deploy per GitHub Actions (`.github/workflows/deploy.yml`: `npm ci`, `npm test`, `npm run build`).
 - Bibliotheken werden über npm eingebaut; im Betrieb wird nichts von fremden Servern geladen.
 - Code:
-  - `src/kern/` – reine Logik ohne React und ohne Browser-Speicher: `modell.ts` (Datenmodell Version 2: Seiten mit Strich/Text/Form, Prüfung, Umwandlung von Version 1), `befehle.ts` (Rückgängig/Wiederholen: hinzufügen, entfernen, ersetzen), `geometrie.ts` (Kamera, Treffer, Rahmen, Pfade), `seiten.ts` (Seiten anlegen, duplizieren, löschen, schieben), `fenster.ts`, `klassen.ts` (Klassen: Modell, Prüfung, Sortierung).
+  - `src/kern/` – reine Logik ohne React und ohne Browser-Speicher: `modell.ts` (Datenmodell Version 2: Seiten mit Strich/Text/Form, Prüfung, Umwandlung von Version 1), `befehle.ts` (Rückgängig/Wiederholen: hinzufügen, entfernen, ersetzen), `geometrie.ts` (Kamera, Treffer, Rahmen, Pfade), `seiten.ts` (Seiten anlegen, duplizieren, löschen, schieben), `fenster.ts`, `klassen.ts` (Klassen: Modell, Prüfung, Sortierung), `messung.ts` (Auswertung für die Prüfansicht).
   - `src/speicher/` – `datenbank.ts` (IndexedDB auf dem Gerät: Tafeln, Einstellungen, Klassen; freie Tafel und Tafel je Klasse), `dateien.ts` (Bilder und PDF-Seiten als Dateien), `server.ts` (einziger Ort für Serverzugriffe: Anmeldung, Quizze, Präsentationen, Spiel/Sitzung starten und beenden), `supabase.ts`, `plattform.ts` (Adressen der Schwesteranwendungen, Liste der Lernangebote).
-  - `src/tafel/` – `Tafel.tsx` (Zustand, Autospeichern, Tastatur), `Zeichenflaeche.tsx` (Eingabe und Zeichnen aller Werkzeuge, Text-Eingabefeld), `Werkzeugleiste.tsx` (links), `Seitenleiste.tsx` (unten), `zeichnen.ts` (Elemente auf ein Canvas zeichnen – für Fläche und Export), `bildquellen.ts` (geladene Bilder), `bilder.ts` (Bilddateien annehmen), `pdf.ts` (PDF öffnen, speichern, teilen).
+  - `src/tafel/` – `Tafel.tsx` (Zustand, Autospeichern, Tastatur), `Zeichenflaeche.tsx` (Eingabe und Zeichnen aller Werkzeuge, Text-Eingabefeld), `Werkzeugleiste.tsx` (links), `Seitenleiste.tsx` (unten), `zeichnen.ts` (Elemente auf ein Canvas zeichnen – für Fläche und Export), `bildquellen.ts` (geladene Bilder), `bilder.ts` (Bilddateien annehmen), `pdf.ts` (PDF öffnen, speichern, teilen), `Pruefansicht.tsx` und `messung.ts` (Messwerte zum Schreiben am Gerät unter `#/pruefen`; nur Anzeige, nichts wird gespeichert oder gesendet).
   - `src/klassen/` – `Klassen.tsx` (Seite „Meine Klassen“, `#/klassen`).
   - `src/fenster/` – Fenster über der Tafel: `Fenster.tsx` (Rahmen, Verschieben), `Fensterebene.tsx` (Ebene und rechte Leiste), `Inhalte.tsx` (Uhr, Timer, Stoppuhr, Würfel, Notiz), `Anwendungen.tsx` (Quizzo, Klassenfunk, Lernangebote per iframe, Anmeldung); Logik in `src/kern/fenster.ts`.
   - `src/ui/` – wiederverwendbare Bausteine (`Symbol.tsx`).
@@ -27,10 +27,11 @@ Gesamtplan, Zielarchitektur und Audit liegen im Startseiten-Repo: `../Kt-gymbruv
 - Neue Funktion = Etappe: Code + Tests + `docs/` aktualisieren. Logik gehört nach `src/kern/` und wird dort ohne Browser getestet.
 - Gespeicherte Daten tragen `schema` und `version`; geladen wird nur über die Prüffunktion (`pruefeTafel`). Formatänderungen = neue Version mit Umwandlung der alten, nie stilles Umdeuten.
 - Jede Änderung am Tafelinhalt läuft als Befehl über `befehle.ts`, damit sie sich zurücknehmen lässt.
+- Zeichenfläche: höchstens einmal je Bildwechsel zeichnen (`plane()`), nie bei jeder einzelnen Stiftmeldung; die untere Ebene nur ganz neu zeichnen, wenn sich mehr geändert hat als ein hinzugekommenes Element. Änderungen daran mit `#/pruefen` nachmessen.
 - Neue Elementart: Typ und Prüfung in `kern/modell.ts`, Rahmen/Treffer/Verschieben in `kern/geometrie.ts`, Kopie in `kern/seiten.ts`, Zeichnen in `Zeichenflaeche.tsx`, Tests. Bei Änderungen am gespeicherten Format die Version erhöhen und die alte in `pruefeTafel` umwandeln.
 - Neues Fenster: Art in `kern/fenster.ts` (`FENSTERARTEN`, Name, Prüfung), Inhalt in `fenster/Inhalte.tsx`, Symbol in `ui/Symbol.tsx`, Tests. Fenster dürfen die Tafel nie verändern oder zurücksetzen.
 - Design: Dunkelblau als Hauptfarbe, helle Flächen, heller/dunkler Modus (Auswahl aus `localStorage` „lehrraum-design“, gemeinsam mit der Startseite). Die Zeichenfläche bleibt weiß. Farbwerte wie in `../Kt-gymbruvi.github.io/gemeinsam/tokens.css`. Symbole als eigene SVG-Zeichnungen (`src/ui/Symbol.tsx`), keine Emojis.
-- Bedienelemente an der Tafel mindestens 56 px groß; alles muss mit Maus, Finger und Stift gehen. Beide Werkzeugleisten bleiben dauerhaft sichtbar.
+- Bedienelemente an der Tafel mindestens 56 px groß; Griffe an der Auswahl (Größe ändern, Drehen) mindestens 44 px Trefferfläche, auch wenn sie kleiner gezeichnet sind. Alles muss mit Maus, Finger und Stift gehen. Beide Werkzeugleisten bleiben dauerhaft sichtbar.
 
 ## Datenschutz und Sicherheit
 - Die Startseite (`../Kt-gymbruvi.github.io/gemeinsam/klassen.js`) liest das Lager `klassen` direkt aus IndexedDB. Änderungen am Format der Klassen oder am Namen von Datenbank/Lager dort mitziehen.

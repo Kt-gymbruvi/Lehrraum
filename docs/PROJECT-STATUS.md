@@ -1,7 +1,14 @@
 # Projektstand – Lehrraum
 
-Stand: 12.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 12.11.2026 mit „Meine Klassen“) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 7 Testdateien, 108 Tests grün (`npm test`); Build grün (`npm run build`).
+Stand: 12.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 12.11.2026 mit „Schreiben am SMART Board, erster Teil“) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Tests: 8 Testdateien, 120 Tests grün (`npm test`); Build grün (`npm run build`).
+
+## Implementiert, am Gerät noch nicht bestätigt: Schreiben am SMART Board (Spezifikation P1, P2)
+- **Zeichnen höchstens einmal je Bildwechsel:** Der entstehende Strich und das Verschieben der Ansicht (Finger, Auswahl-Werkzeug, Mausrad) werden gebündelt, statt bei jeder einzelnen Meldung des Stifts neu zu zeichnen. Kein Punkt geht dabei verloren.
+- **Untere Ebene wird ergänzt:** Nach einem neuen Strich wird nur dieser eingezeichnet, nicht mehr die ganze Seite. Rückgängig, Radieren, Verschieben, Zoomen zeichnen weiter alles neu.
+- **Prüfansicht** unter `#/pruefen` (freie Tafel mit Messwerten): Art der Eingabe, Druck, Größe der Berührung, Meldungen und Bildwechsel je Sekunde, längste Pause, Rechenzeit je Bild, Wartezeit der Eingabe, Einzeichnen nach dem Abheben, Angaben zum Gerät. Schalter „Schärfe voll/halb“ zum Ausprobieren, ob die Auflösung der Zeichenfläche bremst. Die Werte stehen nur auf dem Bildschirm. Auf der normalen Tafel wird nicht gemessen.
+- Gemessen am Entwicklungsrechner (Desktop, schneller als ein Smartboard, kleine Zeichenfläche 804 × 660), alt = veröffentlichte Fassung, neu = dieser Stand, gleiche nachgestellte Eingabe: Rechenzeit je Stiftmeldung bei einem langen Strich 0,56 ms → 0,08 ms; Bildabstand am Ende eines Strichs mit 1200 Punkten 12,1 ms → 6,1 ms (die alte Fassung ließ jedes zweite Bild aus); nach dem Abheben auf einer Seite mit 500 Strichen 4,3 ms → 1,9 ms.
+- **Offen:** Ob das am SMART Board reicht, ist nicht bekannt – dort wurde noch nichts gemessen. Die Abnahmekriterien von P1 sind erst mit dem Test der Lehrkraft erfüllt.
 
 ## Implementiert (Etappen 1.3, 2a, 2b, 2c, 3a, 4.1 und 5a der Roadmap)
 - **Meine Klassen** (`#/klassen`): Klassen mit Bezeichnung, Fach und Jahrgang anlegen, bearbeiten, kopieren, archivieren und wiederherstellen, löschen (mit Rückfrage, samt Tafel). `#/klassen?neu=1` öffnet gleich das Formular. Alles liegt nur auf dem Gerät.
@@ -40,6 +47,8 @@ Tests: 7 Testdateien, 108 Tests grün (`npm test`); Build grün (`npm run build`
 - Veröffentlichte Fassung geprüft (Desktop-Browser): Zeichnen und Speichern, Lernangebote-Fenster lädt alle 41 Einträge von derselben Adresse, Quizzo-Fenster zeigt die Anmeldung, keine Fehler in der Konsole.
 - Veröffentlichte Fassung am 12.11.2026 geprüft: Klasse angelegt, sie erscheint auf der Startseite der Plattform, „Zur Tafel“ öffnet ihre Tafel mit dem Klassennamen, Klasse wieder gelöscht; Haus-Knopf führt zur Startseite.
 - Klassen von Hand in der Vorschau: Klasse angelegt, ihre Tafel geöffnet (Titel stimmt), freie Tafel daneben, Klasse gelöscht.
+- Etappe „Schreiben am SMART Board“, automatisch: gebündeltes Zeichnen (30 Meldungen → ein Bild, alle Punkte bleiben), Ergänzen der unteren Ebene (auch nach Rückgängig/Wiederholen), gebündeltes Verschieben der Ansicht, Messlogik, Prüfansicht (Stift mit echtem Druck, große Berührung, Schärfe, kein Messen auf der normalen Tafel). Von Hand im Browser (Desktop, Maus): Strich, Rechteck, Auswahl verschieben, Ansicht verschieben, Schärfe halb; Vergleichsmessung alt/neu mit nachgestellter Eingabe.
+- **Nicht getestet – wichtig:** die Etappe „Schreiben am SMART Board“ am SMART Board selbst und am iPad (Schreibgefühl, Verzögerung, ob das iPad unverändert gut läuft).
 - **Nicht getestet – wichtig:** Quizzo und Klassenfunk gegen den echten Server. Es wurde nicht angemeldet, kein echtes Spiel und keine echte Sitzung gestartet. Ob die eingebettete Beamer-Ansicht im Fenster gut bedienbar ist, zeigt sich erst mit Anmeldung.
 - **Nicht getestet:** große oder gescannte PDFs aus dem Unterricht (Tempo, Speicher), kennwortgeschützte PDFs, das Teilen-Menü und der Weg zu Goodnotes am iPad, Einfügen aus der Zwischenablage mit echten Bildern, Speichergrenzen bei vielen Bildern.
 - **Nicht getestet:** echtes iPad mit Apple Pencil, Smartboard, Fingerbedienung, Zwei-Finger-Zoom am Gerät, Schreibgefühl und Verzögerung, sehr viele Striche (Tempo), Signalton des Timers (in der Vorschau nicht hörbar geprüft; iPad-Browser geben Ton erst nach einer Berührung frei – der Start-Knopf zählt als solche).
@@ -57,7 +66,9 @@ Tests: 7 Testdateien, 108 Tests grün (`npm test`); Build grün (`npm run build`
 - Seiten: keine Miniaturen; Seiten löschen und umsortieren lässt sich nicht rückgängig machen (deshalb die Rückfrage). Alle Seiten teilen sich eine Ansicht (Zoom/Verschiebung); Seiten ohne PDF haben kein sichtbares Seitenformat.
 - Die Größe von Text wird für Auswahl und Radierer geschätzt; bei sehr breiten oder schmalen Buchstaben sitzt der Auswahlrahmen nicht genau.
 - Der Radierer löscht ganze Elemente, keine Teilstücke. Rechteck und Ellipse werden nur am Rand getroffen.
-- Bei jeder Änderung werden alle Striche neu gezeichnet – bei sehr vollen Tafeln eventuell zu langsam (am Gerät prüfen).
+- Beim Radieren, Verschieben, Zoomen und Rückgängig werden alle Striche neu gezeichnet (höchstens einmal je Bildwechsel) – bei sehr vollen Tafeln eventuell zu langsam (am Gerät prüfen). Nur ein neuer Strich wird ergänzt, ohne alles neu zu zeichnen.
+- Der entstehende Strich wird je Bild ganz neu berechnet; bei sehr langen Strichen wächst der Aufwand mit der Länge.
+- Die Prüfansicht misst nur die Rechenzeit der Tafel, nicht die Verzögerung des Displays selbst; „Längster Hänger“ und „Wartezeit der Eingabe“ zeigen aber, wenn das Gerät nicht hinterherkommt.
 - In der lokalen Vorschau zeigen die Anwendungsfenster auf die veröffentlichte Plattform (`kt-gymbruvi.github.io`); dort ist man getrennt angemeldet, Quizzo fragt im Fenster also noch einmal nach dem Konto. Veröffentlicht entfällt das.
 - Schließt man ein Anwendungsfenster, während ein Spiel läuft, bleibt das Spiel auf dem Server (Quizzo räumt es nach 6 Stunden auf). Sauber beendet wird es über „Beenden“.
 - Die Lernangebote-Liste beachtet die in `lernen/#bearbeiten` gespeicherte Ordnung (Datenbank) noch nicht, nur `angebote.js`.
@@ -68,8 +79,15 @@ Tests: 7 Testdateien, 108 Tests grün (`npm test`); Build grün (`npm run build`
 - Notizen lassen sich noch nicht auf die Tafel „ablegen“ (Textelemente gibt es jetzt, die Verbindung fehlt).
 - Noch nicht in der rechten Leiste: Zufallsschüler, Gruppen (brauchen Klassen, Phase 4), Lautstärkeampel, Arbeitsauftrag, Stundenablauf, QR-Code (3b).
 
+## Rückmeldung aus der Erprobung (Lehrkraft, 12.11.2026)
+- **Am SMART Board kommt die Schrift sehr verzögert und abgehakt**; am iPad läuft es besser. Ursache noch nicht gemessen. Vermutung im Code: Bei jeder Stiftbewegung wird der ganze entstehende Strich neu berechnet und die obere Zeichenebene ganz neu gezeichnet, ohne Bündelung je Bildwechsel.
+
 ## Nächste Schritte
-1. **Erprobung am iPad und am Smartboard** durch die Lehrkraft unter https://kt-gymbruvi.github.io/Lehrraum/ (Stift, Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF öffnen, Teilen an Goodnotes, Quizzo mit Anmeldung).
-2. Je nach Ergebnis nachbessern (Glättung, Strichstärken, Handballen-Schutz).
-3. Quizzo und Klassenfunk mit echter Anmeldung ausprobieren (Lehrkraft).
-4. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.
+Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC-zeichenwerkzeuge-und-auswahl.md` (12.11.2026). Umgesetzt und veröffentlicht ist davon der erste Teil von Etappe 1.
+1. **Schreiben am SMART Board** (Spezifikation P1, P2): Erster Teil veröffentlicht. Als Nächstes öffnet die Lehrkraft am SMART Board `https://kt-gymbruvi.github.io/Lehrraum/#/pruefen`, schreibt und wischt mit Stift, Finger und Faust und schickt ein Foto der Werte (einmal mit Schärfe „voll“, einmal „halb“), dazu Modell, eingebauter Rechner oder Laptop, Browser. Je nach Werten nachbessern (mögliche nächste Schritte: Auflösung der Zeichenfläche begrenzen, langen Strich nur am Ende neu berechnen, Vorhersage der Stiftposition) und R4 (Faust) festlegen.
+2. **Auswahl** (A1–A8, H1): Rahmen, mehrere Elemente, Größe ändern, Drehen, Kopieren/Einfügen, Gruppieren, Reihenfolge, Hand-Werkzeug; Datenmodell Version 3.
+3. **Radierer** (R1–R4): Schwamm und Element-Radierer, drei Größen, Radieren mit Handrücken oder Faust.
+4. **Stift** (S1–S3, W1): mehr Farben, Regler für die Stärke, Begradigen durch Halten.
+5. **Laserpointer und Einstellungen merken** (L1, E1).
+6. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
+7. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.

@@ -1,0 +1,38 @@
+// Verbindet die Zeichenfläche mit der Prüfansicht: Solange die Prüfansicht offen ist, meldet die Zeichenfläche,
+// wie lange sie für jedes Bild rechnet. Ist sie zu, kostet das nichts. Nichts wird gespeichert oder gesendet.
+import { gezeichnet, type Lauf, type Strichmessung } from '../kern/messung.ts'
+
+type Zustand = {
+  /** Nur bei offener Prüfansicht wird gemessen */
+  aktiv: boolean
+  /** Der Strich, der gerade entsteht */
+  lauf: Lauf | null
+  /** Der zuletzt abgeschlossene Strich */
+  letzter: Strichmessung | null
+  /** Wird aufgerufen, wenn sich `letzter` ändert */
+  beiAenderung: (() => void) | null
+}
+
+export const messung: Zustand = { aktiv: false, lauf: null, letzter: null, beiAenderung: null }
+
+/** Zeitpunkt für eine Messung – oder 0, wenn nicht gemessen wird */
+export const messBeginn = (): number => (messung.aktiv ? performance.now() : 0)
+
+/** Die obere Ebene (der entstehende Strich) wurde gezeichnet. */
+export function obenGezeichnet(beginn: number) {
+  if (messung.aktiv && messung.lauf) gezeichnet(messung.lauf, performance.now() - beginn)
+}
+
+/**
+ * Die untere Ebene (alles Fertige) wurde gezeichnet. Während eines Strichs zählt das zu dessen Rechenzeit
+ * (z. B. beim Verschieben der Ansicht); nach dem Abheben ist es das „Einzeichnen“ des fertigen Strichs.
+ */
+export function untenGezeichnet(beginn: number) {
+  if (!messung.aktiv) return
+  const dauer = performance.now() - beginn
+  if (messung.lauf) gezeichnet(messung.lauf, dauer, false)
+  else if (messung.letzter) {
+    messung.letzter = { ...messung.letzter, einzeichnen: (messung.letzter.einzeichnen ?? 0) + dauer }
+    messung.beiAenderung?.()
+  }
+}

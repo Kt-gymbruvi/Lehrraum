@@ -4,10 +4,14 @@
 //   Stift und Maus arbeiten immer mit dem gewählten Werkzeug. Ein Finger tut das auch, bis einmal ein Stift
 //   benutzt wurde – danach verschiebt er die Ansicht (Handballen-Schutz). Zwei Finger verschieben und zoomen immer.
 //   Mausrad verschiebt, Strg + Mausrad zoomt. Mit dem Auswahlwerkzeug verschiebt Ziehen auf freier Fläche die Ansicht.
+// Regeln des Zeichnens (damit auch langsame Geräte wie ein Smartboard mitkommen):
+//   Gezeichnet wird höchstens einmal je Bildwechsel, auch wenn der Stift sich öfter meldet.
+//   Kommt nur ein neuer Strich dazu, wird die untere Ebene ergänzt und nicht ganz neu gezeichnet.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { gesamtRahmen, oberstesBei, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel } from '../kern/geometrie.ts'
 import { MAX_TEXT, neueId, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
 import { beiBildGeladen } from './bildquellen.ts'
+import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
 import { SCHRIFT, zeichne, zeichneHintergrund } from './zeichnen.ts'
 
 export type Werkzeug = 'auswahl' | Zeichenwerkzeug | 'radierer' | 'text' | Formart
@@ -22,6 +26,8 @@ type Props = {
   staerke: number
   /** Kennungen der ausgewählten Elemente */
   auswahl: string[]
+  /** Auflösung der Zeichenebenen als Anteil der Bildschirmauflösung (1 = voll). Nur die Prüfansicht ändert das. */
+  schaerfe?: number
   beiHinzu: (e: Element) => void
   beiRadieren: (ids: string[]) => void
   beiErsetzen: (vorher: Element[], nachher: Element[]) => void
@@ -51,7 +57,7 @@ export const vergissStift = () => {
   stiftGesehen = false
 }
 
-export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, auswahl, beiHinzu, beiRadieren, beiErsetzen, beiAuswahl, beiKamera }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, auswahl, schaerfe = 1, beiHinzu, beiRadieren, beiErsetzen, beiAuswahl, beiKamera }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -62,9 +68,11 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   const [bildStand, setBildStand] = useState(0)
   useEffect(() => beiBildGeladen(() => setBildStand((n) => n + 1)), [])
 
+  /** Eine verschobene Ansicht, die erst mit dem nächsten Bildwechsel weitergemeldet wird */
+  const kameraOffen = useRef<Kamera | null>(null)
   // Aktuelle Werte für die Eingabe-Funktionen (die sich sonst bei jedem Zeichnen neu anmelden müssten)
   const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, auswahl, editor })
-  stand.current = { elemente, kamera, werkzeug, farbe, staerke, auswahl, editor }
+  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, auswahl, editor }
 
   const zeiger = useRef(new Map<number, { x: number; y: number; typ: string }>())
   const aktiv = useRef<Aktiv | null>(null)
@@ -74,13 +82,13 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   useLayoutEffect(() => {
     const el = rahmen.current
     if (!el) return
-    const messen = () => setGroesse({ b: el.clientWidth, h: el.clientHeight, dpr: window.devicePixelRatio || 1 })
+    const messen = () => setGroesse({ b: el.clientWidth, h: el.clientHeight, dpr: (window.devicePixelRatio || 1) * schaerfe })
     messen()
     if (typeof ResizeObserver === 'undefined') return
     const beobachter = new ResizeObserver(messen)
     beobachter.observe(el)
     return () => beobachter.disconnect()
-  }, [])
+  }, [schaerfe])
 
   /** Bereitet eine Ebene vor: leeren und Kamera einstellen. Liefert null, wenn es (noch) nichts zu zeichnen gibt. */
   function ebene(canvas: HTMLCanvasElement | null, k: Kamera) {
@@ -94,15 +102,36 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   }
 
   // ---------- Untere Ebene: alle fertigen Elemente ----------
+  /** Was die untere Ebene gerade zeigt – um nach einem neuen Strich nur diesen zu ergänzen */
+  const gezeigt = useRef<{ elemente: Element[]; rest: unknown[] } | null>(null)
+  /** Beim Abheben schon unten eingezeichnet – muss beim Ergänzen nicht noch einmal gezeichnet werden */
+  const schonFest = useRef(new WeakSet<Element>())
   useEffect(() => {
-    const ctx = ebene(unten.current, kamera)
-    if (!ctx) return
-    if (hintergrund) zeichneHintergrund(ctx, hintergrund)
-    for (const e of elemente) if (!versteckt.has(e.id)) zeichne(ctx, e)
+    const beginn = messBeginn()
+    const rest = [hintergrund, kamera, groesse, versteckt, bildStand]
+    const alt = gezeigt.current
+    gezeigt.current = { elemente, rest }
+    const nurDazu = alt !== null && alt.rest.every((x, i) => x === rest[i]) && alt.elemente.length <= elemente.length && alt.elemente.every((e, i) => e === elemente[i])
+    if (nurDazu) {
+      // Alles Bisherige steht noch da: nur das Neue einzeichnen. Bei vollen Seiten spart das nach jedem Strich viel Zeit.
+      const ctx = unten.current?.getContext('2d')
+      if (ctx) for (const e of elemente.slice(alt.elemente.length)) if (!schonFest.current.has(e) && !versteckt.has(e.id)) zeichne(ctx, e)
+    } else {
+      schonFest.current = new WeakSet()
+      const ctx = ebene(unten.current, kamera)
+      if (!ctx) {
+        gezeigt.current = null
+        return
+      }
+      if (hintergrund) zeichneHintergrund(ctx, hintergrund)
+      for (const e of elemente) if (!versteckt.has(e.id)) zeichne(ctx, e)
+    }
+    untenGezeichnet(beginn)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [elemente, hintergrund, kamera, groesse, versteckt, bildStand])
 
   function zeichneOben() {
+    const beginn = messBeginn()
     const s = stand.current
     const k = s.kamera
     const ctx = ebene(oben.current, k)
@@ -131,8 +160,39 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       ctx.strokeRect(r[0] - rand, r[1] - rand, r[2] - r[0] + 2 * rand, r[3] - r[1] + 2 * rand)
       ctx.setLineDash([])
     }
+    obenGezeichnet(beginn)
   }
   useEffect(zeichneOben)
+
+  // ---------- Höchstens einmal je Bildwechsel zeichnen ----------
+  // Stift und Finger melden sich oft mehrmals je Bild. Jedes Mal zu zeichnen (oder die Ansicht zu verschieben)
+  // kostet ein langsames Gerät mehr Zeit, als es hat – dann hinkt die Schrift nach und wird eckig.
+  const geplant = useRef(0)
+  const erledige = useRef(() => {})
+  erledige.current = () => {
+    geplant.current = 0
+    const k = kameraOffen.current
+    kameraOffen.current = null
+    if (k) beiKamera(k) // aus der geänderten Ansicht folgt das Neuzeichnen beider Ebenen
+    else zeichneOben()
+  }
+  /** Zeichnet beim nächsten Bildwechsel (mehrere Aufrufe bis dahin zählen als einer). */
+  function plane() {
+    if (geplant.current) return
+    if (typeof requestAnimationFrame !== 'function') erledige.current()
+    else geplant.current = requestAnimationFrame(() => erledige.current())
+  }
+  /** Zeichnet jetzt gleich und verwirft, was noch geplant war. */
+  function sofort() {
+    if (geplant.current && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(geplant.current)
+    erledige.current()
+  }
+  useEffect(
+    () => () => {
+      if (geplant.current && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(geplant.current)
+    },
+    [],
+  )
 
   // ---------- Text schreiben ----------
   function oeffneEditor(e: Editor) {
@@ -290,7 +350,8 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       if (f.length >= 2 && a.abstand > 0 && abstand > 0) neu = zoomeUm(neu, mitteX, mitteY, abstand / a.abstand)
       aktiv.current = { art: 'geste', mitteX, mitteY, abstand }
       stand.current.kamera = neu
-      beiKamera(neu)
+      kameraOffen.current = neu
+      plane()
       return
     }
     if (a.zeiger !== e.pointerId) return
@@ -301,7 +362,8 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       a.x = x
       a.y = y
       stand.current.kamera = neu
-      beiKamera(neu)
+      kameraOffen.current = neu
+      plane()
       return
     }
     if (a.art === 'radieren') {
@@ -319,19 +381,20 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     } else {
       // Zwischenpunkte, die der Browser zusammengefasst hat, mitnehmen (glattere Linien bei schnellem Stift)
       const einzeln = e.nativeEvent.getCoalescedEvents?.() ?? []
+      const r = rahmen.current!.getBoundingClientRect() // einmal je Meldung messen, nicht je Punkt
       for (const ev of einzeln.length ? einzeln : [e.nativeEvent]) {
-        const [sx, sy] = ort(ev)
-        const [px, py] = zuTafel(k, sx, sy)
+        const [px, py] = zuTafel(k, ev.clientX - r.left, ev.clientY - r.top)
         const letzter = a.strich.punkte[a.strich.punkte.length - 1]
         if (Math.hypot(px - letzter[0], py - letzter[1]) * k.zoom < 0.5) continue
         a.strich.punkte.push([px, py, a.strich.druckEcht ? ev.pressure || letzter[2] : 0.5])
       }
     }
-    zeichneOben()
+    plane()
   }
 
   function hoch(e: ReactPointerEvent<HTMLDivElement>, abgebrochen = false) {
     if (!zeiger.current.delete(e.pointerId)) return
+    if (kameraOffen.current) sofort() // die zuletzt verschobene Ansicht gilt ab jetzt
     const a = aktiv.current
     if (!a) return
 
@@ -344,8 +407,12 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const k = stand.current.kamera
     // Fertiges sofort unten einzeichnen, damit es beim Leeren der oberen Ebene nicht kurz verschwindet
     const fest = (el: Element) => {
+      const beginn = messBeginn()
       const ctx = unten.current?.getContext('2d')
-      if (ctx) zeichne(ctx, el)
+      if (!ctx) return
+      zeichne(ctx, el)
+      schonFest.current.add(el)
+      untenGezeichnet(beginn)
     }
 
     if (a.art === 'zeichnen' && !abgebrochen) {
@@ -368,7 +435,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       }
       setVersteckt(new Set())
     }
-    zeichneOben()
+    sofort()
   }
 
   // Mausrad: verschieben; mit Strg (oder Zwei-Finger-Zoom am Trackpad): zoomen
@@ -382,11 +449,13 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       const k = stand.current.kamera
       const neu = e.ctrlKey || e.metaKey ? zoomeUm(k, e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.01)) : verschiebe(k, -e.deltaX, -e.deltaY)
       stand.current.kamera = neu
-      beiKamera(neu)
+      kameraOffen.current = neu
+      plane()
     }
     el.addEventListener('wheel', rad, { passive: false })
     return () => el.removeEventListener('wheel', rad)
-  }, [beiKamera])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const { b, h, dpr } = groesse
   const zeilen = editor ? editor.text.split('\n') : []

@@ -12,6 +12,7 @@ import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
 import { Symbol } from '../ui/Symbol.tsx'
+import { Pruefansicht } from './Pruefansicht.tsx'
 import { Seitenleiste } from './Seitenleiste.tsx'
 import { WERKZEUGE, Werkzeugleiste } from './Werkzeugleiste.tsx'
 import { Zeichenflaeche, type Werkzeug } from './Zeichenflaeche.tsx'
@@ -31,8 +32,13 @@ const SPEICHERN_NACH_MS = 700
 type Buch = Seitenfolge & { verlaeufe: Record<string, Verlauf> }
 const LEER: Seite = { id: '', elemente: [] }
 
-/** Ohne `klasseId` öffnet sich die freie Tafel, sonst die Tafel dieser Klasse (wird beim ersten Öffnen angelegt). */
-export default function Tafel({ klasseId }: { klasseId?: string }) {
+/**
+ * Ohne `klasseId` öffnet sich die freie Tafel, sonst die Tafel dieser Klasse (wird beim ersten Öffnen angelegt).
+ * `pruefen` blendet die Prüfansicht ein (Messwerte zum Schreiben am Gerät).
+ */
+export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string; pruefen?: boolean }) {
+  /** Nur in der Prüfansicht umstellbar: Auflösung der Zeichenebenen (1 = voll) */
+  const [schaerfe, setSchaerfe] = useState(1)
   const [kopf, setKopf] = useState<Pick<Tafelbild, 'schema' | 'version' | 'id' | 'titel'> | null>(null)
   const [buch, setBuch] = useState<Buch>({ seiten: [LEER], nr: 0, verlaeufe: {} })
   const [kamera, setKamera] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
@@ -417,6 +423,7 @@ export default function Tafel({ klasseId }: { klasseId?: string }) {
               farbe={farbe}
               staerke={staerke}
               auswahl={auswahl}
+              schaerfe={pruefen ? schaerfe : 1}
               beiHinzu={beiHinzu}
               beiRadieren={entferne}
               beiErsetzen={beiErsetzen}
@@ -424,6 +431,7 @@ export default function Tafel({ klasseId }: { klasseId?: string }) {
               beiKamera={setKamera}
             />
             <Fensterebene fenster={fenster} beiAendern={setFenster} />
+            {pruefen && <Pruefansicht elemente={seite.elemente.length} schaerfe={schaerfe} beiSchaerfe={setSchaerfe} />}
           </div>
           <Seitenleiste
             nr={buch.nr}

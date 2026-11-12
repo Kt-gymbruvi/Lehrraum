@@ -650,3 +650,83 @@ body {
   width: 1.4rem;
   height: 1.4rem;
 }
+
+/* ---------- Prüfansicht (#/pruefen): Messwerte über der Tafel ---------- */
+.pruefansicht {
+  position: absolute;
+  left: 0.75rem;
+  bottom: 0.75rem;
+  width: min(24rem, calc(100% - 1.5rem));
+  max-height: calc(100% - 1.5rem);
+  overflow: auto;
+  padding: 0.6rem 0.9rem;
+  border: 1px solid #cdd5e3;
+  border-radius: 1rem;
+  background: rgb(255 255 255 / 0.93);
+  color: #0b1f4d;
+  font-size: 0.8rem;
+  line-height: 1.3;
+  box-shadow: 0 6px 24px rgb(6 18 51 / 0.18);
+  pointer-events: none; /* darunter lässt sich weiter schreiben */
+}
+.pruefansicht h2 {
+  margin: 0;
+  font-size: 1.1rem;
+}
+.pruefansicht h3 {
+  margin: 0.6rem 0 0.15rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #46557a;
+}
+.pruefansicht p {
+  margin: 0;
+}
+.pruefansicht .klein {
+  font-size: 0.72rem;
+  color: #46557a;
+}
+.pruefansicht .browser {
+  margin-top: 0.35rem;
+  overflow-wrap: anywhere;
+}
+.pruefansicht .zeile {
+  display: block;
+}
+.pruefansicht dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.1rem 0.75rem;
+  margin: 0;
+}
+.pruefansicht dt {
+  color: #46557a;
+}
+.pruefansicht dd {
+  margin: 0;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.pruefansicht dd.auffaellig {
+  color: #b3261e;
+}
+.pruefansicht .knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+  font-weight: 700;
+}
+.pruefansicht .knoepfe .f-knopf {
+  min-height: 3.5rem;
+  background: #e8ecf3;
+  color: #0b1f4d;
+  text-decoration: none;
+  pointer-events: auto;
+}
+.pruefansicht .knoepfe .f-knopf[aria-pressed='true'] {
+  background: #0b1f4d;
+  color: #ffffff;
+}
