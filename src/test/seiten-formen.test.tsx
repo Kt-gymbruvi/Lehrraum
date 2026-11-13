@@ -284,7 +284,7 @@ describe('Auswählen, verschieben, ändern', () => {
     expect(knopf('Seite leeren')).toBeEnabled() // ohne Auswahl leert derselbe Knopf die Seite
   })
 
-  it('Ziehen auf freier Fläche verschiebt die Ansicht und hebt die Auswahl auf', async () => {
+  it('Ziehen auf freier Fläche verschiebt nicht mehr die Ansicht; das Hand-Werkzeug tut es', async () => {
     const nutzer = userEvent.setup()
     await vorlage()
     render(<Tafel />)
@@ -292,9 +292,12 @@ describe('Auswählen, verschieben, ändern', () => {
     await nutzer.click(knopf('Auswahl'))
     tippe(50, 50)
     expect(knopf('Auswahl löschen')).toBeInTheDocument()
+    ziehe([600, 100], [640, 160]) // Rahmen über leere Fläche: hebt die Auswahl auf, wählt nichts
+    expect(knopf('Seite leeren')).toBeInTheDocument()
+    await nutzer.keyboard('h')
+    expect(knopf('Hand')).toHaveAttribute('aria-pressed', 'true')
     ziehe([600, 100], [640, 160])
     await waitFor(async () => expect((await tafel()).kamera).toEqual({ x: 40, y: 60, zoom: 1 }))
-    expect(knopf('Seite leeren')).toBeInTheDocument()
     expect(await seite()).toHaveLength(2)
   })
 

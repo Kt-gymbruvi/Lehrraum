@@ -197,6 +197,11 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     setWerkzeug(w)
     if (w !== 'auswahl') setAuswahl([])
   }
+  /** Strg + A: alles auf der Seite auswählen (der Hintergrund gehört nicht dazu) */
+  const waehleAlles = () => {
+    setWerkzeug('auswahl')
+    setAuswahl(seite.elemente.map((e) => e.id))
+  }
 
   // ---------- Seiten ----------
   const blaettern = (tun: (b: Seitenfolge) => Seitenfolge) => {
@@ -291,8 +296,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   }, [])
 
   // ---------- Tastatur ----------
-  const tasten = useRef({ zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, auswahl })
-  tasten.current = { zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, auswahl }
+  const tasten = useRef({ zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, auswahl })
+  tasten.current = { zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, auswahl }
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       const ziel = e.target as HTMLElement | null
@@ -303,6 +308,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         if (k === 'z' && !e.shiftKey) t.zurueck()
         else if (k === 'y' || (k === 'z' && e.shiftKey)) t.vor()
         else if (k === 'd' && t.auswahl.length) t.dopple()
+        else if (k === 'a') t.waehleAlles()
         else return
         e.preventDefault()
         return
@@ -311,7 +317,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
       if ((e.key === 'Delete' || e.key === 'Backspace') && t.auswahl.length) {
         e.preventDefault()
         t.loescheAuswahl()
-      } else if (e.key === 'PageDown') blaettern((b) => gehe(b, b.nr + 1))
+      } else if (e.key === 'Escape' && t.auswahl.length) setAuswahl([])
+      else if (e.key === 'PageDown') blaettern((b) => gehe(b, b.nr + 1))
       else if (e.key === 'PageUp') blaettern((b) => gehe(b, b.nr - 1))
       else {
         const w = WERKZEUGE.find((x) => x.taste.toLowerCase() === k) ?? (k === 'e' ? WERKZEUGE.find((x) => x.wert === 'radierer') : undefined)

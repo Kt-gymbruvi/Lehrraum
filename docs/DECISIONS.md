@@ -3,6 +3,15 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-13 – Auswahl, erster Teil (Spezifikation A1–A3, H1)
+- **Etappe 2 in drei Teilen** (Lehrkraft: „Etappe 2 starten“, vor dem Test am SMART Board): 1. Rahmen, mehrere Elemente, Größe ändern, Hand-Werkzeug; 2. Drehen mit Datenmodell Version 3; 3. Kopieren/Einfügen, Gruppieren, Reihenfolge, Auswahlleiste. Grund: Teil 1 braucht keine Änderung am gespeicherten Format und lässt sich für sich prüfen; Version 3 kommt in einem Schritt mit allen neuen Feldern statt in zwei Versionen.
+- **„Berührt“ heißt: die sichtbare Linie liegt im Rahmen** (Strich mit halber Breite, Formen als Strecken, die Ellipse als 32-Eck), bei Text und Bild genügt der umschließende Rahmen. Ein Rahmen im leeren Inneren eines großen Rechtecks wählt es nicht – sonst ließe sich darin Geschriebenes nicht für sich auswählen. Verworfen: Treffer über den umschließenden Rahmen (wählt bei schrägen Strichen zu viel).
+- **Griffe:** gezeichnet 16 px, greifbar 44 × 44 px (Quadrat um den Griff, bei Überlappung der nächste). Seitengriffe nur, wenn die Auswahl auf dem Bildschirm mindestens 88 px breit und hoch ist; sonst rücken die Eckgriffe auf 44 px Abstand nach außen. Griffe gehen vor allem anderen; mit Umschalt werden sie übergangen (dann gilt Hinzunehmen/Herausnehmen).
+- **Am Eckgriff zählt der Zug entlang der Diagonale**, damit das Verhältnis bleibt und die Auswahl dem Zeiger ruhig folgt. Strichstärke wächst mit (bis 200), Schriftgröße bleibt in den Grenzen der Prüfung (6–400). Mindestgröße: keine Richtung kleiner als 8 Einheiten, was schon kleiner ist, wird nicht noch kleiner.
+- **Ziehen im Auswahlrahmen verschiebt die Auswahl**, auch über nicht ausgewählten Elementen darin; ein bloßes Antippen eines solchen Elements wählt dann nur dieses. Antippen einer freien Stelle im Rahmen lässt die Auswahl stehen (zwischen Buchstaben soll sie nicht verloren gehen).
+- **Leertaste** verschiebt am Laptop die Ansicht und wird dafür abgefangen; Knöpfe lösen sich dann nicht mehr mit der Leertaste aus (Eingabetaste geht). Verworfen: nur auf der Zeichenfläche hören – dort hat die Tastatur nie den Fokus.
+- **Finger nach einem Stift** verschieben weiter nur die Ansicht, auch auf Griffen (Handballen-Schutz unverändert). Ob das am iPad stört, zeigt die Prüfung am Gerät.
+
 ## 2026-11-13 – Erste Messung am SMART Board, Prüfansicht überarbeitet
 - **Befund:** Am SMART Board MX (Windows, Firefox 140, 4K bei Faktor 3) braucht die Tafel 0,4–0,6 ms je Bild bei 60 Bildern je Sekunde – sie ist nicht der Engpass. Alle gemessenen Striche kamen als „Finger“ an; Stiftschrift ließ sich nur mit der Faust löschen, nicht mit dem Radierer der Tafel. Vermutung: SMART Ink fängt Stift und Faust ab und zeichnet in eine eigene Schicht über dem Browser. Wird am Gerät geprüft, bevor daraus Folgen gezogen werden.
 - **Keine weiteren Eingriffe ins Zeichnen** (Auflösung begrenzen, Vorhersage, langen Strich teilweise berechnen), solange die Werte das nicht verlangen.

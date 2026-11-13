@@ -547,6 +547,14 @@ body {
 .zeichenflaeche.werkzeug-auswahl {
   cursor: default;
 }
+.zeichenflaeche.werkzeug-hand,
+.zeichenflaeche.leertaste {
+  cursor: grab;
+}
+.zeichenflaeche.werkzeug-hand:active,
+.zeichenflaeche.leertaste:active {
+  cursor: grabbing;
+}
 .zeichenflaeche.werkzeug-text {
   cursor: text;
 }

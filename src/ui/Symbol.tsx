@@ -9,6 +9,7 @@ const ZEICHNUNGEN = {
   leeren: 'M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6',
   haus: 'M4 11l8-7 8 7M6 10v10h12V10',
   auswahl: 'M5 3l14 8-6 2-2 6z',
+  hand: 'M8 13V6.5a1.5 1.5 0 0 1 3 0V11M11 11V4.5a1.5 1.5 0 0 1 3 0V11M14 11V6a1.5 1.5 0 0 1 3 0v6M17 12V9a1.5 1.5 0 0 1 3 0v5a7 7 0 0 1-7 7h-1a6 6 0 0 1-4.6-2.2L4.3 15.6a1.5 1.5 0 0 1 2.3-1.9L8 15.5',
   text: 'M5 7V4h14v3M12 4v16M9 20h6',
   linie: 'M5 19L19 5',
   pfeil: 'M5 19L19 5M10 5h9v9',

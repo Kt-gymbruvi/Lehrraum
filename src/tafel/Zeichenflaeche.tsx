@@ -3,18 +3,24 @@
 // Regeln der Eingabe:
 //   Stift und Maus arbeiten immer mit dem gewählten Werkzeug. Ein Finger tut das auch, bis einmal ein Stift
 //   benutzt wurde – danach verschiebt er die Ansicht (Handballen-Schutz). Zwei Finger verschieben und zoomen immer.
-//   Mausrad verschiebt, Strg + Mausrad zoomt. Mit dem Auswahlwerkzeug verschiebt Ziehen auf freier Fläche die Ansicht.
+//   Mausrad verschiebt, Strg + Mausrad zoomt. Das Hand-Werkzeug verschiebt die Ansicht, am Laptop auch die
+//   gehaltene Leertaste bei jedem Werkzeug.
+// Regeln der Auswahl:
+//   Ziehen auf freier Fläche spannt einen Rahmen auf; ausgewählt wird, was er berührt. Ziehen innerhalb des
+//   Auswahlrahmens verschiebt die Auswahl, Ziehen an einem Griff ändert ihre Größe. Umschalt + Antippen nimmt
+//   ein Element hinzu oder heraus.
 // Regeln des Zeichnens (damit auch langsame Geräte wie ein Smartboard mitkommen):
 //   Gezeichnet wird höchstens einmal je Bildwechsel, auch wenn der Stift sich öfter meldet.
 //   Kommt nur ein neuer Strich dazu, wird die untere Ebene ergänzt und nicht ganz neu gezeichnet.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { gesamtRahmen, oberstesBei, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel } from '../kern/geometrie.ts'
+import { auswahlRahmen, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
+import { beruehrtRechteck, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { MAX_TEXT, neueId, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
 import { beiBildGeladen } from './bildquellen.ts'
 import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
 import { SCHRIFT, zeichne, zeichneHintergrund } from './zeichnen.ts'
 
-export type Werkzeug = 'auswahl' | Zeichenwerkzeug | 'radierer' | 'text' | Formart
+export type Werkzeug = 'auswahl' | 'hand' | Zeichenwerkzeug | 'radierer' | 'text' | Formart
 
 type Props = {
   elemente: Element[]
@@ -37,12 +43,21 @@ type Props = {
 const RADIERER_RADIUS = 14
 const FANG_RADIUS = 8
 const DOPPELTIPP_MS = 450
+/** Kürzere Wege (Bildschirm-Pixel) gelten als Antippen, nicht als Ziehen */
+const TIPP_WEG = 4
+
+const vorschau = (a: Extract<Aktiv, { art: 'skalieren' }>) =>
+  a.s ? a.originale.map((e) => skaliert(e, a.s!.ax, a.s!.ay, a.s!.sx, a.s!.sy, a.s!.gleichmaessig)) : a.originale
 
 type Aktiv =
   | { art: 'zeichnen'; zeiger: number; strich: Strich }
   | { art: 'form'; zeiger: number; form: Form }
   | { art: 'radieren'; zeiger: number; ids: Set<string>; x: number; y: number }
-  | { art: 'ziehen'; zeiger: number; startX: number; startY: number; originale: Element[]; dx: number; dy: number }
+  /** tipp: das angetippte Element – wird bei einem bloßen Antippen (ohne Ziehen) allein ausgewählt */
+  | { art: 'ziehen'; zeiger: number; startX: number; startY: number; originale: Element[]; dx: number; dy: number; tipp: Element | null }
+  | { art: 'skalieren'; zeiger: number; griff: Griffname; startX: number; startY: number; inhalt: Rechteck; originale: Element[]; s: Skalierung | null }
+  /** Auswahlrahmen aufziehen (Tafel-Koordinaten); dazu: was schon vorher ausgewählt war und bleibt (Umschalt) */
+  | { art: 'rahmen'; zeiger: number; x1: number; y1: number; x2: number; y2: number; dazu: string[] }
   | { art: 'schwenken'; zeiger: number; x: number; y: number }
   | { art: 'geste'; mitteX: number; mitteY: number; abstand: number }
 
@@ -75,6 +90,35 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   const zeiger = useRef(new Map<number, { x: number; y: number; typ: string }>())
   const aktiv = useRef<Aktiv | null>(null)
   const letzterTipp = useRef<{ id: string; zeit: number } | null>(null)
+
+  // ---------- Leertaste gehalten: Ansicht verschieben (am Laptop, bei jedem Werkzeug) ----------
+  const [leertaste, setLeertaste] = useState(false)
+  useEffect(() => {
+    const imFeld = (e: KeyboardEvent) => {
+      const ziel = e.target as HTMLElement | null
+      return !!ziel && (ziel.tagName === 'INPUT' || ziel.tagName === 'TEXTAREA' || ziel.tagName === 'SELECT' || ziel.isContentEditable)
+    }
+    const runter = (e: KeyboardEvent) => {
+      if (e.code !== 'Space' && e.key !== ' ') return
+      if (imFeld(e) || e.ctrlKey || e.metaKey || e.altKey) return
+      e.preventDefault() // sonst rollt die Seite oder der zuletzt geklickte Knopf wird noch einmal gedrückt
+      setLeertaste(true)
+    }
+    const hoch = (e: KeyboardEvent) => {
+      if (e.code === 'Space' || e.key === ' ') setLeertaste(false)
+    }
+    const weg = () => setLeertaste(false)
+    window.addEventListener('keydown', runter)
+    window.addEventListener('keyup', hoch)
+    window.addEventListener('blur', weg)
+    return () => {
+      window.removeEventListener('keydown', runter)
+      window.removeEventListener('keyup', hoch)
+      window.removeEventListener('blur', weg)
+    }
+  }, [])
+  const leer = useRef(leertaste)
+  leer.current = leertaste
 
   // ---------- Größe der Fläche verfolgen ----------
   useLayoutEffect(() => {
@@ -145,20 +189,49 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       ctx.strokeStyle = '#46557a'
       ctx.stroke()
     }
-    const bewegt = a?.art === 'ziehen' ? a.originale.map((e) => verschoben(e, a.dx, a.dy)) : null
+    const bewegt = a?.art === 'ziehen' ? a.originale.map((e) => verschoben(e, a.dx, a.dy)) : a?.art === 'skalieren' ? vorschau(a) : null
     bewegt?.forEach((e) => zeichne(ctx, e, true))
-    // Auswahlrahmen
+    // Auswahlrahmen mit Griffen (die Griffe nur, solange nichts bewegt wird)
     const gewaehlt = bewegt ?? s.elemente.filter((e) => s.auswahl.includes(e.id) && e.id !== s.editor?.id)
-    const r = gesamtRahmen(gewaehlt)
-    if (r) {
-      const rand = 6 / k.zoom
+    const inhalt = gesamtRahmen(gewaehlt)
+    if (inhalt) {
+      const r = auswahlRahmen(inhalt, k.zoom)
       ctx.setLineDash([8 / k.zoom, 6 / k.zoom])
       ctx.lineWidth = 2 / k.zoom
       ctx.strokeStyle = '#1d5fd1'
-      ctx.strokeRect(r[0] - rand, r[1] - rand, r[2] - r[0] + 2 * rand, r[3] - r[1] + 2 * rand)
+      ctx.strokeRect(r[0], r[1], r[2] - r[0], r[3] - r[1])
+      ctx.setLineDash([])
+      if (!bewegt && s.werkzeug === 'auswahl') {
+        const g = GRIFF_GROESSE / k.zoom
+        ctx.fillStyle = '#ffffff'
+        for (const griff of griffe(r, k.zoom, nurEcken(gewaehlt))) {
+          ctx.fillRect(griff.x - g / 2, griff.y - g / 2, g, g)
+          ctx.strokeRect(griff.x - g / 2, griff.y - g / 2, g, g)
+        }
+      }
+    }
+    // Rahmen, der gerade aufgezogen wird
+    if (a?.art === 'rahmen') {
+      const [l, o, re, u] = rechteckAus(a.x1, a.y1, a.x2, a.y2)
+      ctx.fillStyle = 'rgba(29, 95, 209, 0.08)'
+      ctx.fillRect(l, o, re - l, u - o)
+      ctx.setLineDash([6 / k.zoom, 4 / k.zoom])
+      ctx.lineWidth = 1.5 / k.zoom
+      ctx.strokeStyle = '#1d5fd1'
+      ctx.strokeRect(l, o, re - l, u - o)
       ctx.setLineDash([])
     }
     obenGezeichnet(beginn)
+  }
+
+  /** Auswahlrahmen und Griffe der aktuellen Auswahl (Tafel-Koordinaten) oder null */
+  function auswahlLage() {
+    const s = stand.current
+    const gewaehlt = s.elemente.filter((e) => s.auswahl.includes(e.id))
+    const inhalt = gesamtRahmen(gewaehlt)
+    if (!inhalt) return null
+    const r = auswahlRahmen(inhalt, s.kamera.zoom)
+    return { gewaehlt, inhalt, rahmen: r, griffe: griffe(r, s.kamera.zoom, nurEcken(gewaehlt)) }
   }
   useEffect(zeichneOben)
 
@@ -254,6 +327,48 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     if (neu) setVersteckt(new Set(a.ids))
   }
 
+  /** Aufsetzen mit dem Auswahl-Werkzeug: Griff, Auswahl verschieben, Element wählen oder Rahmen aufziehen */
+  function waehleAus(e: ReactPointerEvent<HTMLDivElement>, tx: number, ty: number, fang: number) {
+    const s = stand.current
+    const zoom = s.kamera.zoom
+    // Ein Doppeltipp zählt nur, wenn direkt davor dasselbe Element bloß angetippt wurde
+    const vorher = letzterTipp.current
+    letzterTipp.current = null
+    const lage = auswahlLage()
+    const griff = lage && !e.shiftKey ? griffBei(lage.griffe, tx, ty, zoom) : null
+    if (griff && lage) {
+      aktiv.current = { art: 'skalieren', zeiger: e.pointerId, griff: griff.name, startX: tx, startY: ty, inhalt: lage.inhalt, originale: lage.gewaehlt, s: null }
+      return
+    }
+    const treffer = oberstesBei(s.elemente, tx, ty, fang)
+    if (e.shiftKey) {
+      // Umschalt: das angetippte Element hinzunehmen oder herausnehmen; auf freier Fläche einen Rahmen dazu aufziehen
+      if (treffer) {
+        zeiger.current.delete(e.pointerId)
+        beiAuswahl(s.auswahl.includes(treffer.id) ? s.auswahl.filter((id) => id !== treffer.id) : [...s.auswahl, treffer.id])
+      } else aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: s.auswahl }
+      return
+    }
+    if (treffer?.art === 'text' && vorher?.id === treffer.id && Date.now() - vorher.zeit < DOPPELTIPP_MS) {
+      zeiger.current.delete(e.pointerId)
+      beiAuswahl([treffer.id])
+      bearbeite(treffer)
+      return
+    }
+    const [l, o, r, u] = lage?.rahmen ?? [0, 0, -1, -1]
+    const imRahmen = tx >= l && tx <= r && ty >= o && ty <= u
+    if (imRahmen && lage) {
+      // Innerhalb des Auswahlrahmens (auch zwischen den Buchstaben) verschiebt Ziehen die ganze Auswahl
+      aktiv.current = { art: 'ziehen', zeiger: e.pointerId, startX: tx, startY: ty, originale: lage.gewaehlt, dx: 0, dy: 0, tipp: treffer }
+    } else if (treffer) {
+      beiAuswahl([treffer.id])
+      aktiv.current = { art: 'ziehen', zeiger: e.pointerId, startX: tx, startY: ty, originale: [treffer], dx: 0, dy: 0, tipp: treffer }
+    } else {
+      if (s.auswahl.length) beiAuswahl([])
+      aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: [] }
+    }
+  }
+
   function runter(e: ReactPointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).tagName === 'TEXTAREA') return // im Eingabefeld: normales Tippen und Markieren
     if (e.pointerType === 'mouse' && e.button !== 0) return
@@ -285,29 +400,17 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const fang = FANG_RADIUS / s.kamera.zoom
     const w = s.werkzeug
 
+    if (w === 'hand' || leer.current) {
+      aktiv.current = { art: 'schwenken', zeiger: e.pointerId, x, y }
+      return
+    }
     if (w === 'radierer') {
       const a: Aktiv = { art: 'radieren', zeiger: e.pointerId, ids: new Set(), x, y }
       aktiv.current = a
       radiere(a)
     } else if (w === 'auswahl') {
-      const treffer = oberstesBei(s.elemente, tx, ty, fang)
-      if (!treffer) {
-        beiAuswahl([])
-        aktiv.current = { art: 'schwenken', zeiger: e.pointerId, x, y }
-      } else {
-        const jetzt = Date.now()
-        const doppelt = letzterTipp.current?.id === treffer.id && jetzt - letzterTipp.current.zeit < DOPPELTIPP_MS
-        letzterTipp.current = { id: treffer.id, zeit: jetzt }
-        if (doppelt && treffer.art === 'text') {
-          zeiger.current.delete(e.pointerId)
-          beiAuswahl([treffer.id])
-          bearbeite(treffer)
-          return
-        }
-        const ids = s.auswahl.includes(treffer.id) ? s.auswahl : [treffer.id]
-        if (ids !== s.auswahl) beiAuswahl(ids)
-        aktiv.current = { art: 'ziehen', zeiger: e.pointerId, startX: tx, startY: ty, originale: s.elemente.filter((el) => ids.includes(el.id)), dx: 0, dy: 0 }
-      }
+      waehleAus(e, tx, ty, fang)
+      if (!aktiv.current) return
     } else if (w === 'text') {
       zeiger.current.delete(e.pointerId)
       const treffer = oberstesBei(s.elemente.filter((el) => el.art === 'text'), tx, ty, fang)
@@ -327,9 +430,26 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     zeichneOben()
   }
 
+  /** Am Laptop zeigt der Mauszeiger, was ein Klick an dieser Stelle täte (Griff, Verschieben) */
+  function zeigeMauszeiger(e: ReactPointerEvent<HTMLDivElement>) {
+    const el = rahmen.current
+    if (!el) return
+    let zeiger = ''
+    const lage = stand.current.werkzeug === 'auswahl' && !leer.current ? auswahlLage() : null
+    if (lage) {
+      const [x, y] = ort(e)
+      const [tx, ty] = zuTafel(stand.current.kamera, x, y)
+      const griff = griffBei(lage.griffe, tx, ty, stand.current.kamera.zoom)
+      const [l, o, r, u] = lage.rahmen
+      zeiger = griff ? GRIFF_ZEIGER[griff.name] : tx >= l && tx <= r && ty >= o && ty <= u ? 'move' : ''
+    }
+    if (el.style.cursor !== zeiger) el.style.cursor = zeiger
+  }
+
   function bewegt(e: ReactPointerEvent<HTMLDivElement>) {
     const z = zeiger.current.get(e.pointerId)
     const a = aktiv.current
+    if (!a && e.pointerType === 'mouse') zeigeMauszeiger(e)
     if (!z || !a) return
     const [x, y] = ort(e)
     z.x = x
@@ -373,6 +493,12 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       a.dx = tx - a.startX
       a.dy = ty - a.startY
       if (erstmals && (a.dx !== 0 || a.dy !== 0)) setVersteckt(new Set(a.originale.map((el) => el.id)))
+    } else if (a.art === 'skalieren') {
+      if (!a.s) setVersteckt(new Set(a.originale.map((el) => el.id)))
+      a.s = skalierung(a.griff, a.inhalt, tx - a.startX, ty - a.startY)
+    } else if (a.art === 'rahmen') {
+      a.x2 = tx
+      a.y2 = ty
     } else if (a.art === 'form') {
       a.form.x2 = tx
       a.form.y2 = ty
@@ -430,8 +556,27 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
         const neu = a.originale.map((el) => verschoben(el, a.dx, a.dy))
         neu.forEach(fest)
         beiErsetzen(a.originale, neu)
+      } else if (!abgebrochen && a.tipp) {
+        // Bloßes Antippen: merken für den Doppeltipp; ein anderes Element im Auswahlrahmen wird allein ausgewählt
+        letzterTipp.current = { id: a.tipp.id, zeit: Date.now() }
+        if (!stand.current.auswahl.includes(a.tipp.id)) beiAuswahl([a.tipp.id])
       }
       setVersteckt(new Set())
+    }
+    if (a.art === 'skalieren') {
+      const s = a.s
+      if (!abgebrochen && s && (Math.abs(s.sx - 1) > 1e-3 || Math.abs(s.sy - 1) > 1e-3)) {
+        const neu = vorschau(a)
+        neu.forEach(fest)
+        beiErsetzen(a.originale, neu)
+      }
+      setVersteckt(new Set())
+    }
+    if (a.art === 'rahmen' && !abgebrochen) {
+      const weit = Math.hypot(a.x2 - a.x1, a.y2 - a.y1) * k.zoom >= TIPP_WEG
+      const r = rechteckAus(a.x1, a.y1, a.x2, a.y2)
+      const neu = weit ? stand.current.elemente.filter((el) => !a.dazu.includes(el.id) && beruehrtRechteck(el, r)).map((el) => el.id) : []
+      if (neu.length) beiAuswahl([...a.dazu, ...neu])
     }
     sofort()
   }
@@ -460,7 +605,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   return (
     <div
       ref={rahmen}
-      className={'zeichenflaeche werkzeug-' + werkzeug}
+      className={'zeichenflaeche werkzeug-' + werkzeug + (leertaste ? ' leertaste' : '')}
       role="img"
       aria-label="Tafel – Zeichenfläche"
       data-testid="zeichenflaeche"

@@ -152,6 +152,88 @@ export function oberstesBei(elemente: Element[], x: number, y: number, r: number
   return null
 }
 
+/** Rechteck [links, oben, rechts, unten] */
+export type Rechteck = [number, number, number, number]
+
+/** Rechteck aus zwei beliebigen Ecken */
+export const rechteckAus = (x1: number, y1: number, x2: number, y2: number): Rechteck => [Math.min(x1, x2), Math.min(y1, y2), Math.max(x1, x2), Math.max(y1, y2)]
+
+const imRechteck = (x: number, y: number, [l, o, r, u]: Rechteck) => x >= l && x <= r && y >= o && y <= u
+const erweitert = ([l, o, r, u]: Rechteck, d: number): Rechteck => [l - d, o - d, r + d, u + d]
+
+/** Berührt die Strecke a–b das Rechteck? (Abschneiden nach Liang und Barsky) */
+export function streckeBeruehrt(ax: number, ay: number, bx: number, by: number, r: Rechteck): boolean {
+  if (imRechteck(ax, ay, r) || imRechteck(bx, by, r)) return true
+  const dx = bx - ax
+  const dy = by - ay
+  const p = [-dx, dx, -dy, dy]
+  const q = [ax - r[0], r[2] - ax, ay - r[1], r[3] - ay]
+  let t0 = 0
+  let t1 = 1
+  for (let i = 0; i < 4; i++) {
+    if (p[i] === 0) {
+      if (q[i] < 0) return false
+      continue
+    }
+    const t = q[i] / p[i]
+    if (p[i] < 0) t0 = Math.max(t0, t)
+    else t1 = Math.min(t1, t)
+    if (t0 > t1) return false
+  }
+  return true
+}
+
+/** Die sichtbaren Linien einer Form als Strecken [x1, y1, x2, y2] (die Ellipse als Vieleck) */
+function formStrecken(f: Form): [number, number, number, number][] {
+  if (f.form === 'linie') return [[f.x1, f.y1, f.x2, f.y2]]
+  if (f.form === 'pfeil') {
+    const [a, b] = pfeilspitze(f)
+    return [[f.x1, f.y1, f.x2, f.y2], [a[0], a[1], f.x2, f.y2], [b[0], b[1], f.x2, f.y2]]
+  }
+  const [l, o, r, u] = rechteckAus(f.x1, f.y1, f.x2, f.y2)
+  if (f.form === 'rechteck') return [[l, o, r, o], [r, o, r, u], [r, u, l, u], [l, u, l, o]]
+  const [mx, my, a, b] = [(l + r) / 2, (o + u) / 2, (r - l) / 2, (u - o) / 2]
+  const n = 32
+  const punkt = (i: number): [number, number] => [mx + a * Math.cos((i / n) * 2 * Math.PI), my + b * Math.sin((i / n) * 2 * Math.PI)]
+  return Array.from({ length: n }, (_, i) => [...punkt(i), ...punkt(i + 1)] as [number, number, number, number])
+}
+
+/**
+ * Berührt das Element das Rechteck (Auswahlrahmen)? Es muss nicht ganz darin liegen. Bei Strichen und Formen
+ * zählt die sichtbare Linie – ein Rahmen im leeren Inneren eines Rechtecks berührt es nicht.
+ */
+export function beruehrtRechteck(e: Element, r: Rechteck): boolean {
+  const [l, o, re, u] = rahmen(e)
+  if (re < r[0] || l > r[2] || u < r[1] || o > r[3]) return false
+  if (e.art === 'text' || e.art === 'bild') return true
+  if (e.art === 'form') {
+    const g = erweitert(r, e.staerke / 2)
+    return formStrecken(e).some(([ax, ay, bx, by]) => streckeBeruehrt(ax, ay, bx, by, g))
+  }
+  const g = erweitert(r, breite(e) / 2)
+  const p = e.punkte
+  if (p.length === 1) return imRechteck(p[0][0], p[0][1], g)
+  for (let i = 1; i < p.length; i++) if (streckeBeruehrt(p[i - 1][0], p[i - 1][1], p[i][0], p[i][1], g)) return true
+  return false
+}
+
+const klemme = (x: number, min: number, max: number) => Math.min(max, Math.max(min, x))
+
+/**
+ * Dasselbe Element, gestreckt um den festen Punkt (ax, ay): waagrecht um sx, senkrecht um sy.
+ * mitStaerke: Strich- und Linienbreite wachsen mit (beim gleichmäßigen Vergrößern am Eckgriff).
+ * Text und Bilder werden nur gleichmäßig verändert (sx gilt dann für beide Richtungen).
+ */
+export function skaliert<T extends Element>(e: T, ax: number, ay: number, sx: number, sy: number, mitStaerke: boolean): T {
+  const x = (v: number) => ax + (v - ax) * sx
+  const y = (v: number) => ay + (v - ay) * sy
+  if (e.art === 'text') return { ...e, x: x(e.x), y: ay + (e.y - ay) * sx, groesse: klemme(e.groesse * sx, 6, 400) }
+  if (e.art === 'bild') return { ...e, x: x(e.x), y: ay + (e.y - ay) * sx, b: e.b * sx, h: e.h * sx }
+  const staerke = mitStaerke ? klemme(e.staerke * sx, 0.5, 200) : e.staerke
+  if (e.art === 'strich') return { ...e, staerke, punkte: e.punkte.map(([px, py, d]) => [x(px), y(py), d]) }
+  return { ...e, staerke, x1: x(e.x1), y1: y(e.y1), x2: x(e.x2), y2: y(e.y2) }
+}
+
 /** Dasselbe Element (gleiche Kennung), um dx/dy verschoben */
 export function verschoben<T extends Element>(e: T, dx: number, dy: number): T {
   if (e.art === 'strich') return { ...e, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]) }

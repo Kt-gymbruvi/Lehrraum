@@ -25,6 +25,7 @@ type Props = {
 
 export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; taste: string }[] = [
   { wert: 'auswahl', name: 'Auswahl', symbol: 'auswahl', taste: 'A' },
+  { wert: 'hand', name: 'Hand', symbol: 'hand', taste: 'H' },
   { wert: 'stift', name: 'Stift', symbol: 'stift', taste: 'S' },
   { wert: 'marker', name: 'Textmarker', symbol: 'marker', taste: 'M' },
   { wert: 'radierer', name: 'Radierer', symbol: 'radierer', taste: 'R' },
