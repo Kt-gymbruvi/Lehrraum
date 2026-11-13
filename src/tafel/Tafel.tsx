@@ -9,8 +9,9 @@ import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { benutzteDateien, FARBEN, MAX_SEITEN, STAERKEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
 import { RADIERER_STANDARD, type Radierer } from '../kern/radieren.ts'
+import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
 import { gehe, kopiere, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
-import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeAlleTafeln, ladeFreieTafel, merkeAblage, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeAlleTafeln, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
@@ -52,6 +53,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const [farbe, setFarbe] = useState<string>(FARBEN[0].wert)
   const [staerke, setStaerke] = useState<number>(STAERKEN[1].wert)
   const [radierer, setRadierer] = useState<Radierer>(RADIERER_STANDARD)
+  const [eigeneFarben, setEigeneFarben] = useState<string[]>([])
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
   /** Die Klasse aus der Adresse gibt es auf diesem Gerät nicht */
@@ -247,6 +249,24 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     if (werkzeug === 'radierer') setWerkzeug('stift')
     const andere = gewaehlte.filter((e): e is Exclude<Element, Bild> => e.art !== 'bild' && e.farbe !== f)
     if (andere.length) beiErsetzen(andere, andere.map((e) => ({ ...e, farbe: f })))
+  }
+  // Eigene Farbplätze (je Gerät): laden; eine Farbe aus dem Farbwähler kommt vorne dazu
+  useEffect(() => {
+    let weg = false
+    ladeFarbplaetze()
+      .then((f) => !weg && setEigeneFarben((jetzt) => (jetzt.length ? jetzt : f)))
+      .catch(() => undefined)
+    return () => {
+      weg = true
+    }
+  }, [])
+  const waehleEigeneFarbe = (f: string) => {
+    if (!istFarbwert(f)) return
+    waehleFarbe(normiereFarbe(f))
+    const neu = mitEigenerFarbe(eigeneFarben, f)
+    if (neu === eigeneFarben) return
+    setEigeneFarben(neu)
+    merkeFarbplaetze(neu).catch(() => setMeldung({ text: 'Die Farbe ließ sich auf diesem Gerät nicht merken.', fehler: true }))
   }
   /** Stärke wählen: gilt für Neues – und ändert Strichbreite bzw. Schriftgröße der Auswahl */
   const waehleStaerke = (s: number) => {
@@ -528,6 +548,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           staerke={staerke}
           radierer={radierer}
           beiRadierer={setRadierer}
+          eigeneFarben={eigeneFarben}
+          beiEigeneFarbe={waehleEigeneFarbe}
           kannZurueck={verlauf.zurueck.length > 0}
           kannVor={verlauf.vor.length > 0}
           leer={seite.elemente.length === 0}

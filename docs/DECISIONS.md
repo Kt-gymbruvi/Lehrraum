@@ -3,6 +3,14 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Stift, Teil 1: mehr Farben, eigene Farbplätze, Stärke-Regler (S1, S2, W1)
+- **Aufteilung:** Teil 1 baut S1, S2 und den Knopf „Mehr“ (W1). Das Begradigen durch Halten (S3, Formerkennung) folgt als Teil 2. Den Laserpointer (zweites neues Werkzeug aus W1) bringt Etappe 5.
+- **Ein Feld „Mehr“ für Farben und Stärke**, als siebter Knopf in der Farbgruppe; es öffnet sich wie das Radierer-Feld rechts neben der Leiste und schließt sich beim Antippen außerhalb, mit Escape und beim Werkzeugwechsel. Liegt Farbe oder Stärke außerhalb der Leiste, ist „Mehr“ gedrückt und zeigt einen Punkt in Farbe und Stärke (S1, S2: „erkennbar“, „als Punkt“).
+- **Palette mit 18 Farben**, die sechs der Leiste zuerst, dazu u. a. Gelb, Hellgrün, Rosa, Hellblau (Textmarker) und Weiß (für Bilder und PDF-Seiten).
+- **Eigene Farbplätze nur aus dem Farbwähler des Geräts** (Palettenfarben brauchen keinen Platz), neueste vorne, höchstens sechs, gespeichert in IndexedDB (Lager `einstellungen`, Schlüssel `farbplaetze`, Schema `lehrraum/farbplaetze` Version 1, beim Laden geprüft). Verworfen: `localStorage` – die Tafel speichert alles Übrige ebenfalls in IndexedDB.
+- **Farbwähler und Regler wirken erst beim Loslassen** (Ereignis „change“ des Browsers), sonst entstünde bei jeder Bewegung ein Schritt im Verlauf, wenn etwas ausgewählt ist. Der Regler zeigt den Wert schon beim Ziehen.
+- **Leiste bei 700 px sichtbarer Höhe:** Mit dem Knopf „Mehr“ ragte sie 27 px über den Rand. Unter 47rem Höhe werden Abstände und Farbknöpfe etwas dichter (Farbknöpfe 32 statt 36 px hoch); dann passt sie bei 1024 × 700 genau. Am echten iPad nachsehen (Spezifikation 7.2).
+
 ## 2026-11-13 – Radierer, Teil 1: Schwamm, Teilstücke, Größen (R1–R3)
 - **Aufteilung:** Teil 1 baut R1–R3. R4 (Radieren mit Faust oder Handrücken) folgt als Teil 2 erst nach der Messung am SMART Board – ob und wie die Faust beim Browser ankommt und wie sie sich vom Handballen am iPad unterscheiden lässt, ist noch offen (Spezifikation 7.1).
 - **Schnitt genau am Rand des Schwamms:** Jede Teilstrecke eines Strichs wird gegen die Bahn des Schwamms seit der letzten Meldung (Kreis, entlang einer Strecke gezogen) geprüft; der Abstand ändert sich entlang einer Strecke konvex, darum lässt sich der überwischte Teil genau eingrenzen und dort ein Schnittpunkt einsetzen (Druck dazwischen gemittelt). So bleiben die Reste an ihrem Platz, auch bei Strichen mit wenigen Punkten und schneller Bewegung. Verworfen: nur Punkte wegnehmen (Lücken je nach Punktabstand, lange gerade Stücke würden ganz verschwinden) und alle Striche vorher fein unterteilen (macht gespeicherte Tafeln größer).

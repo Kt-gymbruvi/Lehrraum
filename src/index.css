@@ -273,6 +273,60 @@ body {
   background: var(--leiste-2);
   box-shadow: inset 0 0 0 2px var(--gewaehlt);
 }
+/* Feld „Mehr“: Palette, eigene Farben, Regler für die Stärke */
+.aufklappfeld .feld-titel {
+  margin: 0.15rem 0.3rem 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.aufklappfeld .palette {
+  display: grid;
+  grid-template-columns: repeat(6, 2.75rem);
+  gap: 0.15rem;
+}
+.farb-knopf.klein {
+  width: 2.75rem;
+  height: 2.75rem;
+}
+.farb-knopf.klein span {
+  width: 1.6rem;
+  height: 1.6rem;
+  border: 1px solid rgb(11 31 77 / 0.25); /* auch Weiß bleibt sichtbar */
+}
+.farb-knopf.farbwahl {
+  position: relative;
+  color: var(--text);
+  border: 1px dashed var(--linie);
+}
+.farb-knopf.farbwahl input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+.farb-knopf.mehr {
+  color: var(--text);
+}
+.aufklappfeld .regler-reihe {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0 0.3rem;
+}
+.aufklappfeld .regler-reihe input {
+  flex: 1;
+  height: var(--tipp); /* große Trefferfläche für Finger und Stift */
+  accent-color: var(--gewaehlt);
+}
+.aufklappfeld .punkt-feld {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.5rem;
+  height: 2.5rem;
+}
 
 /* ---------- Zeichenfläche ---------- */
 .tafel-flaeche {
@@ -301,6 +355,18 @@ body {
   height: 100%;
 }
 
+/* iPad quer mit Browserleisten (sichtbare Höhe um 700 px): Abstände und Farbknöpfe etwas dichter, damit die Leiste ohne Rollen passt */
+@media (max-height: 47rem) {
+  .werkzeugleiste.links {
+    gap: 0.3rem;
+  }
+  .werkzeugleiste.links .gruppe {
+    padding-bottom: 0.3rem;
+  }
+  .werkzeugleiste.links .farb-knopf {
+    height: 2rem;
+  }
+}
 /* Niedrige Bildschirme (Handy quer): kleinere Knöpfe, damit die Leiste passt */
 @media (max-height: 34rem) {
   :root {

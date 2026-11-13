@@ -1,10 +1,12 @@
 // Lokaler Speicher der Tafel: IndexedDB auf diesem Gerät. Nichts davon wird an einen Server geschickt.
 //   tafeln         – Tafelbilder (Schlüssel: id)
-//   einstellungen  – einzelne Werte, z. B. welche Tafel zuletzt offen war, und die Kopie zum Einfügen („ablage“)
+//   einstellungen  – einzelne Werte, z. B. welche Tafel zuletzt offen war, die Kopie zum Einfügen („ablage“)
+//                    und die eigenen Farbplätze („farbplaetze“)
 //   dateien        – Bilder und importierte PDF-Seiten (siehe dateien.ts)
 //   klassen        – Klassen der Lehrkraft (Schlüssel: id)
 // Die Startseite der Plattform liest „klassen“ mit (gleiche Adresse, gleiche Datenbank) – nur lesend.
 import { pruefeAblage, type Ablage } from '../kern/ablage.ts'
+import { neueFarbplaetze, pruefeFarbplaetze } from '../kern/farben.ts'
 import { geaendert, klassenName, pruefeKlasse, type Klasse } from '../kern/klassen.ts'
 import { neuesTafelbild, pruefeTafel, type Tafelbild } from '../kern/modell.ts'
 
@@ -106,6 +108,16 @@ export async function ladeAblage(): Promise<Ablage | null> {
 /** Ersetzt die vorige Kopie */
 export async function merkeAblage(a: Ablage): Promise<void> {
   await vorgang('einstellungen', 'readwrite', (s) => s.put(a, ABLAGE))
+}
+
+// ---------- Eigene Farbplätze (je Gerät, für alle Tafeln) ----------
+const FARBPLAETZE = 'farbplaetze'
+
+export async function ladeFarbplaetze(): Promise<string[]> {
+  return pruefeFarbplaetze(await vorgang<unknown>('einstellungen', 'readonly', (s) => s.get(FARBPLAETZE)))
+}
+export async function merkeFarbplaetze(farben: string[]): Promise<void> {
+  await vorgang('einstellungen', 'readwrite', (s) => s.put(neueFarbplaetze(farben), FARBPLAETZE))
 }
 
 // ---------- Klassen ----------

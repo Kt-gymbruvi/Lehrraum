@@ -1,8 +1,19 @@
 # Projektstand – Lehrraum
 
-Stand: 13.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 13.11.2026 mit Teil 1 des Radierers) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 12 Testdateien, 175 Tests grün (`npm test`); Build grün (`npm run build`).
+Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 13.11.2026 mit Teil 1 des Radierers) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Tests: 13 Testdateien, 182 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+Lokal fertig, **noch nicht veröffentlicht:** Etappe 4 „Stift“, Teil 1 – mehr Farben, eigene Farbplätze, Stärke-Regler (siehe unten).
+
+## Stift, Teil 1: mehr Farben, eigene Farbplätze, Stärke-Regler (Spezifikation S1, S2, W1) – lokal, nicht veröffentlicht
+- **Knopf „Mehr“** als siebter Knopf bei den Farben: öffnet rechts neben der Leiste ein Feld mit Palette, eigenen Farben und Regler. Es schließt sich beim Antippen der Tafel, mit Escape und beim Werkzeugwechsel.
+- **Palette mit 18 Farben** (die sechs der Leiste, dazu Violett, Weinrot, Petrol, Braun, Grau, Weiß, Gelb, Hellgrün, Rosa, Hellblau, Türkis, Lachs). Eine Farbe daraus wirkt wie eine Leistenfarbe: auf Neues und auf die Auswahl.
+- **Eigene Farben:** „+“ öffnet den Farbwähler des Geräts; die gewählte Farbe gilt sofort und kommt als eigener Platz dazu (höchstens sechs je Gerät, die neueste verdrängt die älteste, bleibt nach dem Neuladen).
+- **Regler für die Stärke** von 1 bis 30 (die drei Knöpfe entsprechen 3, 6, 12); gilt für Neues und beim Loslassen für die Auswahl (ein Schritt im Verlauf). Bei einem Zwischenwert ist keiner der drei Knöpfe gedrückt. Die Schriftgröße neuer Texte richtet sich weiter nach den drei Stufen.
+- **In der Leiste erkennbar:** Liegt Farbe oder Stärke außerhalb der Leiste, ist „Mehr“ gedrückt und zeigt einen Punkt in Farbe und Stärke.
+- **Leiste bei 700 px Höhe** (iPad quer): Abstände und Farbknöpfe werden etwas dichter, dann passt alles ohne Rollen (im Browser bei 1024 × 700 gemessen).
+- Logik in `src/kern/farben.ts`; eigene Farben in IndexedDB (Lager `einstellungen`, Schlüssel `farbplaetze`, Schema `lehrraum/farbplaetze` Version 1). Kein neues Tafel-Datenmodell.
+- **S3 (Begradigen durch Halten) folgt als Teil 2.**
 
 ## Radierer, Teil 1: Schwamm, Teilstücke, Größen (Spezifikation R1–R3) – veröffentlicht am 13.11.2026
 - **Zwei Radierer:** Der Schwamm (Voreinstellung) wischt nur die überfahrenen Teile von Stift- und Textmarkerstrichen weg; Text, Formen und Bilder bleiben stehen. Der Element-Radierer entfernt wie bisher alles Berührte als Ganzes.
@@ -94,6 +105,8 @@ Tests: 12 Testdateien, 175 Tests grün (`npm test`); Build grün (`npm run build
 - Veröffentlichte Fassung am 13.11.2026 geprüft (Desktop-Browser): Lauf erfolgreich, die Tafel lädt die neue Fassung (Knopf „Einfügen“ links), keine Fehler in der Konsole.
 - Etappe „Radierer“, Teil 1, automatisch: Teilen in der Mitte (Schnittpunkte, Farbe, Stärke, neue Kennungen), unberührt und gestreift, schnelle Bewegung über eine lange Strecke, kurze Reste und Punkte, Druck an den Schnittenden, Gruppe, Textmarker-Breite, Wischzug mit mehrfachem Schnitt und ganz verschwundenem Strich als ein Befehl (Reihenfolge, Zurücknehmen, Wiederholen). Bedienung: Schwamm voreingestellt (teilt, Text und Rechteck bleiben, ein Rückgängig-Schritt), Feld öffnen/schließen (Tafel, Escape, anderes Werkzeug), Größen (klein und mittel verfehlen, groß wischt ganz weg), Element-Radierer. Von Hand im Browser (Desktop, Maus): Stift- und Textmarkerstriche quer durchgewischt, großer Schwamm wischt einen Strich ganz weg, Element-Radierer nimmt Text, Rückgängig, Kreis beim Schweben, Feld neben der Leiste, keine Fehler in der Konsole. Veröffentlichte Fassung geprüft: Lauf erfolgreich, Feld mit Art und Größe öffnet sich, keine Fehler in der Konsole.
 - **Nicht getestet:** Schwamm mit Finger und Stift (iPad, SMART Board), Aussehen der Schnittenden bei echten, druckempfindlichen Stiftstrichen, Tempo beim Wischen auf sehr vollen Seiten, das Feld am iPad und am Board (Lage, Größe der Knöpfe).
+- Etappe „Stift“, Teil 1, automatisch: Palette (18 gültige, verschiedene Farben), eigene Farbplätze (vorne, ohne Doppel, höchstens sechs, Palettenfarben ohne Platz), Prüfung der gespeicherten Plätze, Grenzen des Reglers. Bedienung: Palettenfarbe auf Auswahl und Neues (ein Rückgängig-Schritt je Änderung), „Mehr“ gedrückt bei fremder Farbe, Farbwähler legt Platz an und bleibt nach dem Neuladen, Feld schließt mit Tafel und Escape, Regler-Zwischenwert auf Auswahl und Neues, kein Stärke-Knopf gedrückt. Von Hand im Browser (Desktop, Maus): Feld geöffnet, Violett und Stärke per Regler gewählt und damit gezeichnet, „Mehr“ zeigt den Punkt; Farbwähler per Skript nachgestellt, Platz nach dem Neuladen da; Höhe der Leiste bei 1024 × 700 gemessen.
+- **Nicht getestet:** der echte Farbwähler des Geräts (iPad, Windows am Board – im Test nur nachgestellt), der Regler mit Finger und Stift, das Feld am iPad und am Board, die Leiste am echten iPad im Querformat.
 - **Nicht getestet:** PDF-Export mit gedrehten Elementen als echte Datei; Drehen mit Finger und Stift; Auswahlleiste mit Finger und Stift und am SMART Board (Lage am Rand, Größe der Knöpfe); Strg + V mit einem echten Bild aus einem anderen Programm nach einer Kopie in der Tafel; Einfügen in einer zweiten, gleichzeitig offenen Tafel.
 - **Nicht getestet – wichtig:** die Auswahl mit Finger und Stift (iPad, SMART Board): Griffe treffen, Rahmen aufziehen. Nach einem Stift verschiebt ein Finger auf dem iPad weiterhin nur die Ansicht – Griffe und Auswahl gehen dann nur mit dem Stift.
 - **Nicht getestet – wichtig:** die Etappe „Schreiben am SMART Board“ am SMART Board selbst und am iPad (Schreibgefühl, Verzögerung, ob das iPad unverändert gut läuft).
@@ -145,7 +158,9 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
 3. **Radierer** (R1–R4) in zwei Teilen:
    - Teil 1 (veröffentlicht am 13.11.2026, am Gerät noch nicht geprüft): Schwamm und Element-Radierer, Teilstücke, drei Größen (R1–R3).
    - Teil 2: Radieren mit Handrücken oder Faust (R4) – erst nach der Messung am SMART Board (siehe Punkt 1).
-4. **Stift** (S1–S3, W1): mehr Farben, Regler für die Stärke, Begradigen durch Halten.
+4. **Stift** (S1–S3, W1) in zwei Teilen:
+   - Teil 1 (lokal fertig, nicht veröffentlicht): mehr Farben, eigene Farbplätze, Regler für die Stärke, Knopf „Mehr“.
+   - Teil 2: Begradigen durch Halten (S3).
 5. **Laserpointer und Einstellungen merken** (L1, E1).
 6. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
 7. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.
