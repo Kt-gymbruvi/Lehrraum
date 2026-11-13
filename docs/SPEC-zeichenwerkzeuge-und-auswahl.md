@@ -167,7 +167,7 @@ Befund im Code zum SMART Board (Vermutung, am Gerät zu bestätigen): Bei jeder 
 ## 5. Reihenfolge der Etappen
 
 1. **Schreiben am SMART Board** (P1, P2) – zuerst, weil es den täglichen Gebrauch betrifft. **[Entschieden]** Stand 12.11.2026: erster Teil veröffentlicht (gebündeltes Zeichnen, Prüfansicht `#/pruefen`), am SMART Board noch nicht gemessen; P1 gilt erst nach dem Test am Gerät als erfüllt.
-2. **Auswahl** (A1–A8, H1, Datenmodell Version 3). **[Entschieden]** In drei Teilen (13.11.2026): Teil 1 A1–A3 und H1 (veröffentlicht am 13.11.2026), Teil 2 A4 mit Datenmodell Version 3 (lokal fertig, nicht veröffentlicht), Teil 3 A5–A8 (lokal fertig, nicht veröffentlicht; die Auswahlleiste hat zusätzlich „Ausschneiden“).
+2. **Auswahl** (A1–A8, H1, Datenmodell Version 3). **[Entschieden]** In drei Teilen (13.11.2026): Teil 1 A1–A3 und H1 (veröffentlicht am 13.11.2026), Teil 2 A4 mit Datenmodell Version 3 und Teil 3 A5–A8 (beide veröffentlicht am 13.11.2026; die Auswahlleiste hat zusätzlich „Ausschneiden“).
 3. **Radierer** (R1–R4).
 4. **Stift** (S1–S3, W1).
 5. **Laserpointer und Einstellungen merken** (L1, E1).
