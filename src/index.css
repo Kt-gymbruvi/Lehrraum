@@ -216,6 +216,41 @@ body {
 .leisten-knopf.schmal {
   width: calc(var(--tipp) * 2 / 3);
 }
+/* Knopf mit eigenem Aufklappfeld (Radierer): kleines Dreieck unten rechts */
+.leisten-knopf.hat-feld {
+  position: relative;
+}
+.leisten-knopf.hat-feld::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  bottom: 6px;
+  border: 4px solid transparent;
+  border-right-color: currentColor;
+  border-bottom-color: currentColor;
+  opacity: 0.6;
+}
+.aufklappfeld {
+  position: fixed;
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.4rem;
+  background: var(--leiste);
+  color: var(--text);
+  border: 1px solid var(--linie);
+  border-radius: 1.1rem;
+  box-shadow: 0 6px 20px rgba(11, 31, 77, 0.18);
+}
+.aufklappfeld .feld-reihe {
+  display: flex;
+  gap: 0.2rem;
+}
+.radierer-kreis {
+  border: 2px solid currentColor;
+  border-radius: 50%;
+}
 .farb-knopf {
   display: flex;
   align-items: center;

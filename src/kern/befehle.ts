@@ -10,6 +10,11 @@ export type Befehl =
   | { art: 'ersetzen'; vorher: Element[]; nachher: Element[] }
   /** Reihenfolge ändern (was später kommt, liegt oben): Kennungen aller Elemente vorher und nachher */
   | { art: 'ordnen'; vorher: string[]; nachher: string[] }
+  /**
+   * Elemente an ihrer Stelle durch Teile ersetzen (Schwamm: ein Strich zerfällt in Reststücke, vielleicht keine).
+   * stelle: wo das Element vorher lag – zum Wiederherstellen, auch wenn kein Teil übrig blieb.
+   */
+  | { art: 'zerlegen'; eintraege: { stelle: number; vorher: Element; nachher: Element[] }[] }
 
 export type Verlauf = { zurueck: Befehl[]; vor: Befehl[] }
 
@@ -54,8 +59,21 @@ export function anwenden(elemente: Element[], b: Befehl): Element[] {
   if (b.art === 'hinzufuegen') return [...elemente, ...b.elemente]
   if (b.art === 'ersetzen') return tausche(elemente, b.nachher)
   if (b.art === 'ordnen') return ordne(elemente, b.nachher)
+  if (b.art === 'zerlegen') {
+    const teile = new Map(b.eintraege.map((e) => [e.vorher.id, e.nachher]))
+    return elemente.flatMap((e) => teile.get(e.id) ?? [e])
+  }
   const weg = new Set(b.eintraege.map((e) => e.element.id))
   return elemente.filter((e) => !weg.has(e.id))
+}
+
+/** Setzt Elemente wieder an ihre alte Stelle (aufsteigend, damit die Stellen stimmen) */
+function einsetzen(elemente: Element[], eintraege: { stelle: number; element: Element }[]): Element[] {
+  const neu = [...elemente]
+  for (const { stelle, element } of [...eintraege].sort((a, c) => a.stelle - c.stelle)) {
+    neu.splice(Math.min(stelle, neu.length), 0, element)
+  }
+  return neu
 }
 
 export function zuruecknehmen(elemente: Element[], b: Befehl): Element[] {
@@ -65,12 +83,15 @@ export function zuruecknehmen(elemente: Element[], b: Befehl): Element[] {
   }
   if (b.art === 'ersetzen') return tausche(elemente, b.vorher)
   if (b.art === 'ordnen') return ordne(elemente, b.vorher)
-  // Entferntes wieder an die alte Stelle setzen (aufsteigend, damit die Stellen stimmen)
-  const neu = [...elemente]
-  for (const { stelle, element } of [...b.eintraege].sort((a, c) => a.stelle - c.stelle)) {
-    neu.splice(Math.min(stelle, neu.length), 0, element)
+  if (b.art === 'zerlegen') {
+    // Teile weg, dann die ursprünglichen Elemente wieder an ihre Stelle
+    const weg = new Set(b.eintraege.flatMap((e) => e.nachher.map((t) => t.id)))
+    return einsetzen(
+      elemente.filter((e) => !weg.has(e.id)),
+      b.eintraege.map((e) => ({ stelle: e.stelle, element: e.vorher })),
+    )
   }
-  return neu
+  return einsetzen(elemente, b.eintraege)
 }
 
 /** Führt einen neuen Befehl aus. Damit verfällt alles, was man „wiederholen“ könnte. */

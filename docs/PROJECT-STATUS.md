@@ -1,8 +1,17 @@
 # Projektstand – Lehrraum
 
 Stand: 13.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 13.11.2026 mit Teil 2 und Teil 3 der Auswahl) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 11 Testdateien, 163 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 12 Testdateien, 175 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+Lokal fertig, **noch nicht veröffentlicht:** Etappe 3 „Radierer“, Teil 1 – Schwamm, Teilstücke, Größen (siehe unten).
+
+## Radierer, Teil 1: Schwamm, Teilstücke, Größen (Spezifikation R1–R3) – lokal, nicht veröffentlicht
+- **Zwei Radierer:** Der Schwamm (Voreinstellung) wischt nur die überfahrenen Teile von Stift- und Textmarkerstrichen weg; Text, Formen und Bilder bleiben stehen. Der Element-Radierer entfernt wie bisher alles Berührte als Ganzes.
+- **Teilstücke:** Ein in der Mitte überwischter Strich zerfällt in Striche mit gleicher Farbe, Stärke und Gruppe; die Reste bleiben an ihrem Platz und in der Reihenfolge (auch Textmarker über Text). Geschnitten wird genau am Rand des Schwamms, auch bei schneller Bewegung. Reste, die kürzer als die Strichbreite sind, verschwinden. Ein Wischzug ist ein Schritt im Verlauf. Die Reste lassen sich einzeln auswählen.
+- **Drei Größen** (klein, mittel, groß; 8, 18, 40 px Radius in Bildschirm-Maß, unabhängig vom Zoom). Ein Kreis zeigt die Größe beim Radieren und wenn Maus oder Stift über der Tafel schweben.
+- **Bedienung:** Noch einmal auf den gewählten Radierer tippen öffnet rechts neben der Leiste ein Feld mit Art und Größe (kleines Dreieck am Knopf). Es schließt sich beim Antippen der Tafel, mit Escape und beim Werkzeugwechsel. Der Knopf zeigt Schwamm oder Radierer.
+- Logik in `src/kern/radieren.ts` (`wische`, Wischzug, `wischBefehl`) und neuer Befehl `zerlegen` in `src/kern/befehle.ts`; kein neues Datenmodell. Art und Größe werden erst mit E1 (Etappe 5) gemerkt.
+- **R4 (Radieren mit Faust oder Handrücken) folgt als Teil 2** nach der Messung am SMART Board.
 
 ## Auswahl, Teil 3: Kopieren, Gruppieren, Reihenfolge, Auswahlleiste (Spezifikation A5–A8) – veröffentlicht am 13.11.2026
 - **Auswahlleiste:** Bei einer Auswahl steht unter ihr (sonst darüber, über dem Drehgriff) eine kleine Leiste: Kopieren, Ausschneiden, Duplizieren, Gruppieren bzw. Gruppe lösen (ab zwei Elementen), Ganz nach vorne, Ganz nach hinten, Löschen. Sie verdeckt weder Auswahl noch Griffe, bleibt im sichtbaren Bereich und verschwindet, solange auf der Fläche gezogen wird (Verschieben, Drehen, Größe). Knöpfe so groß wie in der linken Leiste.
@@ -84,6 +93,8 @@ Tests: 11 Testdateien, 163 Tests grün (`npm test`); Build grün (`npm run build
 - Etappe „Auswahl“, Teil 2, automatisch: Winkel (Richtung, Normieren), Drehen von Strich, Linie, Text, Rechteck, Ellipse, Bild, Dreieck; Rahmen und Treffer gedrehter Elemente (Radierer, Antippen, Auswahlrahmen), Dreieck-Ecken und -Rand, nur Eckgriffe bei gedrehten Formen, Strecken gedrehter Formen, Einrasten (45°, 15°-Schritte, am Gesamtwinkel), Version 2 → 3, Prüfung von Drehung/Gruppe/Dreieck, Kopien. Bedienung: Drehgriff dreht um 90° (eingerastet), ein Rückgängig-Schritt, Antippen an alter und neuer Stelle, gedrehten Text ändern. Von Hand im Browser (Desktop, Maus): Rechteck um rund 30° und Text um −45° gedreht, Griffe und Rahmen danach.
 - Etappe „Auswahl“, Teil 3, automatisch: Prüfung der Kopie, Einfügen in der Mitte mit neuen Kennungen und eigenen Gruppen, Gruppen wählen/bilden/lösen, nach vorne/hinten mit Zurücknehmen. Bedienung: Kopieren an der Auswahl und „Einfügen“ links (Mitte, ausgewählt, ein Rückgängig-Schritt), Ausschneiden, Strg + C/X/V mit und ohne Ereignis des Browsers (genau einmal eingefügt), Hinweis in der Zwischenablage, Einfügen in der Tafel einer Klasse, kopiertes Bild beim Aufräumen behalten, Gruppieren und Antippen eines Mitglieds, Strg + G, Rahmen erweitert auf die Gruppe, Radierer nimmt ein Mitglied, Reihenfolge. Von Hand im Browser (Desktop, Maus): Auswahlleiste unter der Auswahl, Gruppieren, Kopieren + Einfügen (als Gruppe, Mitte), Strg + C/V, Leiste verschwindet beim Ziehen.
 - Veröffentlichte Fassung am 13.11.2026 geprüft (Desktop-Browser): Lauf erfolgreich, die Tafel lädt die neue Fassung (Knopf „Einfügen“ links), keine Fehler in der Konsole.
+- Etappe „Radierer“, Teil 1, automatisch: Teilen in der Mitte (Schnittpunkte, Farbe, Stärke, neue Kennungen), unberührt und gestreift, schnelle Bewegung über eine lange Strecke, kurze Reste und Punkte, Druck an den Schnittenden, Gruppe, Textmarker-Breite, Wischzug mit mehrfachem Schnitt und ganz verschwundenem Strich als ein Befehl (Reihenfolge, Zurücknehmen, Wiederholen). Bedienung: Schwamm voreingestellt (teilt, Text und Rechteck bleiben, ein Rückgängig-Schritt), Feld öffnen/schließen (Tafel, Escape, anderes Werkzeug), Größen (klein und mittel verfehlen, groß wischt ganz weg), Element-Radierer. Von Hand im Browser (Desktop, Maus): Stift- und Textmarkerstriche quer durchgewischt, großer Schwamm wischt einen Strich ganz weg, Element-Radierer nimmt Text, Rückgängig, Kreis beim Schweben, Feld neben der Leiste, keine Fehler in der Konsole.
+- **Nicht getestet:** Schwamm mit Finger und Stift (iPad, SMART Board), Aussehen der Schnittenden bei echten, druckempfindlichen Stiftstrichen, Tempo beim Wischen auf sehr vollen Seiten, das Feld am iPad und am Board (Lage, Größe der Knöpfe).
 - **Nicht getestet:** PDF-Export mit gedrehten Elementen als echte Datei; Drehen mit Finger und Stift; Auswahlleiste mit Finger und Stift und am SMART Board (Lage am Rand, Größe der Knöpfe); Strg + V mit einem echten Bild aus einem anderen Programm nach einer Kopie in der Tafel; Einfügen in einer zweiten, gleichzeitig offenen Tafel.
 - **Nicht getestet – wichtig:** die Auswahl mit Finger und Stift (iPad, SMART Board): Griffe treffen, Rahmen aufziehen. Nach einem Stift verschiebt ein Finger auf dem iPad weiterhin nur die Ansicht – Griffe und Auswahl gehen dann nur mit dem Stift.
 - **Nicht getestet – wichtig:** die Etappe „Schreiben am SMART Board“ am SMART Board selbst und am iPad (Schreibgefühl, Verzögerung, ob das iPad unverändert gut läuft).
@@ -104,7 +115,7 @@ Tests: 11 Testdateien, 163 Tests grün (`npm test`); Build grün (`npm run build
 - Die Leertaste verschiebt am Laptop die Ansicht; einen Knopf in der Leiste löst sie deshalb nicht mehr aus (Eingabetaste geht weiter).
 - Seiten: keine Miniaturen; Seiten löschen und umsortieren lässt sich nicht rückgängig machen (deshalb die Rückfrage). Alle Seiten teilen sich eine Ansicht (Zoom/Verschiebung); Seiten ohne PDF haben kein sichtbares Seitenformat.
 - Die Größe von Text wird für Auswahl und Radierer geschätzt; bei sehr breiten oder schmalen Buchstaben sitzt der Auswahlrahmen nicht genau.
-- Der Radierer löscht ganze Elemente, keine Teilstücke. Rechteck und Ellipse werden nur am Rand getroffen.
+- Der Schwamm wischt nur Striche; Text, Formen und Bilder nimmt nur der Element-Radierer (als Ganzes). Rechteck und Ellipse werden nur am Rand getroffen. Art und Größe des Radierers gelten bis zum Neuladen (danach Schwamm, mittel).
 - Beim Radieren, Verschieben, Zoomen und Rückgängig werden alle Striche neu gezeichnet (höchstens einmal je Bildwechsel) – bei sehr vollen Tafeln eventuell zu langsam (am Gerät prüfen). Nur ein neuer Strich wird ergänzt, ohne alles neu zu zeichnen.
 - Der entstehende Strich wird je Bild ganz neu berechnet; bei sehr langen Strichen wächst der Aufwand mit der Länge.
 - Die Prüfansicht misst nur die Rechenzeit der Tafel, nicht die Verzögerung des Displays selbst; „Längster Hänger“ und „Wartezeit der Eingabe“ zeigen aber, wenn das Gerät nicht hinterherkommt. Was SMART Ink abfängt, sieht sie gar nicht.
@@ -132,7 +143,9 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
    - Teil 1 (veröffentlicht am 13.11.2026, am Gerät noch nicht geprüft): Rahmen, mehrere Elemente, Größe ändern, Hand-Werkzeug (A1–A3, H1).
    - Teil 2 (veröffentlicht am 13.11.2026, am Gerät noch nicht geprüft): Drehen (A4) mit Datenmodell Version 3 (`drehung`, `gruppe`, Formart `dreieck`).
    - Teil 3 (veröffentlicht am 13.11.2026, am Gerät noch nicht geprüft): Kopieren/Einfügen auch zwischen Tafeln (A5), Gruppieren (A6), Reihenfolge (A7), Auswahlleiste (A8).
-3. **Radierer** (R1–R4): Schwamm und Element-Radierer, drei Größen, Radieren mit Handrücken oder Faust.
+3. **Radierer** (R1–R4) in zwei Teilen:
+   - Teil 1 (lokal fertig, nicht veröffentlicht): Schwamm und Element-Radierer, Teilstücke, drei Größen (R1–R3).
+   - Teil 2: Radieren mit Handrücken oder Faust (R4) – erst nach der Messung am SMART Board (siehe Punkt 1).
 4. **Stift** (S1–S3, W1): mehr Farben, Regler für die Stärke, Begradigen durch Halten.
 5. **Laserpointer und Einstellungen merken** (L1, E1).
 6. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).

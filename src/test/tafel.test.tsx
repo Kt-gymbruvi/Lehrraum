@@ -95,6 +95,8 @@ describe('Tafel', () => {
     ziehe([10, 10], [200, 10])
     ziehe([10, 300], [200, 300])
     await nutzer.click(screen.getByRole('button', { name: 'Radierer' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Radierer' })) // noch einmal: Art und Größe
+    await nutzer.click(screen.getByRole('button', { name: 'Element-Radierer' }))
     ziehe([100, 0], [100, 40]) // quer über den ersten Strich
     await waitFor(async () => expect(await gespeichert()).toHaveLength(1))
     expect((await gespeichert())[0].punkte[0][1]).toBe(300)

@@ -8,6 +8,7 @@ import { ausfuehren, entfernenBefehl, leererVerlauf, ordnenBefehl, rueckgaengig,
 import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { benutzteDateien, FARBEN, MAX_SEITEN, STAERKEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
+import { RADIERER_STANDARD, type Radierer } from '../kern/radieren.ts'
 import { gehe, kopiere, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
 import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeAlleTafeln, ladeFreieTafel, merkeAblage, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
@@ -50,6 +51,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const [werkzeug, setWerkzeug] = useState<Werkzeug>('stift')
   const [farbe, setFarbe] = useState<string>(FARBEN[0].wert)
   const [staerke, setStaerke] = useState<number>(STAERKEN[1].wert)
+  const [radierer, setRadierer] = useState<Radierer>(RADIERER_STANDARD)
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
   /** Die Klasse aus der Adresse gibt es auf diesem Gerät nicht */
@@ -524,6 +526,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           werkzeug={werkzeug}
           farbe={farbe}
           staerke={staerke}
+          radierer={radierer}
+          beiRadierer={setRadierer}
           kannZurueck={verlauf.zurueck.length > 0}
           kannVor={verlauf.vor.length > 0}
           leer={seite.elemente.length === 0}
@@ -561,9 +565,11 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
               werkzeug={werkzeug}
               farbe={farbe}
               staerke={staerke}
+              radierer={radierer}
               auswahl={auswahl}
               beiHinzu={beiHinzu}
               beiRadieren={entferne}
+              beiBefehl={fuehreAus}
               beiErsetzen={beiErsetzen}
               beiAuswahl={setAuswahl}
               beiKamera={setKamera}

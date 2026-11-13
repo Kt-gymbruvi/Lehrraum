@@ -252,6 +252,8 @@ describe('Gruppen und Reihenfolge – Bedienung', () => {
     await nutzer.click(knopf('Rückgängig'))
     await waitFor(async () => expect(ids(await seite())).toEqual(['a', 'b', 'r']))
     await nutzer.click(knopf('Radierer'))
+    await nutzer.click(knopf('Radierer')) // noch einmal: Art und Größe
+    await nutzer.click(knopf('Element-Radierer'))
     ziehe([50, 40], [50, 60])
     await waitFor(async () => expect(ids(await seite())).toEqual(['b', 'r']))
     expect((await seite())[0].gruppe).toBe('g')

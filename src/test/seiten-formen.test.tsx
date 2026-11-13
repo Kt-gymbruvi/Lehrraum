@@ -307,6 +307,8 @@ describe('Auswählen, verschieben, ändern', () => {
     render(<Tafel />)
     await bereit()
     await nutzer.click(knopf('Radierer'))
+    await nutzer.click(knopf('Radierer')) // noch einmal: Art und Größe
+    await nutzer.click(knopf('Element-Radierer'))
     ziehe([110, 90], [110, 140]) // über den Text
     ziehe([290, 350], [310, 350]) // über den Rand des Rechtecks
     ziehe([350, 340], [350, 360]) // im Inneren des Rechtecks: trifft nichts

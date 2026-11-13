@@ -10,13 +10,19 @@
 //   Auswahlrahmens verschiebt die Auswahl, Ziehen an einem Griff ändert ihre Größe. Umschalt + Antippen nimmt
 //   ein Element hinzu oder heraus. Gehört ein Element zu einer Gruppe, wird immer die ganze Gruppe gewählt
 //   (Antippen, Rahmen, Umschalt); der Radierer nimmt dagegen nur, was er berührt.
+// Regeln des Radierers:
+//   Der Schwamm wischt nur die überfahrenen Teile von Strichen weg (Text, Formen, Bilder bleiben); ein Strich
+//   zerfällt dabei in Reststücke an seiner Stelle. Der Element-Radierer entfernt alles Berührte als Ganzes.
+//   Die Größe gilt in Bildschirm-Pixeln. Ein Wischzug (Aufsetzen bis Abheben) ist ein Schritt im Verlauf.
 // Regeln des Zeichnens (damit auch langsame Geräte wie ein Smartboard mitkommen):
 //   Gezeichnet wird höchstens einmal je Bildwechsel, auch wenn der Stift sich öfter meldet.
 //   Kommt nur ein neuer Strich dazu, wird die untere Ebene ergänzt und nicht ganz neu gezeichnet.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, mitGruppen, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
 import { beruehrtRechteck, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
+import type { Befehl } from '../kern/befehle.ts'
 import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
+import { beginneWischzug, neueTeile, RADIERER_RADIUS, RADIERER_STANDARD, wischBefehl, wischeWeiter, type Radierer, type Wischzug } from '../kern/radieren.ts'
 import { beiBildGeladen } from './bildquellen.ts'
 import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
 import { SCHRIFT, zeichne, zeichneHintergrund } from './zeichnen.ts'
@@ -31,17 +37,20 @@ type Props = {
   werkzeug: Werkzeug
   farbe: string
   staerke: number
+  /** Art und Größe des Radierers (fehlt: Schwamm, mittel) */
+  radierer?: Radierer
   /** Kennungen der ausgewählten Elemente */
   auswahl: string[]
   beiHinzu: (e: Element) => void
   beiRadieren: (ids: string[]) => void
+  /** Ein fertiger Wischzug des Schwamms */
+  beiBefehl: (b: Befehl) => void
   beiErsetzen: (vorher: Element[], nachher: Element[]) => void
   beiAuswahl: (ids: string[]) => void
   beiKamera: (k: Kamera) => void
 }
 
-/** Radius des Radierers und Fangradius der Auswahl in Bildschirm-Pixeln */
-const RADIERER_RADIUS = 14
+/** Fangradius der Auswahl in Bildschirm-Pixeln */
 const FANG_RADIUS = 8
 const DOPPELTIPP_MS = 450
 /** Kürzere Wege (Bildschirm-Pixel) gelten als Antippen, nicht als Ziehen */
@@ -53,7 +62,8 @@ const vorschau = (a: Extract<Aktiv, { art: 'skalieren' }>) =>
 type Aktiv =
   | { art: 'zeichnen'; zeiger: number; strich: Strich }
   | { art: 'form'; zeiger: number; form: Form }
-  | { art: 'radieren'; zeiger: number; ids: Set<string>; x: number; y: number }
+  /** x/y: Zeiger (Bildschirm), vx/vy: wo er zuletzt war; wisch: der Wischzug des Schwamms (Element-Radierer: null) */
+  | { art: 'radieren'; zeiger: number; ids: Set<string>; x: number; y: number; vx: number; vy: number; wisch: Wischzug | null }
   /** tipp: das angetippte Element – wird bei einem bloßen Antippen (ohne Ziehen) allein ausgewählt */
   | { art: 'ziehen'; zeiger: number; startX: number; startY: number; originale: Element[]; dx: number; dy: number; tipp: Element | null }
   | { art: 'skalieren'; zeiger: number; griff: Griffname; startX: number; startY: number; inhalt: Rechteck; originale: Element[]; s: Skalierung | null }
@@ -73,7 +83,7 @@ export const vergissStift = () => {
   stiftGesehen = false
 }
 
-export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, auswahl, beiHinzu, beiRadieren, beiErsetzen, beiAuswahl, beiKamera }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -87,8 +97,10 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   /** Eine verschobene Ansicht, die erst mit dem nächsten Bildwechsel weitergemeldet wird */
   const kameraOffen = useRef<Kamera | null>(null)
   // Aktuelle Werte für die Eingabe-Funktionen (die sich sonst bei jedem Zeichnen neu anmelden müssten)
-  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, auswahl, editor })
-  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, auswahl, editor }
+  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahl, editor })
+  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahl, editor }
+  /** Wo Maus oder schwebender Stift gerade ist (Bildschirm) – dort zeigt ein Kreis die Größe des Radierers */
+  const schwebe = useRef<{ x: number; y: number } | null>(null)
 
   const zeiger = useRef(new Map<number, { x: number; y: number; typ: string }>())
   const aktiv = useRef<Aktiv | null>(null)
@@ -184,10 +196,15 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const a = aktiv.current
     if (a?.art === 'zeichnen') zeichne(ctx, a.strich, true)
     if (a?.art === 'form') zeichne(ctx, a.form)
-    if (a?.art === 'radieren') {
-      const [x, y] = zuTafel(k, a.x, a.y)
+    if (a?.art === 'radieren' && a.wisch) neueTeile(a.wisch).forEach((e) => zeichne(ctx, e))
+    // Kreis in der Größe des Radierers: beim Radieren und wenn Maus oder Stift darüber schweben
+    const kreis = a?.art === 'radieren' ? a : !a && s.werkzeug === 'radierer' ? schwebe.current : null
+    if (kreis) {
+      const [x, y] = zuTafel(k, kreis.x, kreis.y)
       ctx.beginPath()
-      ctx.arc(x, y, RADIERER_RADIUS / k.zoom, 0, Math.PI * 2)
+      ctx.arc(x, y, RADIERER_RADIUS[s.radierer.groesse] / k.zoom, 0, Math.PI * 2)
+      ctx.fillStyle = 'rgba(70, 85, 122, 0.08)'
+      ctx.fill()
       ctx.lineWidth = 2 / k.zoom
       ctx.strokeStyle = '#46557a'
       ctx.stroke()
@@ -352,9 +369,18 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   function radiere(a: Extract<Aktiv, { art: 'radieren' }>) {
     const k = stand.current.kamera
     const [x, y] = zuTafel(k, a.x, a.y)
+    const r = RADIERER_RADIUS[stand.current.radierer.groesse] / k.zoom
+    if (a.wisch) {
+      // Schwamm: die ganze Bahn seit der letzten Meldung wischen, damit bei schneller Bewegung nichts stehen bleibt
+      const [vx, vy] = zuTafel(k, a.vx, a.vy)
+      const vorher = a.wisch.beruehrt.size
+      wischeWeiter(a.wisch, vx, vy, x, y, r)
+      if (a.wisch.beruehrt.size !== vorher) setVersteckt(new Set(a.wisch.beruehrt))
+      return
+    }
     let neu = false
     for (const e of stand.current.elemente) {
-      if (!a.ids.has(e.id) && trifft(e, x, y, RADIERER_RADIUS / k.zoom)) {
+      if (!a.ids.has(e.id) && trifft(e, x, y, r)) {
         a.ids.add(e.id)
         neu = true
       }
@@ -447,7 +473,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       return
     }
     if (w === 'radierer') {
-      const a: Aktiv = { art: 'radieren', zeiger: e.pointerId, ids: new Set(), x, y }
+      const a: Aktiv = { art: 'radieren', zeiger: e.pointerId, ids: new Set(), x, y, vx: x, vy: y, wisch: s.radierer.art === 'schwamm' ? beginneWischzug(s.elemente) : null }
       aktiv.current = a
       radiere(a)
     } else if (w === 'auswahl') {
@@ -492,6 +518,11 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const z = zeiger.current.get(e.pointerId)
     const a = aktiv.current
     if (!a && e.pointerType === 'mouse') zeigeMauszeiger(e)
+    if (!a && e.pointerType !== 'touch' && stand.current.werkzeug === 'radierer') {
+      const [x, y] = ort(e)
+      schwebe.current = { x, y }
+      plane()
+    }
     if (!z || !a) return
     const [x, y] = ort(e)
     z.x = x
@@ -527,6 +558,8 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       return
     }
     if (a.art === 'radieren') {
+      a.vx = a.x
+      a.vy = a.y
       a.x = x
       a.y = y
       radiere(a)
@@ -595,7 +628,10 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       beiHinzu(a.form)
     }
     if (a.art === 'radieren') {
-      if (a.ids.size && !abgebrochen) beiRadieren([...a.ids])
+      if (a.wisch) {
+        const b = abgebrochen ? null : wischBefehl(stand.current.elemente, a.wisch)
+        if (b) beiBefehl(b)
+      } else if (a.ids.size && !abgebrochen) beiRadieren([...a.ids])
       setVersteckt(new Set())
     }
     if (a.art === 'ziehen') {
@@ -669,6 +705,11 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       onPointerMove={bewegt}
       onPointerUp={(e) => hoch(e)}
       onPointerCancel={(e) => hoch(e, true)}
+      onPointerLeave={() => {
+        if (!schwebe.current) return
+        schwebe.current = null
+        plane()
+      }}
       onContextMenu={(e) => e.preventDefault()}
     >
       <canvas ref={unten} width={Math.round(b * dpr)} height={Math.round(h * dpr)} />
