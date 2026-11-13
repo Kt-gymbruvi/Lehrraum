@@ -8,12 +8,13 @@
 // Regeln der Auswahl:
 //   Ziehen auf freier Fläche spannt einen Rahmen auf; ausgewählt wird, was er berührt. Ziehen innerhalb des
 //   Auswahlrahmens verschiebt die Auswahl, Ziehen an einem Griff ändert ihre Größe. Umschalt + Antippen nimmt
-//   ein Element hinzu oder heraus.
+//   ein Element hinzu oder heraus. Gehört ein Element zu einer Gruppe, wird immer die ganze Gruppe gewählt
+//   (Antippen, Rahmen, Umschalt); der Radierer nimmt dagegen nur, was er berührt.
 // Regeln des Zeichnens (damit auch langsame Geräte wie ein Smartboard mitkommen):
 //   Gezeichnet wird höchstens einmal je Bildwechsel, auch wenn der Stift sich öfter meldet.
 //   Kommt nur ein neuer Strich dazu, wird die untere Ebene ergänzt und nicht ganz neu gezeichnet.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
+import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, mitGruppen, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
 import { beruehrtRechteck, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
 import { beiBildGeladen } from './bildquellen.ts'
@@ -384,7 +385,8 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       // Umschalt: das angetippte Element hinzunehmen oder herausnehmen; auf freier Fläche einen Rahmen dazu aufziehen
       if (treffer) {
         zeiger.current.delete(e.pointerId)
-        beiAuswahl(s.auswahl.includes(treffer.id) ? s.auswahl.filter((id) => id !== treffer.id) : [...s.auswahl, treffer.id])
+        const gruppe = mitGruppen(s.elemente, [treffer.id])
+        beiAuswahl(s.auswahl.includes(treffer.id) ? s.auswahl.filter((id) => !gruppe.includes(id)) : [...s.auswahl, ...gruppe.filter((id) => !s.auswahl.includes(id))])
       } else aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: s.auswahl }
       return
     }
@@ -400,8 +402,9 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       // Innerhalb des Auswahlrahmens (auch zwischen den Buchstaben) verschiebt Ziehen die ganze Auswahl
       aktiv.current = { art: 'ziehen', zeiger: e.pointerId, startX: tx, startY: ty, originale: lage.gewaehlt, dx: 0, dy: 0, tipp: treffer }
     } else if (treffer) {
-      beiAuswahl([treffer.id])
-      aktiv.current = { art: 'ziehen', zeiger: e.pointerId, startX: tx, startY: ty, originale: [treffer], dx: 0, dy: 0, tipp: treffer }
+      const ids = mitGruppen(s.elemente, [treffer.id]) // ein Gruppenmitglied wählt die ganze Gruppe
+      beiAuswahl(ids)
+      aktiv.current = { art: 'ziehen', zeiger: e.pointerId, startX: tx, startY: ty, originale: s.elemente.filter((el) => ids.includes(el.id)), dx: 0, dy: 0, tipp: treffer }
     } else {
       if (s.auswahl.length) beiAuswahl([])
       aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: [] }
@@ -603,7 +606,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       } else if (!abgebrochen && a.tipp) {
         // Bloßes Antippen: merken für den Doppeltipp; ein anderes Element im Auswahlrahmen wird allein ausgewählt
         letzterTipp.current = { id: a.tipp.id, zeit: Date.now() }
-        if (!stand.current.auswahl.includes(a.tipp.id)) beiAuswahl([a.tipp.id])
+        if (!stand.current.auswahl.includes(a.tipp.id)) beiAuswahl(mitGruppen(stand.current.elemente, [a.tipp.id]))
       }
       setVersteckt(new Set())
     }
@@ -627,7 +630,8 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     if (a.art === 'rahmen' && !abgebrochen) {
       const weit = Math.hypot(a.x2 - a.x1, a.y2 - a.y1) * k.zoom >= TIPP_WEG
       const r = rechteckAus(a.x1, a.y1, a.x2, a.y2)
-      const neu = weit ? stand.current.elemente.filter((el) => !a.dazu.includes(el.id) && beruehrtRechteck(el, r)).map((el) => el.id) : []
+      const beruehrt = weit ? stand.current.elemente.filter((el) => beruehrtRechteck(el, r)).map((el) => el.id) : []
+      const neu = mitGruppen(stand.current.elemente, beruehrt).filter((id) => !a.dazu.includes(id))
       if (neu.length) beiAuswahl([...a.dazu, ...neu])
     }
     sofort()

@@ -23,11 +23,25 @@ export function kopie(e: Element, dx = 0, dy = 0): Element {
   return { ...e, id, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy }
 }
 
+/**
+ * Kopien mehrerer Elemente mit neuen Kennungen, auf Wunsch versetzt. Gruppen bleiben erhalten: Was zusammen
+ * gruppiert war, bildet in der Kopie wieder eine Gruppe – mit neuer Kennung, getrennt vom Original.
+ */
+export function kopiere(elemente: Element[], dx = 0, dy = 0): Element[] {
+  const gruppen = new Map<string, string>()
+  return elemente.map((e) => {
+    const k = kopie(e, dx, dy)
+    if (!e.gruppe) return k
+    if (!gruppen.has(e.gruppe)) gruppen.set(e.gruppe, neueId())
+    return { ...k, gruppe: gruppen.get(e.gruppe)! }
+  })
+}
+
 /** Kopie der aktuellen Seite direkt dahinter (mit neuen Kennungen); sie wird gleich gezeigt. */
 export function seiteDoppelt(b: Buch): Buch {
   if (b.seiten.length >= MAX_SEITEN) return b
   const seiten = [...b.seiten]
-  seiten.splice(b.nr + 1, 0, { ...b.seiten[b.nr], id: neueId(), elemente: b.seiten[b.nr].elemente.map((e) => kopie(e)) })
+  seiten.splice(b.nr + 1, 0, { ...b.seiten[b.nr], id: neueId(), elemente: kopiere(b.seiten[b.nr].elemente) })
   return { seiten, nr: b.nr + 1 }
 }
 

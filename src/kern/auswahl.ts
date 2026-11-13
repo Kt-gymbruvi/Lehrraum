@@ -85,6 +85,29 @@ export function drehwinkel(cx: number, cy: number, startX: number, startY: numbe
   return normiereWinkel(rasteWinkel(basis + roh, stufen) - basis)
 }
 
+// ---------- Gruppen ----------
+
+/** Die Kennungen samt aller Elemente, die mit einem davon in einer Gruppe sind (Antippen eines Mitglieds wählt die Gruppe) */
+export function mitGruppen(elemente: Element[], ids: Iterable<string>): string[] {
+  const menge = new Set(ids)
+  const gruppen = new Set(elemente.filter((e) => menge.has(e.id) && e.gruppe).map((e) => e.gruppe))
+  return elemente.filter((e) => menge.has(e.id) || (e.gruppe !== undefined && gruppen.has(e.gruppe))).map((e) => e.id)
+}
+
+/** Ist die Auswahl genau eine Gruppe? Dann bietet die Auswahlleiste „Gruppe lösen“ an, sonst „Gruppieren“. */
+export const istEineGruppe = (gewaehlt: Element[]) => gewaehlt.length > 1 && gewaehlt.every((e) => e.gruppe !== undefined && e.gruppe === gewaehlt[0].gruppe)
+
+/** Die Elemente als eine Gruppe (vorhandene Gruppen darin gehen in der neuen auf – Gruppen in Gruppen gibt es nicht) */
+export const gruppiert = (gewaehlt: Element[], gruppe: string): Element[] => gewaehlt.map((e) => ({ ...e, gruppe }))
+
+/** Die Elemente ohne Gruppe */
+export const geloest = (gewaehlt: Element[]): Element[] =>
+  gewaehlt.map((e) => {
+    const ohne = { ...e }
+    delete ohne.gruppe
+    return ohne
+  })
+
 /** Die bisherige Drehung, an der eingerastet wird: die des einen ausgewählten Elements, sonst 0 */
 export const drehBasis = (elemente: Element[]) => (elemente.length === 1 ? drehungVon(elemente[0]) : 0)
 

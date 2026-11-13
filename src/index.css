@@ -547,6 +547,17 @@ body {
 .zeichenflaeche.werkzeug-auswahl {
   cursor: default;
 }
+.auswahlleiste {
+  position: absolute;
+  display: flex;
+  gap: 0.15rem;
+  padding: 0.25rem;
+  background: var(--leiste);
+  color: var(--text);
+  border: 1px solid var(--linie);
+  border-radius: 1.1rem;
+  box-shadow: 0 6px 20px rgba(11, 31, 77, 0.18);
+}
 .zeichenflaeche.werkzeug-hand,
 .zeichenflaeche.leertaste {
   cursor: grab;

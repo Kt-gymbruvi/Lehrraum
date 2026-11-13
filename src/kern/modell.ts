@@ -229,7 +229,7 @@ function pruefeElement(x: unknown): Element | null {
 }
 
 /** Unbekannte oder kaputte Elemente werden weggelassen, statt das ganze Bild zu verwerfen. */
-const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x : []).map(pruefeElement).filter((e): e is Element => e !== null)
+export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x : []).map(pruefeElement).filter((e): e is Element => e !== null)
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der

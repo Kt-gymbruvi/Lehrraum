@@ -12,13 +12,15 @@ type Props = {
   leer: boolean
   /** Anzahl ausgewählter Elemente */
   gewaehlt: number
+  /** Gibt es etwas Kopiertes zum Einfügen? */
+  kannEinfuegen: boolean
   beiWerkzeug: (w: Werkzeug) => void
   beiFarbe: (f: string) => void
   beiStaerke: (s: number) => void
   beiZurueck: () => void
   beiVor: () => void
   beiLeeren: () => void
-  beiDoppeln: () => void
+  beiEinfuegen: () => void
   beiLoeschen: () => void
   beiBild: () => void
 }
@@ -73,8 +75,8 @@ export function Werkzeugleiste(p: Props) {
         <button type="button" className="leisten-knopf" disabled={!p.kannVor} aria-label="Wiederholen" title="Wiederholen (Strg + Y)" onClick={p.beiVor}>
           <Symbol name="vor" />
         </button>
-        <button type="button" className="leisten-knopf" disabled={p.gewaehlt === 0} aria-label="Auswahl duplizieren" title="Auswahl duplizieren (Strg + D)" onClick={p.beiDoppeln}>
-          <Symbol name="duplizieren" />
+        <button type="button" className="leisten-knopf" disabled={!p.kannEinfuegen} aria-label="Einfügen" title="Kopiertes einfügen – auch aus einer anderen Tafel (Strg + V)" onClick={p.beiEinfuegen}>
+          <Symbol name="einfuegen" />
         </button>
         <button
           type="button"

@@ -252,12 +252,12 @@ describe('Auswählen, verschieben, ändern', () => {
     await vorlage()
     render(<Tafel />)
     await bereit()
-    expect(knopf('Auswahl duplizieren')).toBeDisabled()
+    expect(screen.queryByRole('toolbar', { name: 'Befehle für die Auswahl' })).toBeNull()
     await nutzer.click(knopf('Auswahl'))
     ziehe([50, 50], [150, 250])
     await waitFor(async () => expect(((await seite())[0] as Strich).punkte[0]).toEqual([100, 250, 0.5]))
     expect(((await seite())[1] as Form).x1).toBe(300) // das andere Element bleibt liegen
-    expect(knopf('Auswahl duplizieren')).toBeEnabled()
+    expect(screen.getByRole('toolbar', { name: 'Befehle für die Auswahl' })).toBeInTheDocument() // die Leiste an der Auswahl
     await nutzer.click(knopf('Rückgängig'))
     await waitFor(async () => expect(((await seite())[0] as Strich).punkte[0]).toEqual([0, 50, 0.5]))
   })

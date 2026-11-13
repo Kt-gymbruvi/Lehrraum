@@ -3,6 +3,14 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-13 – Auswahl, Teil 3: Kopieren, Gruppieren, Reihenfolge, Auswahlleiste
+- **Die Kopie liegt in IndexedDB** (Lager `einstellungen`, Schlüssel `ablage`, eigenes Schema `lehrraum/ablage` Version 1, Elemente wie im Tafel-Datenmodell, beim Laden geprüft). So gilt sie für alle Tafeln, übersteht das Neuladen und bleibt auf dem Gerät. Verworfen: die Zwischenablage des Systems – dort lassen sich keine eigenen Daten zuverlässig ablegen, und Kopieren nach außen ist nicht vorgesehen.
+- **Hinweistext in der Zwischenablage des Systems beim Kopieren:** Sonst läge dort noch ein früher kopiertes Bild, und Strg + V (das zuerst nach Dateien von außen schaut) würde dieses einfügen. Was danach in einem anderen Programm kopiert wird, ersetzt den Hinweis und wird wie bisher eingefügt. Strg + C/X/V werden nicht verhindert, damit der Browser seine Ereignisse schickt; kommt keines (manche Geräte, Bildschirmtastaturen), geschieht es nach 150 ms trotzdem – nie doppelt.
+- **Gruppe als Kennung am Element** (`gruppe`, schon in Version 3), keine eigene Gruppen-Liste: Speichern, Kopieren, PDF und Radierer brauchen dafür nichts Neues. Gruppen in Gruppen gibt es nicht (Spezifikation). Kopien bekommen eigene, neue Gruppen-Kennungen.
+- **Reihenfolge als eigener Befehl `ordnen`** (Liste der Kennungen vorher/nachher) statt Entfernen + Hinzufügen: ein Schritt im Verlauf, und Elemente, die zwischendurch hinzukommen, bleiben, wo sie sind.
+- **Auswahlleiste** unter der Auswahl (unter den Griffen), sonst über dem Drehgriff, immer in der Fläche; während des Ziehens ausgeblendet, damit sie nicht an der alten Stelle im Weg steht. „Ausschneiden“ ist zusätzlich zur Spezifikation in der Leiste, weil es sonst nur über die Tastatur ginge.
+- **Aufräumen der Bilddateien bricht ab, wenn die Tafel schon geschlossen ist** (z. B. schneller Wechsel zwischen Klassentafeln); beim nächsten Öffnen wird aufgeräumt.
+
 ## 2026-11-13 – Auswahl, Teil 2: Drehen und Datenmodell Version 3
 - **Winkel in Grad, im Uhrzeigersinn, auf −180 bis 180 gebracht**; 0 wird nicht gespeichert. Grad statt Bogenmaß, weil sich Einrasten und Prüfen so lesbar schreiben lassen und die gespeicherten Werte verständlich bleiben.
 - **Wer dreht wie:** Striche, Linien und Pfeile drehen ihre Punkte (kein eigener Winkel – sie sind schon frei geformt). Text und Bild drehen um ihre linke obere Ecke, Rechteck, Ellipse und Dreieck um ihre Mitte. Beim Drehen einer Auswahl wandert der jeweilige Drehpunkt um die Mitte der Auswahl und der Winkel kommt hinzu – das Ergebnis ist für jeden Drehpunkt dasselbe. Linke obere Ecke bei Text, damit das gerade Eingabefeld beim Ändern dort beginnt, wo der Text anfängt, und die geschätzte Textbreite den Drehpunkt nicht verschiebt.

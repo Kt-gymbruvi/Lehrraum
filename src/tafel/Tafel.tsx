@@ -2,16 +2,22 @@
 // unten die Seiten. Speichert automatisch auf diesem Gerät und stellt beim Öffnen die zuletzt benutzte Tafel wieder her.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { Fensterebene, Schnellleiste } from '../fenster/Fensterebene.tsx'
-import { ausfuehren, entfernenBefehl, leererVerlauf, rueckgaengig, wiederholen, type Befehl, type Verlauf } from '../kern/befehle.ts'
+import { einzufuegen, neueAblage, type Ablage } from '../kern/ablage.ts'
+import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl.ts'
+import { ausfuehren, entfernenBefehl, leererVerlauf, ordnenBefehl, rueckgaengig, wiederholen, type Befehl, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
-import { einpassen, zoomeUm, zuTafel } from '../kern/geometrie.ts'
+import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { benutzteDateien, FARBEN, MAX_SEITEN, STAERKEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
-import { gehe, kopie, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
-import { bitteUmDauerhaftenSpeicher, ladeAlleTafeln, ladeFreieTafel, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { gehe, kopiere, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
+import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeAlleTafeln, ladeFreieTafel, merkeAblage, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
 import { Symbol } from '../ui/Symbol.tsx'
+import { Auswahlleiste, type Befehlsknopf } from './Auswahlleiste.tsx'
+
+/** Steht nach dem Kopieren in der Zwischenablage des Systems (eingefügt wird in der Tafel die Kopie selbst) */
+const KOPIE_HINWEIS = 'Aus einer Lehrraum-Tafel kopiert – einfügen lässt es sich nur in einer Lehrraum-Tafel.'
 import { Pruefansicht } from './Pruefansicht.tsx'
 import { Seitenleiste } from './Seitenleiste.tsx'
 import { WERKZEUGE, Werkzeugleiste } from './Werkzeugleiste.tsx'
@@ -79,9 +85,15 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         setKamera(t.kamera)
         setFenster(t.fenster)
         setSpeicher('gespeichert')
-        // Bilder wegräumen, die keine Tafel mehr braucht – dabei ALLE Tafeln berücksichtigen, nicht nur diese
-        void ladeAlleTafeln()
-          .then((alle) => raeumeDateienAuf(new Set([...alle, t].flatMap((x) => [...benutzteDateien(x.seiten)]))))
+        // Bilder wegräumen, die keine Tafel mehr braucht – dabei ALLE Tafeln berücksichtigen, nicht nur diese,
+        // und die Kopie zum Einfügen (ein kopiertes Bild bleibt einfügbar, auch wenn das Original gelöscht ist)
+        void Promise.all([ladeAlleTafeln(), ladeAblage().catch(() => null)])
+          .then(([alle, kopie]) => {
+            if (abgebrochen) return // Tafel schon wieder geschlossen: beim nächsten Öffnen wird aufgeräumt
+            const seiten = [...alle, t].flatMap((x) => x.seiten)
+            if (kopie) seiten.push({ id: '', elemente: kopie.elemente })
+            return raeumeDateienAuf(benutzteDateien(seiten))
+          })
           .catch(() => undefined)
       })
     return () => {
@@ -175,10 +187,58 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   }
   const dopple = () => {
     if (!gewaehlte.length) return
-    const kopien = gewaehlte.map((e) => kopie(e, 24, 24))
+    const kopien = kopiere(gewaehlte, 24, 24) // eine kopierte Gruppe ist wieder eine (eigene) Gruppe
     fuehreAus({ art: 'hinzufuegen', elemente: kopien })
     setAuswahl(kopien.map((e) => e.id))
   }
+
+  // ---------- Kopieren, Ausschneiden, Einfügen (auch zwischen Tafeln; die Kopie liegt nur auf dem Gerät) ----------
+  const [ablage, setAblage] = useState<Ablage | null>(null)
+  useEffect(() => {
+    let weg = false
+    ladeAblage()
+      .then((a) => {
+        if (!weg && a) setAblage((jetzt) => jetzt ?? a)
+      })
+      .catch(() => undefined)
+    return () => {
+      weg = true
+    }
+  }, [])
+  /**
+   * Kopiert die Auswahl in die Ablage. Zusätzlich kommt ein kurzer Hinweis in die Zwischenablage des Systems –
+   * sonst läge dort noch ein früher kopiertes Bild, und Strg + V würde dieses statt der Kopie einfügen.
+   * (Beim Kopieren mit Strg + C setzt das Kopieren-Ereignis den Hinweis selbst.)
+   */
+  const kopiereAuswahl = (hinweisSchonGesetzt = false) => {
+    if (!gewaehlte.length) return
+    if (!hinweisSchonGesetzt) navigator.clipboard?.writeText(KOPIE_HINWEIS).catch(() => undefined)
+    const a = neueAblage(gewaehlte)
+    setAblage(a)
+    merkeAblage(a).catch(() => setMeldung({ text: 'Die Kopie ließ sich auf diesem Gerät nicht speichern.', fehler: true }))
+  }
+  const schneideAus = (hinweisSchonGesetzt = false) => {
+    kopiereAuswahl(hinweisSchonGesetzt)
+    loescheAuswahl()
+  }
+  /** Fügt die Kopie in der Mitte des sichtbaren Ausschnitts ein und wählt sie aus */
+  const fuegeEin = () => {
+    if (!ablage) return
+    const [mx, my] = zuTafel(kamera, (flaeche.current?.clientWidth || 800) / 2, (flaeche.current?.clientHeight || 600) / 2)
+    const neu = einzufuegen(ablage, mx, my)
+    if (!neu.length) return
+    fuehreAus({ art: 'hinzufuegen', elemente: neu })
+    setWerkzeug('auswahl')
+    setAuswahl(neu.map((e) => e.id))
+  }
+
+  // ---------- Gruppieren und Reihenfolge ----------
+  const eineGruppe = istEineGruppe(gewaehlte)
+  const gruppiereOderLoese = () => {
+    if (gewaehlte.length < 2) return
+    beiErsetzen(gewaehlte, eineGruppe ? geloest(gewaehlte) : gruppiert(gewaehlte, neueId()))
+  }
+  const ordne = (richtung: 'vorne' | 'hinten') => fuehreAus(ordnenBefehl(seite.elemente, auswahl, richtung))
   /** Farbe wählen: gilt für Neues – und färbt die Auswahl um */
   const waehleFarbe = (f: string) => {
     setFarbe(f)
@@ -282,22 +342,51 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   }
   const dateien = useRef(nimmDateien)
   dateien.current = nimmDateien
+  /**
+   * Strg + C / X / V: Kommt danach kein Ereignis des Browsers (manche Geräte und Bildschirmtastaturen senden keins),
+   * wird nach kurzer Zeit trotzdem kopiert, ausgeschnitten oder eingefügt – sonst erledigt das Ereignis es.
+   */
+  const ersatzGeplant = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ersatzWeg = () => {
+    if (ersatzGeplant.current) clearTimeout(ersatzGeplant.current)
+    ersatzGeplant.current = null
+  }
+  // Strg + C / Strg + X: über die Ereignisse des Browsers, damit der Hinweis in die Zwischenablage des Systems kommt
+  useEffect(() => {
+    const kopieren = (e: ClipboardEvent) => {
+      const ziel = e.target as HTMLElement | null
+      if (ziel && (ziel.tagName === 'INPUT' || ziel.tagName === 'TEXTAREA' || ziel.isContentEditable)) return
+      if (!tasten.current.auswahl.length) return
+      ersatzWeg()
+      e.preventDefault()
+      e.clipboardData?.setData('text/plain', KOPIE_HINWEIS)
+      if (e.type === 'cut') tasten.current.schneideAus(true)
+      else tasten.current.kopiereAuswahl(true)
+    }
+    window.addEventListener('copy', kopieren)
+    window.addEventListener('cut', kopieren)
+    return () => {
+      window.removeEventListener('copy', kopieren)
+      window.removeEventListener('cut', kopieren)
+    }
+  }, [])
   useEffect(() => {
     const einfuegen = (e: ClipboardEvent) => {
       const ziel = e.target as HTMLElement | null
       if (ziel && (ziel.tagName === 'INPUT' || ziel.tagName === 'TEXTAREA')) return
+      ersatzWeg()
       const gefunden = [...(e.clipboardData?.files ?? [])]
-      if (!gefunden.length) return
       e.preventDefault()
-      dateien.current(gefunden)
+      if (gefunden.length) dateien.current(gefunden)
+      else tasten.current.fuegeEin() // nichts von außen: die Kopie aus der Tafel einfügen
     }
     window.addEventListener('paste', einfuegen)
     return () => window.removeEventListener('paste', einfuegen)
   }, [])
 
   // ---------- Tastatur ----------
-  const tasten = useRef({ zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, auswahl })
-  tasten.current = { zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, auswahl }
+  const tasten = useRef({ zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, kopiereAuswahl, schneideAus, fuegeEin, gruppiereOderLoese, auswahl })
+  tasten.current = { zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, kopiereAuswahl, schneideAus, fuegeEin, gruppiereOderLoese, auswahl }
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       const ziel = e.target as HTMLElement | null
@@ -309,7 +398,19 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         else if (k === 'y' || (k === 'z' && e.shiftKey)) t.vor()
         else if (k === 'd' && t.auswahl.length) t.dopple()
         else if (k === 'a') t.waehleAlles()
-        else return
+        else if (k === 'g' && t.auswahl.length > 1) t.gruppiereOderLoese()
+        else if (k === 'v' || ((k === 'c' || k === 'x') && t.auswahl.length)) {
+          // nicht verhindern: sonst käme kein Ereignis des Browsers (und kein Bild aus der Zwischenablage) mehr
+          ersatzWeg()
+          ersatzGeplant.current = setTimeout(() => {
+            ersatzGeplant.current = null
+            const jetzt = tasten.current
+            if (k === 'v') jetzt.fuegeEin()
+            else if (k === 'x') jetzt.schneideAus()
+            else jetzt.kopiereAuswahl()
+          }, 150)
+          return
+        } else return
         e.preventDefault()
         return
       }
@@ -326,8 +427,37 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
       }
     }
     window.addEventListener('keydown', taste)
-    return () => window.removeEventListener('keydown', taste)
+    return () => {
+      window.removeEventListener('keydown', taste)
+      ersatzWeg()
+    }
   }, [])
+
+  // ---------- Auswahlleiste ----------
+  // Solange auf der Fläche gezogen wird (Verschieben, Drehen, Größe), steht die Leiste nicht im Weg
+  const [zieht, setZieht] = useState(false)
+  const inhalt = werkzeug === 'auswahl' && !zieht ? gesamtRahmen(gewaehlte) : null
+  const leistenRahmen: Rechteck | null = inhalt && [
+    kamera.x + inhalt[0] * kamera.zoom - AUSWAHL_RAND,
+    kamera.y + inhalt[1] * kamera.zoom - AUSWAHL_RAND,
+    kamera.x + inhalt[2] * kamera.zoom + AUSWAHL_RAND,
+    kamera.y + inhalt[3] * kamera.zoom + AUSWAHL_RAND,
+  ]
+  const auswahlKnoepfe: Befehlsknopf[] = [
+    { name: 'Kopieren', symbol: 'kopieren', titel: 'Kopieren – einfügen lässt es sich auch in einer anderen Tafel (Strg + C)', tun: () => kopiereAuswahl() },
+    { name: 'Ausschneiden', symbol: 'ausschneiden', titel: 'Ausschneiden (Strg + X)', tun: () => schneideAus() },
+    { name: 'Auswahl duplizieren', symbol: 'duplizieren', titel: 'Duplizieren (Strg + D)', tun: dopple },
+    ...(gewaehlte.length > 1
+      ? [
+          eineGruppe
+            ? { name: 'Gruppe lösen', symbol: 'loesen' as const, titel: 'Gruppe lösen (Strg + G)', tun: gruppiereOderLoese }
+            : { name: 'Gruppieren', symbol: 'gruppieren' as const, titel: 'Gruppieren – Antippen wählt dann alles zusammen (Strg + G)', tun: gruppiereOderLoese },
+        ]
+      : []),
+    { name: 'Ganz nach vorne', symbol: 'ganzVorne', titel: 'Ganz nach vorne – liegt über allem anderen', tun: () => ordne('vorne') },
+    { name: 'Ganz nach hinten', symbol: 'ganzHinten', titel: 'Ganz nach hinten – liegt unter allem anderen', tun: () => ordne('hinten') },
+    { name: 'Löschen', symbol: 'leeren', titel: 'Löschen (Entf)', tun: loescheAuswahl },
+  ]
 
   const zoomen = (faktor: number) => setKamera((k) => zoomeUm(k, window.innerWidth / 2, window.innerHeight / 2, faktor))
   const ansichtZurueck = () => setKamera({ x: 0, y: 0, zoom: 1 })
@@ -404,7 +534,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           beiZurueck={zurueck}
           beiVor={vor}
           beiLeeren={() => entferne(seite.elemente.map((e) => e.id))}
-          beiDoppeln={dopple}
+          kannEinfuegen={ablage !== null}
+          beiEinfuegen={fuegeEin}
           beiLoeschen={loescheAuswahl}
           beiBild={() => bildWahl.current?.click()}
         />
@@ -412,6 +543,9 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           <div
             className="tafel-flaeche"
             ref={flaeche}
+            onPointerDown={(e) => (e.target as HTMLElement).closest('[data-testid="zeichenflaeche"]') && setZieht(true)}
+            onPointerUp={() => setZieht(false)}
+            onPointerCancel={() => setZieht(false)}
             onDragOver={(e) => e.dataTransfer.types.includes('Files') && e.preventDefault()}
             onDrop={(e) => {
               if (!e.dataTransfer.files.length) return
@@ -434,6 +568,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
               beiAuswahl={setAuswahl}
               beiKamera={setKamera}
             />
+            {leistenRahmen && <Auswahlleiste rahmen={leistenRahmen} knoepfe={auswahlKnoepfe} />}
             <Fensterebene fenster={fenster} beiAendern={setFenster} />
             {pruefen && <Pruefansicht elemente={seite.elemente.length} />}
           </div>

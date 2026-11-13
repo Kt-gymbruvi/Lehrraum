@@ -1,9 +1,10 @@
 // Lokaler Speicher der Tafel: IndexedDB auf diesem Gerät. Nichts davon wird an einen Server geschickt.
 //   tafeln         – Tafelbilder (Schlüssel: id)
-//   einstellungen  – einzelne Werte, z. B. welche Tafel zuletzt offen war
+//   einstellungen  – einzelne Werte, z. B. welche Tafel zuletzt offen war, und die Kopie zum Einfügen („ablage“)
 //   dateien        – Bilder und importierte PDF-Seiten (siehe dateien.ts)
 //   klassen        – Klassen der Lehrkraft (Schlüssel: id)
 // Die Startseite der Plattform liest „klassen“ mit (gleiche Adresse, gleiche Datenbank) – nur lesend.
+import { pruefeAblage, type Ablage } from '../kern/ablage.ts'
 import { geaendert, klassenName, pruefeKlasse, type Klasse } from '../kern/klassen.ts'
 import { neuesTafelbild, pruefeTafel, type Tafelbild } from '../kern/modell.ts'
 
@@ -93,6 +94,18 @@ export async function ladeFreieTafel(): Promise<Tafelbild | null> {
 }
 export async function merkeFreieTafel(id: string): Promise<void> {
   await vorgang('einstellungen', 'readwrite', (s) => s.put(id, FREIE))
+}
+
+// ---------- Kopie (Ablage) für Kopieren und Einfügen zwischen den Tafeln ----------
+const ABLAGE = 'ablage'
+
+/** Was zuletzt kopiert wurde (für alle Tafeln dieses Geräts) oder null */
+export async function ladeAblage(): Promise<Ablage | null> {
+  return pruefeAblage(await vorgang<unknown>('einstellungen', 'readonly', (s) => s.get(ABLAGE)))
+}
+/** Ersetzt die vorige Kopie */
+export async function merkeAblage(a: Ablage): Promise<void> {
+  await vorgang('einstellungen', 'readwrite', (s) => s.put(a, ABLAGE))
 }
 
 // ---------- Klassen ----------
