@@ -54,14 +54,16 @@ describe('Auswahl – Logik', () => {
 
   it('setzt Ecken- und Seitengriffe; bei kleiner Auswahl nur Ecken, nach außen gerückt', () => {
     const gross = griffe([0, 0, 200, 100], 1, false)
-    expect(gross.map((g) => g.name)).toEqual(['nw', 'no', 'so', 'sw', 'n', 'o', 's', 'w'])
+    expect(gross.map((g) => g.name)).toEqual(['nw', 'no', 'so', 'sw', 'n', 'o', 's', 'w', 'drehen'])
     expect(gross.find((g) => g.name === 'o')).toMatchObject({ x: 200, y: 50 })
-    expect(griffe([0, 0, 200, 100], 1, true)).toHaveLength(4) // Text oder Bild in der Auswahl
-    expect(griffe([0, 0, 200, 60], 1, false)).toHaveLength(4) // zu flach für Seitengriffe
+    expect(gross.find((g) => g.name === 'drehen')).toMatchObject({ x: 100, y: -48 }) // 48 px über der Oberkante
+    expect(griffe([0, 0, 200, 100], 1, true)).toHaveLength(5) // Text oder Bild in der Auswahl: Ecken und Drehgriff
+    expect(griffe([0, 0, 200, 60], 1, false)).toHaveLength(5) // zu flach für Seitengriffe
     const klein = griffe([0, 0, 10, 10], 1, false)
-    expect(klein.map((g) => [g.x, g.y])).toEqual([[-17, -17], [27, -17], [27, 27], [-17, 27]]) // 44 px Abstand
+    // 44 px Abstand; der Drehgriff 48 px über den nach außen gerückten Ecken
+    expect(klein.map((g) => [g.x, g.y])).toEqual([[-17, -17], [27, -17], [27, 27], [-17, 27], [5, -65]])
     // beim Hineinzoomen genügt in Tafel-Einheiten weniger Abstand
-    expect(griffe([0, 0, 50, 50], 2, false)).toHaveLength(8)
+    expect(griffe([0, 0, 50, 50], 2, false)).toHaveLength(9)
     expect(nurEcken([strich('s'), text('t')])).toBe(true)
     expect(nurEcken([strich('s'), form('f', 'pfeil')])).toBe(false)
   })

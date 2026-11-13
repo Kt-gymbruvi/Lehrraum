@@ -31,7 +31,7 @@ describe('Modell', () => {
     expect(pruefeTafel(null)).toBeNull()
     expect(pruefeTafel('tafel')).toBeNull()
     expect(pruefeTafel({ ...neuesTafelbild(), schema: 'etwas/anderes' })).toBeNull()
-    expect(pruefeTafel({ ...neuesTafelbild(), version: 3 })).toBeNull()
+    expect(pruefeTafel({ ...neuesTafelbild(), version: 4 })).toBeNull()
     expect(pruefeTafel({ ...neuesTafelbild(), id: '' })).toBeNull()
   })
 

@@ -20,11 +20,11 @@ const strich = (id: string, y = 0): Strich => ({ art: 'strich', id, werkzeug: 's
 const text = (id: string, mehr: Partial<Text> = {}): Text => ({ art: 'text', id, x: 100, y: 100, text: 'Herz', groesse: 40, farbe: '#111111', ...mehr })
 const form = (id: string, f: Form['form'], mehr: Partial<Form> = {}): Form => ({ art: 'form', id, form: f, x1: 0, y1: 0, x2: 100, y2: 60, farbe: '#c62828', staerke: 4, ...mehr })
 
-describe('Datenmodell Version 2', () => {
+describe('Datenmodell', () => {
   it('wandelt Tafeln der Version 1 (ohne Seiten) in eine Seite um', () => {
     const alt = { schema: 'lehrraum/tafel', version: 1, id: 'alt', titel: 'Alt', elemente: [strich('a'), strich('b')], kamera: { x: 1, y: 2, zoom: 1.5 }, geaendertAm: '2026-11-11T10:00:00.000Z' }
     const t = pruefeTafel(alt)!
-    expect(t.version).toBe(2)
+    expect(t.version).toBe(3)
     expect(t.seiten).toHaveLength(1)
     expect(t.seiten[0].elemente.map((e) => e.id)).toEqual(['a', 'b'])
     expect(t).toMatchObject({ id: 'alt', titel: 'Alt', seiteNr: 0, kamera: { x: 1, y: 2, zoom: 1.5 }, fenster: [] })

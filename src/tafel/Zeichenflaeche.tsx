@@ -13,9 +13,9 @@
 //   Gezeichnet wird höchstens einmal je Bildwechsel, auch wenn der Stift sich öfter meldet.
 //   Kommt nur ein neuer Strich dazu, wird die untere Ebene ergänzt und nicht ganz neu gezeichnet.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { auswahlRahmen, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
-import { beruehrtRechteck, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
-import { MAX_TEXT, neueId, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
+import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
+import { beruehrtRechteck, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
+import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
 import { beiBildGeladen } from './bildquellen.ts'
 import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
 import { SCHRIFT, zeichne, zeichneHintergrund } from './zeichnen.ts'
@@ -56,6 +56,8 @@ type Aktiv =
   /** tipp: das angetippte Element – wird bei einem bloßen Antippen (ohne Ziehen) allein ausgewählt */
   | { art: 'ziehen'; zeiger: number; startX: number; startY: number; originale: Element[]; dx: number; dy: number; tipp: Element | null }
   | { art: 'skalieren'; zeiger: number; griff: Griffname; startX: number; startY: number; inhalt: Rechteck; originale: Element[]; s: Skalierung | null }
+  /** Drehen um die Mitte (cx, cy) der Auswahl; x/y: Zeiger (Tafel-Koordinaten), basis: bisherige Drehung zum Einrasten */
+  | { art: 'drehen'; zeiger: number; cx: number; cy: number; startX: number; startY: number; x: number; y: number; basis: number; originale: Element[]; winkel: number }
   /** Auswahlrahmen aufziehen (Tafel-Koordinaten); dazu: was schon vorher ausgewählt war und bleibt (Umschalt) */
   | { art: 'rahmen'; zeiger: number; x1: number; y1: number; x2: number; y2: number; dazu: string[] }
   | { art: 'schwenken'; zeiger: number; x: number; y: number }
@@ -189,7 +191,14 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       ctx.strokeStyle = '#46557a'
       ctx.stroke()
     }
-    const bewegt = a?.art === 'ziehen' ? a.originale.map((e) => verschoben(e, a.dx, a.dy)) : a?.art === 'skalieren' ? vorschau(a) : null
+    const bewegt =
+      a?.art === 'ziehen'
+        ? a.originale.map((e) => verschoben(e, a.dx, a.dy))
+        : a?.art === 'skalieren'
+          ? vorschau(a)
+          : a?.art === 'drehen'
+            ? a.originale.map((e) => gedreht(e, a.cx, a.cy, a.winkel))
+            : null
     bewegt?.forEach((e) => zeichne(ctx, e, true))
     // Auswahlrahmen mit Griffen (die Griffe nur, solange nichts bewegt wird)
     const gewaehlt = bewegt ?? s.elemente.filter((e) => s.auswahl.includes(e.id) && e.id !== s.editor?.id)
@@ -205,10 +214,35 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
         const g = GRIFF_GROESSE / k.zoom
         ctx.fillStyle = '#ffffff'
         for (const griff of griffe(r, k.zoom, nurEcken(gewaehlt))) {
+          if (griff.name === 'drehen') {
+            // Drehgriff: Kreis über dem Rahmen, mit einer Linie zur oberen Kante
+            ctx.beginPath()
+            ctx.moveTo(griff.x, r[1])
+            ctx.lineTo(griff.x, griff.y + g / 2)
+            ctx.stroke()
+            ctx.beginPath()
+            ctx.arc(griff.x, griff.y, g / 2, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.stroke()
+            continue
+          }
           ctx.fillRect(griff.x - g / 2, griff.y - g / 2, g, g)
           ctx.strokeRect(griff.x - g / 2, griff.y - g / 2, g, g)
         }
       }
+    }
+    // Beim Drehen den Winkel neben dem Zeiger anzeigen
+    if (a?.art === 'drehen') {
+      const text = `${Math.round(normiereWinkel(a.basis + a.winkel))}°`
+      const groesse = 16 / k.zoom
+      ctx.font = `600 ${groesse}px ${SCHRIFT}`
+      ctx.textBaseline = 'top'
+      const breite = ctx.measureText(text).width
+      const [x, y] = [a.x + 20 / k.zoom, a.y + 20 / k.zoom]
+      ctx.fillStyle = '#1d5fd1'
+      ctx.fillRect(x - 6 / k.zoom, y - 4 / k.zoom, breite + 12 / k.zoom, groesse + 8 / k.zoom)
+      ctx.fillStyle = '#ffffff'
+      ctx.fillText(text, x, y)
     }
     // Rahmen, der gerade aufgezogen wird
     if (a?.art === 'rahmen') {
@@ -337,7 +371,12 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const lage = auswahlLage()
     const griff = lage && !e.shiftKey ? griffBei(lage.griffe, tx, ty, zoom) : null
     if (griff && lage) {
-      aktiv.current = { art: 'skalieren', zeiger: e.pointerId, griff: griff.name, startX: tx, startY: ty, inhalt: lage.inhalt, originale: lage.gewaehlt, s: null }
+      if (griff.name === 'drehen') {
+        const [l, o, r, u] = lage.inhalt
+        aktiv.current = { art: 'drehen', zeiger: e.pointerId, cx: (l + r) / 2, cy: (o + u) / 2, startX: tx, startY: ty, x: tx, y: ty, basis: drehBasis(lage.gewaehlt), originale: lage.gewaehlt, winkel: 0 }
+      } else {
+        aktiv.current = { art: 'skalieren', zeiger: e.pointerId, griff: griff.name, startX: tx, startY: ty, inhalt: lage.inhalt, originale: lage.gewaehlt, s: null }
+      }
       return
     }
     const treffer = oberstesBei(s.elemente, tx, ty, fang)
@@ -493,6 +532,11 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       a.dx = tx - a.startX
       a.dy = ty - a.startY
       if (erstmals && (a.dx !== 0 || a.dy !== 0)) setVersteckt(new Set(a.originale.map((el) => el.id)))
+    } else if (a.art === 'drehen') {
+      if (a.x === a.startX && a.y === a.startY) setVersteckt(new Set(a.originale.map((el) => el.id)))
+      a.x = tx
+      a.y = ty
+      a.winkel = drehwinkel(a.cx, a.cy, a.startX, a.startY, tx, ty, a.basis, e.shiftKey)
     } else if (a.art === 'skalieren') {
       if (!a.s) setVersteckt(new Set(a.originale.map((el) => el.id)))
       a.s = skalierung(a.griff, a.inhalt, tx - a.startX, ty - a.startY)
@@ -560,6 +604,14 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
         // Bloßes Antippen: merken für den Doppeltipp; ein anderes Element im Auswahlrahmen wird allein ausgewählt
         letzterTipp.current = { id: a.tipp.id, zeit: Date.now() }
         if (!stand.current.auswahl.includes(a.tipp.id)) beiAuswahl([a.tipp.id])
+      }
+      setVersteckt(new Set())
+    }
+    if (a.art === 'drehen') {
+      if (!abgebrochen && Math.abs(a.winkel) > 1e-6) {
+        const neu = a.originale.map((el) => gedreht(el, a.cx, a.cy, a.winkel))
+        neu.forEach(fest)
+        beiErsetzen(a.originale, neu)
       }
       setVersteckt(new Set())
     }

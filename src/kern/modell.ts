@@ -1,19 +1,26 @@
-// Datenmodell der Tafel (Version 2). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 3). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
-// und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite).
+// und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
+// dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck – sie wird unverändert übernommen).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 2
+export const TAFEL_VERSION = 3
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
 
 export type Zeichenwerkzeug = 'stift' | 'marker'
 
-export type Strich = {
-  art: 'strich'
+/** Angaben, die jedes Element haben kann */
+type Gemeinsam = {
   id: string
+  /** Kennung der Gruppe, zu der das Element gehört (fehlt: keine Gruppe) */
+  gruppe?: string
+}
+
+export type Strich = Gemeinsam & {
+  art: 'strich'
   werkzeug: Zeichenwerkzeug
   farbe: string
   /** Strichstärke in Tafel-Einheiten (bei Zoom 1 = Pixel) */
@@ -23,44 +30,54 @@ export type Strich = {
   punkte: Punkt[]
 }
 
-export type Text = {
+export type Text = Gemeinsam & {
   art: 'text'
-  id: string
-  /** linke obere Ecke */
+  /** linke obere Ecke (ungedreht) */
   x: number
   y: number
   text: string
   /** Schriftgröße in Tafel-Einheiten */
   groesse: number
   farbe: string
+  /** Drehung in Grad im Uhrzeigersinn um die linke obere Ecke (fehlt: 0) */
+  drehung?: number
 }
 
-export const FORMEN = ['rechteck', 'ellipse', 'linie', 'pfeil'] as const
+export const FORMEN = ['rechteck', 'ellipse', 'linie', 'pfeil', 'dreieck'] as const
 export type Formart = (typeof FORMEN)[number]
+/** Formen mit eigener Drehung; Linie und Pfeil werden gedreht, indem sich ihre Endpunkte bewegen */
+export const DREHBARE_FORMEN: readonly Formart[] = ['rechteck', 'ellipse', 'dreieck']
 
-export type Form = {
+export type Form = Gemeinsam & {
   art: 'form'
-  id: string
   form: Formart
-  /** Anfangs- und Endpunkt des Aufziehens (bei Rechteck und Ellipse: zwei gegenüberliegende Ecken) */
+  /** Anfangs- und Endpunkt des Aufziehens (bei Rechteck, Ellipse, Dreieck: zwei gegenüberliegende Ecken, ungedreht) */
   x1: number
   y1: number
   x2: number
   y2: number
   farbe: string
   staerke: number
+  /** Drehung in Grad im Uhrzeigersinn um die Mitte (nur Rechteck, Ellipse, Dreieck; fehlt: 0) */
+  drehung?: number
+  /**
+   * Nur Dreieck: Die Grundseite liegt unten im Rahmen, die Spitze oben; spitze sagt, wo (0 = links, 1 = rechts,
+   * fehlt: 0,5). So lässt sich jedes Dreieck darstellen – die längste Seite als Grundseite, gedreht.
+   */
+  spitze?: number
 }
 
-export type Bild = {
+export type Bild = Gemeinsam & {
   art: 'bild'
-  id: string
-  /** linke obere Ecke, Breite, Höhe in Tafel-Einheiten */
+  /** linke obere Ecke (ungedreht), Breite, Höhe in Tafel-Einheiten */
   x: number
   y: number
   b: number
   h: number
   /** Kennung der Bilddatei im Gerätespeicher (speicher/dateien.ts) */
   dateiId: string
+  /** Drehung in Grad im Uhrzeigersinn um die linke obere Ecke (fehlt: 0) */
+  drehung?: number
 }
 
 export type Element = Strich | Text | Form | Bild
@@ -162,11 +179,28 @@ const istObjekt = (x: unknown): x is Record<string, unknown> => typeof x === 'ob
 const istFarbe = (x: unknown): x is string => typeof x === 'string' && /^#[0-9a-fA-F]{6}$/.test(x)
 const istStaerke = (x: unknown): x is number => istZahl(x) && x > 0 && x <= 200
 
+/** Winkel auf -180 < w ≤ 180 Grad bringen */
+export function normiereWinkel(w: number): number {
+  const r = (((w + 180) % 360) + 360) % 360 - 180
+  return r === -180 ? 180 : r
+}
+
+/** Gruppe und Drehung nur übernehmen, wenn sie gültig sind und etwas bedeuten (keine Drehung 0 speichern) */
+function zusatz(x: Record<string, unknown>, drehbar: boolean): { gruppe?: string; drehung?: number } {
+  const z: { gruppe?: string; drehung?: number } = {}
+  if (typeof x.gruppe === 'string' && x.gruppe.length > 0 && x.gruppe.length <= 64) z.gruppe = x.gruppe
+  if (drehbar && istZahl(x.drehung)) {
+    const w = normiereWinkel(x.drehung)
+    if (Math.abs(w) > 1e-9) z.drehung = w
+  }
+  return z
+}
+
 function pruefeElement(x: unknown): Element | null {
   if (!istObjekt(x) || typeof x.id !== 'string' || !x.id) return null
   if (x.art === 'bild') {
     if (!istZahl(x.x) || !istZahl(x.y) || !istMass(x.b) || !istMass(x.h) || !istDateiId(x.dateiId)) return null
-    return { art: 'bild', id: x.id, x: x.x, y: x.y, b: x.b, h: x.h, dateiId: x.dateiId }
+    return { art: 'bild', id: x.id, x: x.x, y: x.y, b: x.b, h: x.h, dateiId: x.dateiId, ...zusatz(x, true) }
   }
   if (!istFarbe(x.farbe)) return null
   if (x.art === 'strich') {
@@ -177,17 +211,19 @@ function pruefeElement(x: unknown): Element | null {
       if (!Array.isArray(p) || !istZahl(p[0]) || !istZahl(p[1])) return null
       punkte.push([p[0], p[1], istZahl(p[2]) ? Math.min(1, Math.max(0, p[2])) : 0.5])
     }
-    return { art: 'strich', id: x.id, werkzeug: x.werkzeug, farbe: x.farbe, staerke: x.staerke, druckEcht: x.druckEcht === true, punkte }
+    return { art: 'strich', id: x.id, werkzeug: x.werkzeug, farbe: x.farbe, staerke: x.staerke, druckEcht: x.druckEcht === true, punkte, ...zusatz(x, false) }
   }
   if (x.art === 'text') {
     if (!istZahl(x.x) || !istZahl(x.y) || typeof x.text !== 'string' || !x.text.trim()) return null
     if (!istZahl(x.groesse) || x.groesse < 6 || x.groesse > 400) return null
-    return { art: 'text', id: x.id, x: x.x, y: x.y, text: x.text.slice(0, MAX_TEXT), groesse: x.groesse, farbe: x.farbe }
+    return { art: 'text', id: x.id, x: x.x, y: x.y, text: x.text.slice(0, MAX_TEXT), groesse: x.groesse, farbe: x.farbe, ...zusatz(x, true) }
   }
   if (x.art === 'form') {
     const form = FORMEN.find((f) => f === x.form)
     if (!form || !istStaerke(x.staerke) || ![x.x1, x.y1, x.x2, x.y2].every(istZahl)) return null
-    return { art: 'form', id: x.id, form, x1: x.x1 as number, y1: x.y1 as number, x2: x.x2 as number, y2: x.y2 as number, farbe: x.farbe, staerke: x.staerke }
+    const f: Form = { art: 'form', id: x.id, form, x1: x.x1 as number, y1: x.y1 as number, x2: x.x2 as number, y2: x.y2 as number, farbe: x.farbe, staerke: x.staerke, ...zusatz(x, DREHBARE_FORMEN.includes(form)) }
+    if (form === 'dreieck' && istZahl(x.spitze) && x.spitze !== 0.5) f.spitze = Math.min(1, Math.max(0, x.spitze))
+    return f
   }
   return null
 }
@@ -197,7 +233,7 @@ const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x : []).ma
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten) und Version 2.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 und 3.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -206,7 +242,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2) {
+  } else if (roh.version === 2 || roh.version === 3) {
     const ids = new Set<string>()
     seiten = (Array.isArray(roh.seiten) ? roh.seiten : []).slice(0, MAX_SEITEN).flatMap((s): Seite[] => {
       if (!istObjekt(s) || typeof s.id !== 'string' || !s.id || ids.has(s.id)) return []

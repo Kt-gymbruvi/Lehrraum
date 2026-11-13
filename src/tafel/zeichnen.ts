@@ -1,5 +1,5 @@
 // Zeichnet Elemente der Tafel auf ein Canvas – für die Zeichenfläche und für den PDF-Export.
-import { breite, pfadAusPunkten, pfadAusUmriss, pfeilspitze, stiftUmriss, ZEILENHOEHE } from '../kern/geometrie.ts'
+import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, pfeilspitze, rechteckEcken, stiftUmriss, ZEILENHOEHE } from '../kern/geometrie.ts'
 import { MARKER_DECKKRAFT, type Element, type Hintergrund, type Seite, type Strich } from '../kern/modell.ts'
 import { bildquelle } from './bildquellen.ts'
 
@@ -32,14 +32,32 @@ function zeichneBild(ctx: Ctx, dateiId: string, x: number, y: number, b: number,
 
 export const zeichneHintergrund = (ctx: Ctx, h: Hintergrund) => zeichneBild(ctx, h.dateiId, 0, 0, h.b, h.h)
 
+/** Zeichnet etwas, das um (x, y) gedreht ist, so als stünde es gerade bei (0, 0) */
+function gedrehtBei(ctx: Ctx, x: number, y: number, grad: number, tun: () => void) {
+  ctx.save()
+  ctx.translate(x, y)
+  if (grad) ctx.rotate((grad * Math.PI) / 180)
+  tun()
+  ctx.restore()
+}
+
+/** Geschlossener Linienzug durch die Punkte */
+function vieleck(ctx: Ctx, punkte: [number, number][]) {
+  ctx.moveTo(punkte[0][0], punkte[0][1])
+  for (const [x, y] of punkte.slice(1)) ctx.lineTo(x, y)
+  ctx.closePath()
+}
+
 /** frisch = true: der Strich entsteht oder wird bewegt – seinen Pfad nicht merken */
 export function zeichne(ctx: Ctx, e: Element, frisch = false) {
-  if (e.art === 'bild') return zeichneBild(ctx, e.dateiId, e.x, e.y, e.b, e.h)
+  if (e.art === 'bild') return gedrehtBei(ctx, e.x, e.y, drehungVon(e), () => zeichneBild(ctx, e.dateiId, 0, 0, e.b, e.h))
   if (e.art === 'text') {
-    ctx.fillStyle = e.farbe
-    ctx.font = `${e.groesse}px ${SCHRIFT}`
-    ctx.textBaseline = 'top'
-    e.text.split('\n').forEach((zeile, i) => ctx.fillText(zeile, e.x, e.y + (i * ZEILENHOEHE + (ZEILENHOEHE - 1) / 2) * e.groesse))
+    gedrehtBei(ctx, e.x, e.y, drehungVon(e), () => {
+      ctx.fillStyle = e.farbe
+      ctx.font = `${e.groesse}px ${SCHRIFT}`
+      ctx.textBaseline = 'top'
+      e.text.split('\n').forEach((zeile, i) => ctx.fillText(zeile, 0, (i * ZEILENHOEHE + (ZEILENHOEHE - 1) / 2) * e.groesse))
+    })
     return
   }
   ctx.lineCap = 'round'
@@ -48,8 +66,9 @@ export function zeichne(ctx: Ctx, e: Element, frisch = false) {
     ctx.strokeStyle = e.farbe
     ctx.lineWidth = e.staerke
     ctx.beginPath()
-    if (e.form === 'rechteck') ctx.rect(Math.min(e.x1, e.x2), Math.min(e.y1, e.y2), Math.abs(e.x2 - e.x1), Math.abs(e.y2 - e.y1))
-    else if (e.form === 'ellipse') ctx.ellipse((e.x1 + e.x2) / 2, (e.y1 + e.y2) / 2, Math.abs(e.x2 - e.x1) / 2, Math.abs(e.y2 - e.y1) / 2, 0, 0, Math.PI * 2)
+    if (e.form === 'rechteck') vieleck(ctx, rechteckEcken(e))
+    else if (e.form === 'dreieck') vieleck(ctx, dreieckPunkte(e))
+    else if (e.form === 'ellipse') ctx.ellipse((e.x1 + e.x2) / 2, (e.y1 + e.y2) / 2, Math.abs(e.x2 - e.x1) / 2, Math.abs(e.y2 - e.y1) / 2, (drehungVon(e) * Math.PI) / 180, 0, Math.PI * 2)
     else {
       ctx.moveTo(e.x1, e.y1)
       ctx.lineTo(e.x2, e.y2)
