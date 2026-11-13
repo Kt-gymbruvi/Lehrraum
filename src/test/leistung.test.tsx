@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter } from 'react-router-dom'
 import App from '../App.tsx'
-import { beginne, bewegung, bildwechsel, gezeichnet, schliesseAb, zahl, zeigerart, type Meldung } from '../kern/messung.ts'
+import { beginne, bewegung, bildwechsel, gezeichnet, imVerlauf, KEINE, MAX_VERLAUF, MIN_SPRUNG, schliesseAb, zaehle, zahl, zeigerart, type Meldung, type Strichmessung, type Zeigerart } from '../kern/messung.ts'
 import type { Strich } from '../kern/modell.ts'
 import { ladeLetzteTafel } from '../speicher/datenbank.ts'
 import { messung } from '../tafel/messung.ts'
@@ -109,7 +109,8 @@ describe('Zeichnen ohne unnötige Arbeit', () => {
 })
 
 describe('Messung – Logik', () => {
-  const m = (zeit: number, mehr: Partial<Meldung> = {}): Meldung => ({ zeit, wartezeit: 4, punkte: 1, druck: 0.5, breite: 1, hoehe: 1, ...mehr })
+  // Ohne Angabe bewegt sich der Zeiger je Millisekunde um einen Pixel nach rechts
+  const m = (zeit: number, mehr: Partial<Meldung> = {}): Meldung => ({ zeit, wartezeit: 4, punkte: 1, druck: 0.5, breite: 1, hoehe: 1, x: zeit, y: 0, ...mehr })
 
   it('benennt die Art der Eingabe', () => {
     expect(['pen', 'touch', 'mouse', ''].map(zeigerart)).toEqual(['stift', 'finger', 'maus', 'unbekannt'])
@@ -124,6 +125,32 @@ describe('Messung – Logik', () => {
     const s = schliesseAb(lauf, 1500)
     expect(s).toMatchObject({ art: 'finger', dauer: 500, meldungenJeSekunde: 22, punkteJeSekunde: 42, pauseMax: 100, bildwechselJeSekunde: 14, bildpauseMax: 104, wartenMax: 40, einzeichnen: null })
     expect(s.wartenMittel).toBeCloseTo((11 * 4 + 40) / 12)
+  })
+
+  it('zählt eine Lücke nur, wenn sich der Zeiger dabei bewegt hat (stillstehender Finger meldet nichts)', () => {
+    const lauf = beginne('finger', m(0))
+    bewegung(lauf, m(10))
+    bewegung(lauf, m(300, { x: 12 })) // 290 ms nichts gemeldet, aber nur 2 px weiter: Finger stand still
+    bewegung(lauf, m(320, { x: 40 }))
+    expect(schliesseAb(lauf, 330).pauseMax).toBe(20)
+    bewegung(lauf, m(400, { x: 40, y: 30 })) // 80 ms Lücke mit 30 px Sprung: das macht die Schrift eckig
+    expect(schliesseAb(lauf, 410).pauseMax).toBe(80)
+    expect(MIN_SPRUNG).toBeGreaterThan(2)
+  })
+
+  it('führt einen Verlauf (neuester zuerst, begrenzt) und zählt je Eingabeart', () => {
+    const s = (art: Zeigerart) => schliesseAb(beginne(art, m(0)), 10)
+    let verlauf: Strichmessung[] = []
+    let anzahl = KEINE
+    for (let i = 0; i < MAX_VERLAUF + 3; i++) {
+      const neu = s(i === 0 ? 'stift' : 'finger')
+      verlauf = imVerlauf(verlauf, neu)
+      anzahl = zaehle(anzahl, neu.art)
+    }
+    expect(verlauf).toHaveLength(MAX_VERLAUF)
+    expect(verlauf.every((x) => x.art === 'finger')).toBe(true) // der Stiftstrich ist herausgefallen …
+    expect(anzahl).toEqual({ stift: 1, finger: MAX_VERLAUF + 2, maus: 0, unbekannt: 0 }) // … gezählt bleibt er
+    expect(KEINE.stift).toBe(0)
   })
 
   it('erkennt echten Druck und die größte Berührungsfläche', () => {
@@ -165,7 +192,7 @@ describe('Prüfansicht', () => {
     expect(screen.queryByLabelText('Prüfansicht')).not.toBeInTheDocument()
     ziehe([10, 10], [100, 10])
     expect(messung.aktiv).toBe(false)
-    expect(messung.letzter).toBeNull()
+    expect(messung.verlauf).toEqual([])
   })
 
   it('zeigt nach einem Strich mit dem Stift Eingabeart und echten Druck', async () => {
@@ -185,7 +212,8 @@ describe('Prüfansicht', () => {
     expect(ansicht).not.toHaveTextContent('kein echter Druck')
     expect(screen.getByTestId('pruef-jetzt')).toHaveTextContent('Keine Berührung')
     await waitFor(() => expect(ansicht).toHaveTextContent('1 Element'))
-    expect(messung.letzter?.einzeichnen).not.toBeNull()
+    expect(messung.verlauf[0]?.einzeichnen).not.toBeNull()
+    expect(screen.getByTestId('pruef-anzahl')).toHaveTextContent('Stift 1 · Finger 0 · Maus 0')
     // Der Strich ist trotz Messung ganz normal auf der Tafel gelandet
     await waitFor(async () => expect(await gespeichert()).toHaveLength(1))
   })
@@ -203,16 +231,29 @@ describe('Prüfansicht', () => {
     expect(ansicht).toHaveTextContent('96 × 120 px')
   })
 
-  it('schaltet die Schärfe um und hört beim Schließen auf zu messen', async () => {
-    const nutzer = userEvent.setup()
+  it('zeigt einen ganzen Testdurchgang auf einen Blick: Zähler, letzter Strich mit Nummer, Verlauf davor', async () => {
+    oeffne('/pruefen')
+    await bereit()
+    ziehe([10, 10], [100, 10], { pointerId: 1, pointerType: 'touch' })
+    ziehe([10, 60], [100, 60], { pointerId: 2, pointerType: 'pen', pressure: 0.5 })
+    ziehe([10, 110], [100, 110], { pointerId: 3, pointerType: 'mouse' })
+    expect(screen.getByTestId('pruef-anzahl')).toHaveTextContent('Stift 1 · Finger 1 · Maus 1')
+    expect(screen.getByText('Letzter Strich (Nr. 3)')).toBeInTheDocument()
+    const zeilen = screen.getAllByRole('row').slice(1) // ohne Kopfzeile
+    expect(zeilen.map((z) => z.textContent?.slice(0, 7))).toEqual(['2Stift,', '1Finger'])
+    expect(screen.queryByRole('button', { name: 'halb' })).not.toBeInTheDocument() // den Schärfe-Versuch gibt es nicht mehr
+  })
+
+  it('hört beim Schließen auf zu messen und vergisst die Werte', async () => {
     const { unmount } = oeffne('/pruefen')
     await bereit()
     expect(messung.aktiv).toBe(true)
-    expect(screen.getByRole('button', { name: 'voll' })).toHaveAttribute('aria-pressed', 'true')
-    await nutzer.click(screen.getByRole('button', { name: 'halb' }))
-    expect(screen.getByRole('button', { name: 'halb' })).toHaveAttribute('aria-pressed', 'true')
+    ziehe([10, 10], [100, 10])
+    expect(messung.verlauf).toHaveLength(1)
     expect(screen.getByRole('link', { name: 'Schließen' })).toHaveAttribute('href', '#/tafel')
     unmount()
     expect(messung.aktiv).toBe(false)
+    expect(messung.verlauf).toEqual([])
+    expect(messung.anzahl).toEqual(KEINE)
   })
 })

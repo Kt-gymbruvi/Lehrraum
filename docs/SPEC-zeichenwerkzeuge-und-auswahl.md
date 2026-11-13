@@ -187,7 +187,7 @@ Jede Etappe endet mit Tests, Build, aktualisierten `docs/` und einer Prüfung am
 
 Alle drei klären sich erst am Gerät; keiner braucht vor der Freigabe eine Entscheidung.
 
-1. **Was meldet das SMART Board dem Browser?** Modell, eingebauter Rechner oder angeschlossener Laptop, Browser; ob es Stift, Finger und Faust unterscheidbar meldet (Art der Eingabe, Größe der Berührung). Davon hängt ab, ob R4 von selbst funktioniert oder den Schalter braucht. Klärung mit der Prüfansicht (P2) in Etappe 1.
+1. **Was meldet das SMART Board dem Browser?** Teilweise geklärt (13.11.2026): SMART Board MX, eingebauter Windows-Rechner, Firefox 140. Finger kommen an, Größe der Berührung meldet Firefox nicht (2 × 1 px). Stift und Faust kamen in der Messung nicht an – vermutlich fängt SMART Ink sie ab. Offen: Was kommt an, wenn SMART Ink für den Browser aus ist, und meldet Edge die Größe der Berührung? Davon hängt ab, ob R4 von selbst funktioniert oder den Schalter braucht.
 2. **Passt die Leiste?** Zwölf Werkzeuge plus „Mehr“ auf dem kleinsten iPad im Querformat.
 3. **Messwerte für P1.** „Ohne spürbare Verzögerung“ erhält Zahlen, sobald die Prüfansicht am SMART Board Werte geliefert hat.
 

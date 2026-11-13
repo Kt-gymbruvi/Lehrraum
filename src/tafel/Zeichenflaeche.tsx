@@ -26,8 +26,6 @@ type Props = {
   staerke: number
   /** Kennungen der ausgewählten Elemente */
   auswahl: string[]
-  /** Auflösung der Zeichenebenen als Anteil der Bildschirmauflösung (1 = voll). Nur die Prüfansicht ändert das. */
-  schaerfe?: number
   beiHinzu: (e: Element) => void
   beiRadieren: (ids: string[]) => void
   beiErsetzen: (vorher: Element[], nachher: Element[]) => void
@@ -57,7 +55,7 @@ export const vergissStift = () => {
   stiftGesehen = false
 }
 
-export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, auswahl, schaerfe = 1, beiHinzu, beiRadieren, beiErsetzen, beiAuswahl, beiKamera }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, auswahl, beiHinzu, beiRadieren, beiErsetzen, beiAuswahl, beiKamera }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -82,13 +80,13 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   useLayoutEffect(() => {
     const el = rahmen.current
     if (!el) return
-    const messen = () => setGroesse({ b: el.clientWidth, h: el.clientHeight, dpr: (window.devicePixelRatio || 1) * schaerfe })
+    const messen = () => setGroesse({ b: el.clientWidth, h: el.clientHeight, dpr: window.devicePixelRatio || 1 })
     messen()
     if (typeof ResizeObserver === 'undefined') return
     const beobachter = new ResizeObserver(messen)
     beobachter.observe(el)
     return () => beobachter.disconnect()
-  }, [schaerfe])
+  }, [])
 
   /** Bereitet eine Ebene vor: leeren und Kamera einstellen. Liefert null, wenn es (noch) nichts zu zeichnen gibt. */
   function ebene(canvas: HTMLCanvasElement | null, k: Kamera) {

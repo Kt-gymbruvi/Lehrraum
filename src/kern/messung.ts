@@ -19,13 +19,23 @@ export type Meldung = {
   /** Größe der Berührungsfläche in Pixeln */
   breite: number
   hoehe: number
+  /** Ort auf dem Bildschirm in Pixeln */
+  x: number
+  y: number
 }
+
+/**
+ * Eine Pause zwischen zwei Meldungen zählt nur, wenn sich der Zeiger dabei mindestens so weit (Pixel) bewegt hat.
+ * Ein stillstehender Finger meldet nichts – das ist kein Hänger. Ein Sprung nach einer Pause macht die Schrift eckig.
+ */
+export const MIN_SPRUNG = 6
 
 /** Laufende Messung eines Strichs, vom Aufsetzen bis zum Abheben */
 export type Lauf = {
   art: Zeigerart
   beginn: number
   letzteMeldung: number
+  letzterOrt: [number, number]
   meldungen: number
   punkte: number
   pauseMax: number
@@ -53,7 +63,7 @@ export type Strichmessung = {
   dauer: number
   meldungenJeSekunde: number
   punkteJeSekunde: number
-  /** Längste Pause zwischen zwei Meldungen (ms) – große Werte heißen: Die Schrift wird eckig */
+  /** Längste Pause zwischen zwei Meldungen, während sich der Zeiger bewegte (ms) – große Werte heißen: Die Schrift wird eckig */
   pauseMax: number
   bildwechselJeSekunde: number
   /** Längste Pause zwischen zwei Bildwechseln (ms) – große Werte heißen: Es ruckelt */
@@ -79,6 +89,7 @@ export function beginne(art: Zeigerart, m: Meldung): Lauf {
     art,
     beginn: m.zeit,
     letzteMeldung: m.zeit,
+    letzterOrt: [m.x, m.y],
     meldungen: 0,
     punkte: 0,
     pauseMax: 0,
@@ -116,8 +127,9 @@ function merke(lauf: Lauf, m: Meldung) {
 export function bewegung(lauf: Lauf, m: Meldung) {
   lauf.meldungen++
   lauf.punkte += Math.max(1, m.punkte)
-  lauf.pauseMax = Math.max(lauf.pauseMax, m.zeit - lauf.letzteMeldung)
+  if (Math.hypot(m.x - lauf.letzterOrt[0], m.y - lauf.letzterOrt[1]) >= MIN_SPRUNG) lauf.pauseMax = Math.max(lauf.pauseMax, m.zeit - lauf.letzteMeldung)
   lauf.letzteMeldung = m.zeit
+  lauf.letzterOrt = [m.x, m.y]
   merke(lauf, m)
 }
 
@@ -163,6 +175,17 @@ export function schliesseAb(lauf: Lauf, zeit: number): Strichmessung {
     einzeichnen: null,
   }
 }
+
+/** So viele abgeschlossene Striche zeigt die Prüfansicht im Verlauf */
+export const MAX_VERLAUF = 8
+
+/** Neuen Strich vorne in den Verlauf aufnehmen (neuester zuerst, höchstens MAX_VERLAUF) */
+export const imVerlauf = (verlauf: Strichmessung[], s: Strichmessung): Strichmessung[] => [s, ...verlauf].slice(0, MAX_VERLAUF)
+
+/** Wie viele Striche es je Eingabeart gab – zeigt z. B., ob ein Stift überhaupt bei der Seite ankommt */
+export const zaehle = (bisher: Record<Zeigerart, number>, art: Zeigerart): Record<Zeigerart, number> => ({ ...bisher, [art]: bisher[art] + 1 })
+
+export const KEINE: Record<Zeigerart, number> = { stift: 0, finger: 0, maus: 0, unbekannt: 0 }
 
 /** Zahl für die Anzeige: deutsches Komma, feste Nachkommastellen */
 export const zahl = (n: number, stellen = 0) => n.toFixed(stellen).replace('.', ',')

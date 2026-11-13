@@ -3,13 +3,21 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-13 – Erste Messung am SMART Board, Prüfansicht überarbeitet
+- **Befund:** Am SMART Board MX (Windows, Firefox 140, 4K bei Faktor 3) braucht die Tafel 0,4–0,6 ms je Bild bei 60 Bildern je Sekunde – sie ist nicht der Engpass. Alle gemessenen Striche kamen als „Finger“ an; Stiftschrift ließ sich nur mit der Faust löschen, nicht mit dem Radierer der Tafel. Vermutung: SMART Ink fängt Stift und Faust ab und zeichnet in eine eigene Schicht über dem Browser. Wird am Gerät geprüft, bevor daraus Folgen gezogen werden.
+- **Keine weiteren Eingriffe ins Zeichnen** (Auflösung begrenzen, Vorhersage, langen Strich teilweise berechnen), solange die Werte das nicht verlangen.
+- **Schalter „Schärfe voll/halb“ entfernt:** Er brachte am Board keinen Unterschied in der Rechenzeit, und die Lehrkraft sah damit dickere Striche, die sich hier nicht nachstellen ließen. Ein Prüfwerkzeug, das selbst Fragen aufwirft, hilft nicht.
+- **Lücke zählt nur bei Bewegung** (mindestens 6 px zwischen zwei Meldungen): Ein stillstehender Finger meldet nichts; das wurde bisher als rote „längste Pause“ angezeigt, obwohl nichts hakte.
+- **Zähler je Eingabeart und Verlauf der letzten acht Striche mit Nummer:** Die Lehrkraft konnte die Fotos den Handlungen nicht mehr zuordnen. Jetzt zeigt ein Foto nach dem ganzen Durchgang alles – und „Stift 0“ zeigt sofort, dass ein Stift die Seite nicht erreicht.
+- **Prüfansicht zweispaltig**, damit sie bei 720 px Höhe ohne Rollen passt (rollen geht nicht, weil sie Berührungen an die Tafel durchlässt).
+
 ## 2026-11-12 – Schreiben am SMART Board, erster Teil (Spezifikation P1, P2)
 - **Gezeichnet wird höchstens einmal je Bildwechsel** (`requestAnimationFrame`): Stiftmeldungen sammeln nur Punkte, das Zeichnen folgt gebündelt. Beim Aufsetzen und Abheben wird sofort gezeichnet. Grund: Bisher wurde bei jeder Meldung der ganze Strich neu berechnet und die Ebene neu gezeichnet; ein langsames Gerät kommt damit nicht hinterher.
 - **Auch die Ansicht wird gebündelt weitergemeldet** (Verschieben mit Finger, Auswahl-Werkzeug, Mausrad): Jede Änderung der Ansicht zeichnet alle Elemente neu, das soll nicht öfter als einmal je Bild geschehen. Beim Loslassen gilt sofort der letzte Stand.
 - **Die untere Ebene wird ergänzt, wenn nur etwas hinzukommt.** Erkannt wird das daran, dass die bisherigen Elemente unverändert vorne in der Liste stehen und sich sonst nichts geändert hat (Ansicht, Größe, Verstecktes, Bilder). Der beim Abheben schon eingezeichnete Strich wird nicht doppelt gezeichnet; nach jedem vollständigen Neuzeichnen gilt dieser Merker nicht mehr (sonst fehlte der Strich nach Rückgängig + Wiederholen).
 - **Prüfansicht als eigene Adresse `#/pruefen`** auf der freien Tafel statt als Knopf in der Leiste: Sie wird selten gebraucht und soll im Unterricht nicht im Weg sein. Sie misst über eigene Zuhörer am Fenster und greift nicht in die Eingabe ein. Die Zeichenfläche meldet ihre Rechenzeiten nur, solange die Prüfansicht offen ist (`tafel/messung.ts`).
 - **Messwerte nur auf dem Bildschirm**, kein Speichern, kein Senden, kein Kopier-Knopf – die Lehrkraft fotografiert sie. So bleibt es bei „keine Trackingdienste“.
-- **Schalter „Schärfe voll/halb“ nur in der Prüfansicht:** ein Versuch am Gerät, ob die Auflösung der Zeichenfläche (4K) bremst. Erst wenn das Messwerte zeigen, wird die Auflösung im Normalbetrieb begrenzt.
+- **Schalter „Schärfe voll/halb“ nur in der Prüfansicht:** ein Versuch am Gerät, ob die Auflösung der Zeichenfläche (4K) bremst. Erst wenn das Messwerte zeigen, wird die Auflösung im Normalbetrieb begrenzt. (Am 13.11.2026 wieder entfernt, siehe oben.)
 - Zurückgestellt, bis Messwerte vom SMART Board vorliegen: langen Strich nur am Ende neu berechnen (Gefahr sichtbarer Nahtstellen), Vorhersage der Stiftposition, Zeichenebene ohne Abgleich mit dem Bildaufbau (`desynchronized`, kann flackern).
 
 ## 2026-11-12 – Spezifikation Zeichenwerkzeuge und Auswahl freigegeben

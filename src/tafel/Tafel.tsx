@@ -37,8 +37,6 @@ const LEER: Seite = { id: '', elemente: [] }
  * `pruefen` blendet die Prüfansicht ein (Messwerte zum Schreiben am Gerät).
  */
 export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string; pruefen?: boolean }) {
-  /** Nur in der Prüfansicht umstellbar: Auflösung der Zeichenebenen (1 = voll) */
-  const [schaerfe, setSchaerfe] = useState(1)
   const [kopf, setKopf] = useState<Pick<Tafelbild, 'schema' | 'version' | 'id' | 'titel'> | null>(null)
   const [buch, setBuch] = useState<Buch>({ seiten: [LEER], nr: 0, verlaeufe: {} })
   const [kamera, setKamera] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
@@ -423,7 +421,6 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
               farbe={farbe}
               staerke={staerke}
               auswahl={auswahl}
-              schaerfe={pruefen ? schaerfe : 1}
               beiHinzu={beiHinzu}
               beiRadieren={entferne}
               beiErsetzen={beiErsetzen}
@@ -431,7 +428,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
               beiKamera={setKamera}
             />
             <Fensterebene fenster={fenster} beiAendern={setFenster} />
-            {pruefen && <Pruefansicht elemente={seite.elemente.length} schaerfe={schaerfe} beiSchaerfe={setSchaerfe} />}
+            {pruefen && <Pruefansicht elemente={seite.elemente.length} />}
           </div>
           <Seitenleiste
             nr={buch.nr}
