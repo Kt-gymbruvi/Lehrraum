@@ -1,10 +1,9 @@
 # Projektstand – Lehrraum
 
-Stand: 13.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 13.11.2026 mit der überarbeiteten Prüfansicht) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Stand: 13.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 13.11.2026 mit Teil 1 der Auswahl) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
 Tests: 9 Testdateien, 135 Tests grün (`npm test`); Build grün (`npm run build`).
-Lokal fertig, **noch nicht veröffentlicht:** Etappe 2 „Auswahl“, erster Teil (siehe unten).
 
-## Auswahl, erster Teil (Spezifikation A1, A2, A3, H1) – lokal, nicht veröffentlicht
+## Auswahl, erster Teil (Spezifikation A1, A2, A3, H1) – veröffentlicht am 13.11.2026
 - **Rahmen aufziehen:** Mit dem Auswahl-Werkzeug auf freier Fläche ziehen spannt ein Rechteck auf; ausgewählt wird alles, was es berührt (es muss nicht ganz umschlossen sein). Bei Strichen und Formen zählt die sichtbare Linie – ein Rahmen im leeren Inneren eines Rechtecks wählt es nicht. Antippen einer freien Stelle hebt die Auswahl auf. Der PDF-Hintergrund wird nie ausgewählt.
 - **Mehrere Elemente:** Umschalt + Antippen nimmt hinzu oder heraus, Umschalt + Rahmen fügt hinzu, Strg + A wählt alles auf der Seite (und schaltet auf das Auswahl-Werkzeug), Escape hebt die Auswahl auf. Verschieben, Umfärben, Stärke, Duplizieren und Löschen gelten für die ganze Auswahl, je ein Schritt im Verlauf.
 - **Verschieben im Auswahlrahmen:** Ziehen an einer beliebigen Stelle innerhalb des Auswahlrahmens verschiebt die ganze Auswahl, auch zwischen den Buchstaben. Ein bloßes Antippen eines anderen Elements darin wählt nur dieses.
@@ -34,12 +33,12 @@ Lokal fertig, **noch nicht veröffentlicht:** Etappe 2 „Auswahl“, erster Tei
   - **Bilder:** über den Knopf in der linken Leiste (auch mehrere), per Einfügen aus der Zwischenablage oder Hineinziehen. PNG, JPEG, WebP, GIF, SVG; Bilder über 2400 px Kantenlänge werden verkleinert. Sie erscheinen eingepasst in der Mitte des Ausschnitts und lassen sich verschieben, duplizieren, löschen, radieren.
   - **PDF öffnen** (Kopfzeile): Jede PDF-Seite wird eine Tafelseite mit der PDF-Seite als festem Hintergrund zum Beschriften. Auf einer frischen Tafel ersetzt das PDF die leere Seite, sonst kommen die Seiten hinter die gezeigte. „Seite leeren“ lässt den Hintergrund stehen.
   - **Als PDF speichern** (Kopfzeile): alle Seiten in ein PDF (leere Seiten A4 quer, PDF-Seiten in Originalgröße, Gezeichnetes außerhalb vergrößert die Seite). Auf Geräten mit Teilen-Menü zusätzlich **Als PDF teilen** – auf dem iPad der Weg zu Goodnotes.
-  - **Auswahl:** Element antippen, verschieben, umfärben, Stärke bzw. Schriftgröße ändern, duplizieren (Strg + D), löschen (Entf). Lokal neu (nicht veröffentlicht): Rahmen aufziehen, mehrere Elemente, Griffe, Hand-Werkzeug – siehe oben.
+  - **Auswahl:** Element antippen, verschieben, umfärben, Stärke bzw. Schriftgröße ändern, duplizieren (Strg + D), löschen (Entf). Rahmen aufziehen, mehrere Elemente, Griffe zum Ändern der Größe, Hand-Werkzeug – siehe oben.
   - **Seiten** (Leiste unten): blättern (auch Bild auf/ab), neue Seite, Seite duplizieren, nach vorne/hinten schieben, löschen (beschriebene Seiten mit Rückfrage). Jede Seite hat ihren eigenen Rückgängig-Verlauf; nach dem Neuladen erscheint die zuletzt gezeigte Seite.
   - Sechs Farben, drei Strichstärken, linke Werkzeugleiste dauerhaft sichtbar (zweispaltig, damit alle neun Werkzeuge ohne Rollen passen).
   - Rückgängig/Wiederholen (bis 200 Schritte je Seite), „Seite leeren“ lässt sich zurücknehmen.
   - Eingabe: Stift und Maus zeichnen; ein Finger zeichnet, bis einmal ein Stift benutzt wurde, danach verschiebt er (Handballen-Schutz); zwei Finger verschieben und zoomen; Mausrad verschiebt, Strg + Mausrad zoomt; Zoom-Knöpfe und „Ansicht zurücksetzen“.
-  - Tastatur: A Auswahl, H Hand (lokal neu, ebenso Strg + A, Escape und Leertaste halten), S Stift, M Textmarker, R oder E Radierer, T Text, L Linie, P Pfeil, Q Rechteck, O Ellipse, Strg + Z, Strg + Y bzw. Strg + Umschalt + Z, Strg + D, Entf, Bild auf/ab.
+  - Tastatur: A Auswahl, H Hand, Strg + A alles auswählen, Escape Auswahl aufheben, Leertaste halten zum Verschieben, S Stift, M Textmarker, R oder E Radierer, T Text, L Linie, P Pfeil, Q Rechteck, O Ellipse, Strg + Z, Strg + Y bzw. Strg + Umschalt + Z, Strg + D, Entf, Bild auf/ab.
   - Automatisches Speichern auf dem Gerät (0,7 s nach der letzten Änderung, sofort beim Wegschalten/Schließen), Wiederherstellen der zuletzt benutzten Tafel, Anzeige des Speicherstands; bittet den Browser um dauerhaften Speicher.
 - **Fenster über der Tafel** (rechte Leiste, dauerhaft sichtbar): Uhr (mit Datum), Timer (1–15 min per Knopf, ± Minute, Start/Pause, Zurück, drei Signaltöne und Blinken am Ende), Stoppuhr (Zehntelsekunden), Würfel (1–3 Würfel, Summe), Notizen als Klebezettel (mehrere, vier Farben, Text wird gespeichert).
   - Fenster lassen sich an der Titelzeile verschieben, einklappen (Timer läuft weiter) und schließen; angetippte Fenster kommen nach vorne. Zwischen den Fenstern bleibt die Tafel beschreibbar.
@@ -74,11 +73,11 @@ Lokal fertig, **noch nicht veröffentlicht:** Etappe 2 „Auswahl“, erster Tei
 - **Klassen haben noch keine Schülerliste**, keine Sitzordnung, keine Gruppen und keinen Goodnotes-Link; Zufallsschüler und Gruppen fehlen deshalb weiter in der rechten Leiste.
 - Klassen und Tafeln liegen nur auf dem Gerät und im jeweiligen Browser; es gibt keine Übertragung auf ein anderes Gerät.
 - Wird eine Klasse archiviert, bleibt ihre Tafel erhalten, ist aber erst nach „Wiederherstellen“ wieder erreichbar.
-- Bilder lassen sich (veröffentlicht) noch nicht skalieren; lokal geht es über die Eckgriffe. Drehen und Zuschneiden gehen nicht. Animierte GIFs stehen still.
+- Bilder lassen sich über die Eckgriffe vergrößern und verkleinern, aber noch nicht drehen oder zuschneiden. Animierte GIFs stehen still.
 - PDF-Seiten werden als Bild übernommen: Text im PDF ist danach nicht mehr markierbar, und das exportierte PDF enthält ebenfalls Bilder (größer als ein Text-PDF, nicht durchsuchbar).
 - Der Export verwendet die Schrift des jeweiligen Geräts; Text kann im PDF minimal anders umbrechen als auf der Tafel eines anderen Geräts.
 - Es gibt keine Export-/Importdatei für die ganze Tafel (zum Übertragen auf ein anderes Gerät) – nur PDF.
-- Auswahl (veröffentlicht): immer nur ein Element durch Antippen, kein Skalieren. Lokal gehen Rahmen, mehrere Elemente und Griffe; Drehen, Gruppieren, Reihenfolge und Kopieren zwischen Tafeln fehlen noch.
+- Auswahl: Drehen, Gruppieren, Reihenfolge und Kopieren zwischen Tafeln fehlen noch (Teile 2 und 3).
 - Die Leertaste verschiebt am Laptop die Ansicht; einen Knopf in der Leiste löst sie deshalb nicht mehr aus (Eingabetaste geht weiter).
 - Seiten: keine Miniaturen; Seiten löschen und umsortieren lässt sich nicht rückgängig machen (deshalb die Rückfrage). Alle Seiten teilen sich eine Ansicht (Zoom/Verschiebung); Seiten ohne PDF haben kein sichtbares Seitenformat.
 - Die Größe von Text wird für Auswahl und Radierer geschätzt; bei sehr breiten oder schmalen Buchstaben sitzt der Auswahlrahmen nicht genau.
@@ -107,7 +106,7 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
    - **SMART Ink für den Browser ausschalten** (über das SMART-Ink-Bedienelement oben rechts im Fenster, „SMART Ink ausschalten“ → „In dieser Anwendung“; ggf. die Schul-IT fragen), dann in `#/pruefen` nacheinander mit Finger, Stift und Faust je einen Strich, ein Foto. Dasselbe in Microsoft Edge (meldet vermutlich die Größe der Berührung, Firefox nicht).
    - Danach R4 (Faust) festlegen: Kommt die Faust als große Berührung, als Radierer des Stifts oder gar nicht an?
 2. **Auswahl** (A1–A8, H1) in drei Teilen, jeder einzeln von der Lehrkraft geprüft und freigegeben:
-   - Teil 1 (lokal fertig, nicht veröffentlicht): Rahmen, mehrere Elemente, Größe ändern, Hand-Werkzeug (A1–A3, H1).
+   - Teil 1 (veröffentlicht am 13.11.2026, am Gerät noch nicht geprüft): Rahmen, mehrere Elemente, Größe ändern, Hand-Werkzeug (A1–A3, H1).
    - Teil 2: Drehen (A4) mit Datenmodell Version 3 (`drehung`, `gruppe`, Formart `dreieck`).
    - Teil 3: Kopieren/Einfügen auch zwischen Tafeln (A5), Gruppieren (A6), Reihenfolge (A7), Auswahlleiste (A8).
 3. **Radierer** (R1–R4): Schwamm und Element-Radierer, drei Größen, Radieren mit Handrücken oder Faust.
