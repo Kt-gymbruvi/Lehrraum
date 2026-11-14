@@ -3,6 +3,12 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Zufall & Gruppen (SPEC Etappe 4)
+- **„Heute nicht da“ und „schon dran“ nicht speichern:** Das wären Anwesenheitsdaten; die gehören ins Notenbuch, nicht in die Tafel. Nach dem Schließen des Fensters ist alles weg.
+- **Nur in der Klassentafel:** In der freien Tafel gibt es keine Namen; der Knopf erscheint dort nicht.
+- **Gruppen als Text-Element an die Tafel:** ein Schritt im Verlauf, wie jeder andere Text verschieb- und löschbar. Verworfen: eigene Element-Art für Gruppen (mehr Code ohne Nutzen).
+- **Gleichmäßige Gruppen:** Bei „Personen je Gruppe“ so viele Gruppen, dass keine größer ist als gewünscht; Größen unterscheiden sich höchstens um eins.
+
 ## 2026-11-14 – Klassen mit Namen und Abgleich (SPEC Etappe 3)
 - **Notenbuch-Passwort, eigener Schlüssel:** Der Klassen-Tresor hat ein eigenes Salz; wer ihn öffnen kann, kann damit weder Notenbuch noch Namensliste öffnen. Gibt es eine Namensliste, muss das Passwort zu ihr passen – so kann kein zweites Passwort entstehen.
 - **Schlüssel statt Passwort auf dem Gerät:** nicht exportierbarer `CryptoKey` in IndexedDB. Verworfen: Passwort in jedem Besuch neu fragen (lästig im Unterricht), Passwort speichern (unsicher).

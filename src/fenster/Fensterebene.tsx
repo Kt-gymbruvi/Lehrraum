@@ -1,14 +1,17 @@
 // Ebene über der Zeichenfläche mit allen offenen Fenstern – und die rechte Leiste, die sie öffnet.
 import type { ReactNode } from 'react'
-import { aendere, ANWENDUNGEN, FENSTERARTEN, FENSTERNAMEN, MEHRFACH, nachVorn, schalte, schliesse, type FensterZustand } from '../kern/fenster.ts'
+import { aendere, ANWENDUNGEN, FENSTERARTEN, FENSTERNAMEN, MEHRFACH, nachVorn, NUR_KLASSE, schalte, schliesse, type FensterZustand } from '../kern/fenster.ts'
+import type { Schueler } from '../kern/klassen.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 import { Fenster } from './Fenster.tsx'
 import { Klassenfunk, Lernangebote, Quizzo } from './Anwendungen.tsx'
 import { Notiz, Stoppuhr, Timer, Uhr, Wuerfel } from './Inhalte.tsx'
+import { Zufall } from './Zufall.tsx'
 
 type Props = { fenster: FensterZustand[]; beiAendern: (neu: (alt: FensterZustand[]) => FensterZustand[]) => void }
 
-export function Fensterebene({ fenster, beiAendern }: Props) {
+/** schueler: Namen der Klasse (null in der freien Tafel); beiText: schreibt einen Text in die Mitte der Tafel */
+export function Fensterebene({ fenster, beiAendern, schueler = null, beiText }: Props & { schueler?: Schueler[] | null; beiText?: (text: string) => void }) {
   return (
     <div className="fensterebene">
       {fenster.map((f) => (
@@ -25,6 +28,7 @@ export function Fensterebene({ fenster, beiAendern }: Props) {
           {f.art === 'timer' && <Timer />}
           {f.art === 'stoppuhr' && <Stoppuhr />}
           {f.art === 'wuerfel' && <Wuerfel />}
+          {f.art === 'zufall' && <Zufall schueler={schueler} beiAnTafel={(t) => beiText?.(t)} />}
           {f.art === 'notiz' && <Notiz fenster={f} beiAendern={(neu) => beiAendern((alt) => aendere(alt, f.id, neu))} />}
           {f.art === 'quizzo' && <Quizzo ziel={f.ziel} beiZiel={(ziel) => beiAendern((alt) => aendere(alt, f.id, { ziel }))} />}
           {f.art === 'klassenfunk' && <Klassenfunk ziel={f.ziel} beiZiel={(ziel) => beiAendern((alt) => aendere(alt, f.id, { ziel }))} />}
@@ -37,11 +41,12 @@ export function Fensterebene({ fenster, beiAendern }: Props) {
 
 /** Rechte Schnellzugriffsleiste – bleibt dauerhaft sichtbar. */
 /** vorne: Knöpfe der Tafel, die oben in der Leiste stehen (z. B. „Hintergrund“) */
-export function Schnellleiste({ fenster, beiAendern, vorne }: Props & { vorne?: ReactNode }) {
+/** klasse: Tafel einer Klasse – nur dann gibt es „Zufall & Gruppen“ */
+export function Schnellleiste({ fenster, beiAendern, vorne, klasse = false }: Props & { vorne?: ReactNode; klasse?: boolean }) {
   return (
     <aside className="werkzeugleiste rechts" aria-label="Unterrichtswerkzeuge">
       {vorne && <div className="gruppe">{vorne}</div>}
-      {[FENSTERARTEN.filter((a) => !ANWENDUNGEN.has(a)), FENSTERARTEN.filter((a) => ANWENDUNGEN.has(a))].map((arten, i) => (
+      {[FENSTERARTEN.filter((a) => !ANWENDUNGEN.has(a) && (klasse || !NUR_KLASSE.has(a) || fenster.some((f) => f.art === a))), FENSTERARTEN.filter((a) => ANWENDUNGEN.has(a))].map((arten, i) => (
       <div className="gruppe" key={i}>
         {arten.map((art) => {
           const offen = fenster.some((f) => f.art === art)

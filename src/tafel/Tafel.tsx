@@ -6,10 +6,10 @@ import { einzufuegen, neueAblage, type Ablage } from '../kern/ablage.ts'
 import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl.ts'
 import { ausfuehrenAuf, entfernenBefehl, inhaltVon, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
-import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
+import { einpassen, gesamtRahmen, textMass, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { alsHintergrundBefehl, aufsBlattBefehl, begrenzt, bildHintergrund, bildHintergrundBefehl, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
 import { geaendert, vorlageAus, type Klasse } from '../kern/klassen.ts'
-import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tafelbild } from '../kern/modell.ts'
+import { benutzteDateien, MAX_SEITEN, MAX_TEXT, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tafelbild } from '../kern/modell.ts'
 import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
@@ -18,6 +18,7 @@ import { Seitenuebersicht } from './Seitenuebersicht.tsx'
 import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
 import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, speichereKlasse, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
+import { gleicheAb } from '../speicher/abgleich.ts'
 import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
 import { Symbol } from '../ui/Symbol.tsx'
@@ -149,7 +150,12 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           setFehlt(true)
           return
         }
-        if (klasseId) void ladeKlasse(klasseId).then((k) => !abgebrochen && setKlasse(k), () => undefined)
+        if (klasseId) {
+          const holeKlasse = () => ladeKlasse(klasseId).then((k) => !abgebrochen && k && setKlasse(k), () => undefined)
+          void holeKlasse()
+          // Neue Namen aus dem Notenbuch oder von anderen Geräten (still im Hintergrund)
+          void gleicheAb().then(holeKlasse)
+        }
         setWerkzeug(e.werkzeug)
         setFarbe(e.farbe)
         setStaerke(e.staerke)
@@ -299,6 +305,16 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const schneideAus = (hinweisSchonGesetzt = false) => {
     kopiereAuswahl(hinweisSchonGesetzt)
     loescheAuswahl()
+  }
+  /** Schreibt einen Text (z. B. die Gruppen aus „Zufall & Gruppen“) in die Mitte des sichtbaren Ausschnitts und wählt ihn aus */
+  const schreibeText = (text: string) => {
+    const [mx, my] = zuTafel(kamera, (flaeche.current?.clientWidth || 800) / 2, (flaeche.current?.clientHeight || 600) / 2)
+    const e: Element = { art: 'text', id: neueId(), x: 0, y: 0, text: text.slice(0, MAX_TEXT), groesse: 36, farbe }
+    const [b, h] = textMass(e)
+    const neu = { ...e, x: Math.round(mx - b / 2), y: Math.round(my - h / 2) }
+    fuehreAus({ art: 'hinzufuegen', elemente: [neu] })
+    setWerkzeug('auswahl')
+    setAuswahl([neu.id])
   }
   /** Fügt die Kopie in der Mitte des sichtbaren Ausschnitts ein und wählt sie aus */
   const fuegeEin = () => {
@@ -757,7 +773,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
               begrenze={begrenze}
             />
             {leistenRahmen && <Auswahlleiste rahmen={leistenRahmen} knoepfe={auswahlKnoepfe} />}
-            <Fensterebene fenster={fenster} beiAendern={setFenster} />
+            <Fensterebene fenster={fenster} beiAendern={setFenster} schueler={klasseId ? (klasse?.schueler ?? []) : null} beiText={schreibeText} />
             {pruefen && <Pruefansicht elemente={seite.elemente.length} />}
           </div>
           <Seitenleiste
@@ -785,6 +801,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         <Schnellleiste
           fenster={fenster}
           beiAendern={setFenster}
+          klasse={!!klasseId}
           vorne={
             <Hintergrundwahl
               format={format}

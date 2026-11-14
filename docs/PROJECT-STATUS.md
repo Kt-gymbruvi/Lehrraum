@@ -1,14 +1,25 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 21 Testdateien, 268 Tests grün (`npm test`); Build grün (`npm run build`).
-**Klassen mit Namen und Abgleich (Etappe 3 der Spezifikation `SPEC-klassen-namen-und-notenbuch.md`)** ist gebaut, aber noch nicht veröffentlicht. Bringt **Klasse Version 3**.
+Tests: 22 Testdateien, 275 Tests grün (`npm test`); Build grün (`npm run build`).
+**Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist gebaut, noch nicht veröffentlicht.
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
-## Klassen mit Namen, Notenbuch, Abgleich (SPEC Etappe 3) – gebaut 14.11.2026, nicht veröffentlicht
+## Zufall & Gruppen (SPEC Etappe 4) – gebaut 14.11.2026, nicht veröffentlicht
+- **Fenster „Zufall & Gruppen“** in der rechten Leiste, nur in der Tafel einer Klasse. Ohne Namen ein Hinweis auf „Meine Klassen“.
+- **Wer ist dran?** – „Auslosen“ mit kurzer Animation (abschaltbar, aus bei „Bewegung reduzieren“), „Ohne Wiederholung“ mit Zähler „noch 9 von 24“, danach neue Runde; „Neue Runde“ von Hand.
+- **Gruppen** – nach Anzahl der Gruppen oder Personen je Gruppe, „Neu mischen“, große Anzeige; **„An die Tafel schreiben“** setzt die Gruppen als Text in die Mitte (ausgewählt, rückgängig machbar).
+- **Heute nicht da** – Namen antippen; gilt nur, solange das Fenster offen ist, wird nirgends gespeichert.
+- Anzeige: Vorname; bei gleichen Vornamen „Anna M.“, reicht das nicht, ganzer Name. Zufall aus `crypto.getRandomValues`.
+- Beim Öffnen einer Klassentafel wird still abgeglichen, damit neue Namen aus dem Notenbuch da sind.
+- Neu: `kern/zufall.ts`, `fenster/Zufall.tsx`, Fensterart `zufall`, Symbol `zufall`; Test `src/test/zufall.test.tsx` (7 Tests).
+- **Getestet:** `npm test` (275 grün), `npm run build`; im Browser bei 1280 px: Auslosen mit Animation, Gruppen aus 14 Namen (zwei „Anna“ als „Anna M.“/„Anna B.“), an die Tafel geschrieben; Handy dunkel ohne Fehler (das Fenster ist dort schmal – die Tafel ist für iPad und Board gedacht).
+- **Nicht getestet:** am Beamer/SMART Board und iPad, mit echten Klassen aus dem Notenbuch.
+
+## Klassen mit Namen, Notenbuch, Abgleich (SPEC Etappe 3) – veröffentlicht 14.11.2026
 - **Namen je Klasse** (nur Vor- und Nachname): unter „Meine Klassen“ Knopf „Namen“ – eine Person je Zeile, „Nachname, Vorname“ oder „Vorname Nachname“, auch aus einer Tabelle kopiert; die Karte zeigt „24 Namen“ zum Aufklappen. Kopie einer Klasse behält die Namen.
 - **Klassen aus dem Notenbuch** erscheinen von selbst (Kennzeichen „aus dem Notenbuch“): Bezeichnung, Fach, Namen und Archiv kommen aus dem Notenbuch; Tafel, Vorlage und Jahrgang bleiben bei Lehrraum. Im Notenbuch gelöscht → hier archiviert (Tafel bleibt); gelöscht werden kann sie hier erst dann.
 - **Abgleich zwischen Geräten:** mit Lehrkraft-Konto und einmal je Gerät dem **Notenbuch-Passwort**. Gespeichert wird nur ein nicht exportierbarer Schlüssel (IndexedDB), nie das Passwort. Server sieht nur verschlüsselte Daten (`lr_tresore`, Art `klassen`, eigenes Salz). Tafeln bleiben auf dem Gerät. Löschungen werden vermerkt, damit gelöschte Klassen nicht wiederkommen. Neuere Änderung gewinnt; bei gleichzeitigem Speichern wird neu geladen und zusammengeführt. Passwort im Notenbuch geändert → Lehrraum fragt neu und verschlüsselt neu.

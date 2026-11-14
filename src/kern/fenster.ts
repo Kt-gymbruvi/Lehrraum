@@ -1,8 +1,8 @@
-// Fenster über der Tafel (Uhr, Timer, Stoppuhr, Würfel, Notiz): welche offen sind, wo sie liegen, was vorne ist.
+// Fenster über der Tafel (Uhr, Timer, Stoppuhr, Würfel, Zufall & Gruppen, Notiz): welche offen sind, wo sie liegen, was vorne ist.
 // Reine Funktionen. Die Reihenfolge der Liste ist die Stapelfolge: das letzte Fenster liegt vorne.
 import { neueId } from './modell.ts'
 
-export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'wuerfel', 'notiz', 'quizzo', 'klassenfunk', 'lernangebote'] as const
+export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'wuerfel', 'zufall', 'notiz', 'quizzo', 'klassenfunk', 'lernangebote'] as const
 export type FensterArt = (typeof FENSTERARTEN)[number]
 
 export const NOTIZFARBEN = ['gelb', 'gruen', 'rosa', 'blau'] as const
@@ -24,9 +24,12 @@ export type FensterZustand = {
   gross?: boolean
 }
 
-export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', wuerfel: 'Würfel', notiz: 'Notiz', quizzo: 'Quizzo', klassenfunk: 'Klassenfunk', lernangebote: 'Lernangebote' }
+export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', wuerfel: 'Würfel', zufall: 'Zufall & Gruppen', notiz: 'Notiz', quizzo: 'Quizzo', klassenfunk: 'Klassenfunk', lernangebote: 'Lernangebote' }
 
 /** Fenster, die eine andere Anwendung der Plattform zeigen (größer, lassen sich auf die ganze Fläche vergrößern) */
+/** Nur in der Tafel einer Klasse (braucht ihre Namen) */
+export const NUR_KLASSE: ReadonlySet<FensterArt> = new Set(['zufall'])
+
 export const ANWENDUNGEN: ReadonlySet<FensterArt> = new Set(['quizzo', 'klassenfunk', 'lernangebote'])
 /** Kennung eines Spiels, einer Sitzung oder ein Ordnername – nur solche Zeichen gelangen in eine Adresse */
 export const istZiel = (x: unknown): x is string => typeof x === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(x)

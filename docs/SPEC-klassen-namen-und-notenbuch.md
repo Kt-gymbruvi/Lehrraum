@@ -1,6 +1,6 @@
 # SPEC – Schülernamen in der Tafel, Klassen auf allen Geräten, Notenbuch auf der Plattform
 
-Stand: 14.11.2026 · **freigegeben am 14.11.2026** · Etappen 1 und 2 veröffentlicht (`../Notenbuch`) · Etappe 3 gebaut (Lehrraum), noch nicht veröffentlicht
+Stand: 14.11.2026 · **freigegeben am 14.11.2026** · Etappen 1 und 2 veröffentlicht (`../Notenbuch`) · Etappe 3 veröffentlicht · Etappe 4 gebaut (Lehrraum), noch nicht veröffentlicht
 
 Umsetzung abweichend von der Tabelle unten: **eine** Tabelle `lr_tresore` mit Spalte `art` (`notenbuch`, `namen`,
 `klassen`) statt drei Tabellen. Gleiche Regeln, eine Speicherfunktion `lr_tresor_speichern` (Migration `../Quizzo/supabase/migrations/011_tresore.sql`).
