@@ -1,11 +1,11 @@
 # Projektstand – Lehrraum
 
-Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 13.11.2026 mit Teil 1 des Radierers) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Etappe 4 „Stift“, Teil 1 und 2) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
 Tests: 14 Testdateien, 191 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
-Lokal fertig, **noch nicht veröffentlicht:** Etappe 4 „Stift“, Teil 1 (mehr Farben, eigene Farbplätze, Stärke-Regler) und Teil 2 (Begradigen durch Halten) – siehe unten.
+Etappe 4 „Stift“ (Teil 1 und 2) ist veröffentlicht, am Gerät aber noch nicht geprüft.
 
-## Stift, Teil 2: Begradigen durch Halten (Spezifikation S3) – lokal, nicht veröffentlicht
+## Stift, Teil 2: Begradigen durch Halten (Spezifikation S3) – veröffentlicht am 14.11.2026
 - **Halten statt Abheben:** Steht der Stift (auch Finger oder Maus) am Ende eines Strichs etwa 0,6 Sekunden still, wird der Strich noch vor dem Abheben zu einer sauberen Form: gerade Linie, Rechteck, Kreis/Ellipse oder Dreieck. Ein Zittern bis 8 Bildschirm-Pixel zählt als Stillstehen. Ohne Halten wird nie begradigt; wird nichts erkannt (z. B. Haken, Wellen, Buchstaben, Herz, Stern), bleibt der Strich, wie er ist. Geht es nach dem Halten weiter, bleibt der Strich freihändig.
 - **Ergebnis:** eine normale Form in Farbe und Stärke des Strichs – auswählbar, skalierbar, drehbar. Schräg gezeichnete Rechtecke, Ellipsen und Dreiecke bleiben schräg; bis 5° Abweichung werden Linien, Rechtecke und Dreiecke gerade gestellt. Fast runde Ellipsen werden zum Kreis. Die Dreieck-Ecken liegen dort, wo sie gezeichnet wurden.
 - **Textmarker:** wird beim Halten nur zur geraden Linie und bleibt ein Textmarker-Strich.
@@ -14,7 +14,7 @@ Lokal fertig, **noch nicht veröffentlicht:** Etappe 4 „Stift“, Teil 1 (mehr
 - Logik in `src/kern/begradigen.ts` (Linie über den Abstand zur Strecke; sonst kleinstes umschließendes Rechteck, Ellipse im selben Rahmen und größtes Dreieck in der konvexen Hülle, genommen wird die Form mit dem kleinsten mittleren Abstand). Kein neues Datenmodell.
 - Hinweis: Formen werden wie beim Formwerkzeug mit der eingestellten Stärke gezogen und wirken dadurch etwas dünner als der freihändige Stiftstrich.
 
-## Stift, Teil 1: mehr Farben, eigene Farbplätze, Stärke-Regler (Spezifikation S1, S2, W1) – lokal, nicht veröffentlicht
+## Stift, Teil 1: mehr Farben, eigene Farbplätze, Stärke-Regler (Spezifikation S1, S2, W1) – veröffentlicht am 14.11.2026
 - **Knopf „Mehr“** als siebter Knopf bei den Farben: öffnet rechts neben der Leiste ein Feld mit Palette, eigenen Farben und Regler. Es schließt sich beim Antippen der Tafel, mit Escape und beim Werkzeugwechsel.
 - **Palette mit 18 Farben** (die sechs der Leiste, dazu Violett, Weinrot, Petrol, Braun, Grau, Weiß, Gelb, Hellgrün, Rosa, Hellblau, Türkis, Lachs). Eine Farbe daraus wirkt wie eine Leistenfarbe: auf Neues und auf die Auswahl.
 - **Eigene Farben:** „+“ öffnet den Farbwähler des Geräts; die gewählte Farbe gilt sofort und kommt als eigener Platz dazu (höchstens sechs je Gerät, die neueste verdrängt die älteste, bleibt nach dem Neuladen).
@@ -154,7 +154,7 @@ Lokal fertig, **noch nicht veröffentlicht:** Etappe 4 „Stift“, Teil 1 (mehr
 - **Am SMART Board kommt die Schrift sehr verzögert und abgehakt**; am iPad läuft es besser. Ursache noch nicht gemessen. Vermutung im Code: Bei jeder Stiftbewegung wird der ganze entstehende Strich neu berechnet und die obere Zeichenebene ganz neu gezeichnet, ohne Bündelung je Bildwechsel.
 
 ## Nächste Schritte
-Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC-zeichenwerkzeuge-und-auswahl.md` (12.11.2026). Umgesetzt und veröffentlicht sind davon der erste Teil von Etappe 1 und Etappe 2 (Auswahl, alle drei Teile).
+Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC-zeichenwerkzeuge-und-auswahl.md` (12.11.2026). Umgesetzt und veröffentlicht sind davon der erste Teil von Etappe 1, Etappe 2 (Auswahl, alle drei Teile), Teil 1 von Etappe 3 (Radierer) und Etappe 4 (Stift, beide Teile).
 1. **Schreiben am SMART Board** (Spezifikation P1, P2): Erster Teil veröffentlicht und am Board gemessen (siehe oben). Die überarbeitete Prüfansicht ist veröffentlicht. Als Nächstes am Board:
    - **SMART Ink prüfen:** mit dem Stift schreiben, dann in der Tafel auf „Neue Seite“ tippen. Bleibt die Stiftschrift stehen, liegt sie in der Schicht von SMART Ink, nicht in der Tafel.
    - **SMART Ink für den Browser ausschalten** (über das SMART-Ink-Bedienelement oben rechts im Fenster, „SMART Ink ausschalten“ → „In dieser Anwendung“; ggf. die Schul-IT fragen), dann in `#/pruefen` nacheinander mit Finger, Stift und Faust je einen Strich, ein Foto. Dasselbe in Microsoft Edge (meldet vermutlich die Größe der Berührung, Firefox nicht).
@@ -167,8 +167,8 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
    - Teil 1 (veröffentlicht am 13.11.2026, am Gerät noch nicht geprüft): Schwamm und Element-Radierer, Teilstücke, drei Größen (R1–R3).
    - Teil 2: Radieren mit Handrücken oder Faust (R4) – erst nach der Messung am SMART Board (siehe Punkt 1).
 4. **Stift** (S1–S3, W1) in zwei Teilen:
-   - Teil 1 (lokal fertig, nicht veröffentlicht): mehr Farben, eigene Farbplätze, Regler für die Stärke, Knopf „Mehr“.
-   - Teil 2 (lokal fertig, nicht veröffentlicht): Begradigen durch Halten (S3). Am Gerät zu prüfen: Haltezeit, Erkennung mit echter Handschrift, versehentliches Begradigen beim Schreiben.
+   - Teil 1 (veröffentlicht am 14.11.2026, am Gerät noch nicht geprüft): mehr Farben, eigene Farbplätze, Regler für die Stärke, Knopf „Mehr“.
+   - Teil 2 (veröffentlicht am 14.11.2026): Begradigen durch Halten (S3). Am Gerät zu prüfen: Haltezeit, Erkennung mit echter Handschrift, versehentliches Begradigen beim Schreiben.
 5. **Laserpointer und Einstellungen merken** (L1, E1).
 6. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
 7. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.
