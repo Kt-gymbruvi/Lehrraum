@@ -6,6 +6,15 @@ Tests: 16 Testdateien, 209 Tests grün (`npm test`); Build grün (`npm run build
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
+## Aussehen: Tafel im Stil von Apple – noch nicht veröffentlicht (14.11.2026)
+- **Blatt statt Rahmen:** Die Zeichenfläche ist ein weißes Blatt mit runden Ecken und feinem Schatten auf einem ruhigen, hellen Hintergrund (dunkel: Nachtblau).
+- **Schwebende Leisten aus „Glas“:** Linke und rechte Leiste, die Seitenleiste (jetzt eine Kapsel mittig unter dem Blatt), Auswahlleiste und Aufklappfelder sind halbdurchsichtig mit Unschärfe dahinter, runden Ecken und weichem Schatten. Die Kopfzeile ist kein dunkelblauer Balken mehr: Titel und Speicherstand stehen frei, die Knöpfe sitzen in runden Glasknöpfen und Kapseln (PDF, Zoom).
+- **Ruhigere Hervorhebung:** Nur das gewählte Werkzeug ist kräftig gefüllt (hell Dunkelblau, dunkel Türkis wie in `tokens.css` der Startseite statt des früheren Gelbs). Die gewählte Farbe hat einen Ring mit kleinem Abstand, die gewählte Stärke ist nur leicht hinterlegt. Knöpfe geben beim Drücken etwas nach, Felder blenden weich ein (aus bei „Bewegung reduzieren“).
+- **Schrift und Symbole:** Systemschrift (auf Apple-Geräten San Francisco, unter Windows Segoe UI), Gewichte halbfett statt extrafett; Symbole mit etwas feinerer Linie (1,8 statt 2).
+- **Farbwerte nachgezogen:** Dunkelblau `#0a2d53` und Türkis wie in `../Kt-gymbruvi.github.io/gemeinsam/tokens.css` (die Kopie in `index.css` stammte noch aus der Zeit mit Gelb).
+- **Technik:** Nur CSS (`src/index.css`, ein Absatz in `src/klassen/klassen.css`) und die Strichstärke in `src/ui/Symbol.tsx`; keine Änderung an Logik oder Datenmodell. Die Unschärfe der Werkzeugleisten liegt auf einer eigenen Unterebene (`::before`), weil ein `backdrop-filter` am Element seine Aufklappfelder (`position: fixed`) einschließen würde.
+- **Geprüft:** im Browser hell und dunkel bei 1280 × 800 und 1024 × 700 (linke Leiste passt ohne Rollen), Aufklappfeld „Mehr“, Auswahlleiste, Timer-Fenster, Seite „Meine Klassen“; `npm test` (209 grün) und `npm run build`. **Nicht geprüft:** am iPad und am SMART Board (Wirkung der Unschärfe, Lesbarkeit am Beamer, Leistung beim Schreiben).
+
 ## PDF-Seiten drehen, Hintergrund entfernen, alle Seiten eines PDFs löschen – veröffentlicht am 14.11.2026
 - **Drehen:** Auf einer Seite mit PDF-Hintergrund stehen in der unteren Leiste zwei Knöpfe: „nach links drehen“ und „nach rechts drehen“, je 90°. Das Geschriebene dreht sich mit. Die Seite liegt danach wieder oben links, gedrehte Seiten erscheinen auch im PDF-Export gedreht. Ein Schritt im Verlauf.
 - **Nur den PDF-Hintergrund entfernen:** Ein dritter Knopf nimmt die PDF-Seite weg. Was darauf geschrieben wurde, bleibt. Ein Schritt im Verlauf, Rückgängig holt die PDF-Seite zurück. Die Bilddatei bleibt bis zum nächsten Öffnen der Tafel erhalten und wird erst dann aufgeräumt.

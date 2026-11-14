@@ -2,53 +2,82 @@
 
 /* Farben wie in gemeinsam/tokens.css der Startseite (dort die Quelle; hier als Kopie für den Build). */
 @theme {
-  --color-navy: #0b1f4d;
-  --color-navy-hell: #16327a;
-  --color-navy-dunkel: #061233;
-  --color-gelb: #ffc928;
+  --color-navy: #0a2d53;
+  --color-navy-hell: #14407a;
+  --color-navy-dunkel: #061d38;
+  --color-tuerkis: #2cb69c;
 }
 
+/*
+ * Gestaltung der Tafel (Etappe „Aussehen“): ruhig und hell wie ein Werkzeug von Apple.
+ * Die Zeichenfläche ist ein weißes Blatt mit runden Ecken; alle Leisten schweben als halbdurchsichtige,
+ * unscharf hinterlegte Flächen („Glas“) darum herum. Dunkelblau ist die Farbe des Gewählten, Türkis der Fokus.
+ */
 :root {
   color-scheme: light;
-  --leiste: #ffffff;
-  --leiste-2: #e8ecf3;
-  --text: #0b1f4d;
-  --text-2: #46557a;
-  --linie: #cdd5e3;
-  --gewaehlt: #0b1f4d;
+  --umgebung: #eef2f7; /* Hintergrund um das Blatt (wie --seite, etwas kühler) */
+  --leiste: #ffffff; /* volle Fläche: Aufklappfelder, Fenster */
+  --glas: rgb(255 255 255 / 0.78); /* schwebende Leisten */
+  --leiste-2: rgb(10 45 83 / 0.07); /* Schweben und ruhige Knöpfe */
+  --leiste-3: rgb(10 45 83 / 0.12); /* Drücken */
+  --text: #0a2d53;
+  --text-2: #5a6b85;
+  --linie: rgb(10 45 83 / 0.1); /* Haarlinie */
+  --linie-aus: #b8c3d4; /* gesperrte Knöpfe */
+  --gewaehlt: #0a2d53;
   --gewaehlt-text: #ffffff;
-  --fokus: #1d5fd1;
-  --umgebung: #dfe4ee;
-  --fehler: #b3261e;
+  --fokus: #0f7f6c;
+  --fehler: #c4291f;
+  --schatten: 0 1px 2px rgb(10 45 83 / 0.06), 0 8px 28px rgb(10 45 83 / 0.1);
+  --schatten-hoch: 0 2px 6px rgb(10 45 83 / 0.08), 0 18px 48px rgb(10 45 83 / 0.18);
+  --blatt-schatten: 0 0 0 1px rgb(10 45 83 / 0.06), 0 2px 10px rgb(10 45 83 / 0.06);
+  --tupfer-rand: rgb(0 0 0 / 0.12); /* Rand der Farbtupfer */
+  --rand: 0.5rem; /* Abstand der schwebenden Leisten zum Rand und zueinander */
+  --rund: 1.375rem; /* Ecken der Leisten */
   --tipp: 3rem;
+  --schnell: 160ms cubic-bezier(0.25, 0.1, 0.25, 1);
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-design='hell']) {
     color-scheme: dark;
-    --leiste: #0f2558;
-    --leiste-2: #16327a;
+    --umgebung: #061a33;
+    --leiste: #10294a;
+    --glas: rgb(16 41 74 / 0.92);
+    --tupfer-rand: rgb(255 255 255 / 0.35); /* auch Dunkelblau bleibt sichtbar */
+    --leiste-2: rgb(255 255 255 / 0.08);
+    --leiste-3: rgb(255 255 255 / 0.14);
     --text: #ffffff;
-    --text-2: #c3cce3;
-    --linie: #2a4489;
-    --gewaehlt: #ffc928;
-    --gewaehlt-text: #0b1f4d;
-    --fokus: #ffc928;
-    --umgebung: #061233;
+    --text-2: #b9c7dc;
+    --linie: rgb(255 255 255 / 0.1);
+    --linie-aus: #3d5a85;
+    --gewaehlt: #2cb69c;
+    --gewaehlt-text: #06241f;
+    --fokus: #6fd3bf;
     --fehler: #ffb4ab;
+    --schatten: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 28px rgb(0 0 0 / 0.35);
+    --schatten-hoch: 0 2px 6px rgb(0 0 0 / 0.35), 0 18px 48px rgb(0 0 0 / 0.5);
+    --blatt-schatten: 0 0 0 1px rgb(255 255 255 / 0.06), 0 4px 18px rgb(0 0 0 / 0.35);
   }
 }
 :root[data-design='dunkel'] {
   color-scheme: dark;
-  --leiste: #0f2558;
-  --leiste-2: #16327a;
+  --umgebung: #061a33;
+  --leiste: #10294a;
+  --glas: rgb(16 41 74 / 0.92);
+  --tupfer-rand: rgb(255 255 255 / 0.35);
+  --leiste-2: rgb(255 255 255 / 0.08);
+  --leiste-3: rgb(255 255 255 / 0.14);
   --text: #ffffff;
-  --text-2: #c3cce3;
-  --linie: #2a4489;
-  --gewaehlt: #ffc928;
-  --gewaehlt-text: #0b1f4d;
-  --fokus: #ffc928;
-  --umgebung: #061233;
+  --text-2: #b9c7dc;
+  --linie: rgb(255 255 255 / 0.1);
+  --linie-aus: #3d5a85;
+  --gewaehlt: #2cb69c;
+  --gewaehlt-text: #06241f;
+  --fokus: #6fd3bf;
   --fehler: #ffb4ab;
+  --schatten: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 28px rgb(0 0 0 / 0.35);
+  --schatten-hoch: 0 2px 6px rgb(0 0 0 / 0.35), 0 18px 48px rgb(0 0 0 / 0.5);
+  --blatt-schatten: 0 0 0 1px rgb(255 255 255 / 0.06), 0 4px 18px rgb(0 0 0 / 0.35);
 }
 
 html,
@@ -62,8 +91,10 @@ body {
   overscroll-behavior: none;
   background: var(--umgebung);
   color: var(--text);
-  font-family: ui-rounded, "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI Variable Text", "Segoe UI", Roboto, Arial, sans-serif;
+  letter-spacing: -0.01em;
   -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 :focus-visible {
   outline: 3px solid var(--fokus);
@@ -72,6 +103,70 @@ body {
 .symbol {
   width: 1.6rem;
   height: 1.6rem;
+}
+/* Glas: Grundlage aller schwebenden Leisten */
+.tafel-kopf .zoom,
+.tafel-kopf > .kopf-knopf,
+.werkzeugleiste,
+.seitenleiste,
+.auswahlleiste,
+.aufklappfeld {
+  background: var(--glas);
+  border: 1px solid var(--linie);
+  box-shadow: var(--schatten);
+}
+/* Unschärfe dahinter. In den Werkzeugleisten auf einer eigenen Unterebene: ein backdrop-filter am Element selbst
+   würde dessen Aufklappfelder (position: fixed) einschließen und abschneiden. */
+.tafel-kopf .zoom,
+.tafel-kopf > .kopf-knopf,
+.seitenleiste,
+.auswahlleiste,
+.aufklappfeld,
+.werkzeugleiste::before {
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+.werkzeugleiste {
+  position: relative;
+  z-index: 5; /* eigene Ebene über dem Blatt, damit Aufklappfelder darüber liegen */
+}
+.werkzeugleiste::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  pointer-events: none;
+}
+/* Knöpfe geben beim Drücken leicht nach */
+.kopf-knopf,
+.leisten-knopf,
+.farb-knopf,
+.s-knopf,
+.f-knopf,
+.fenster-knopf {
+  transition: background-color var(--schnell), color var(--schnell), box-shadow var(--schnell), transform var(--schnell);
+}
+.kopf-knopf:active:not(:disabled),
+.leisten-knopf:active:not(:disabled),
+.farb-knopf:active,
+.s-knopf:active:not(:disabled),
+.f-knopf:active:not(:disabled),
+.fenster-knopf:active {
+  transform: scale(0.93);
+}
+@media (prefers-reduced-motion: reduce) {
+  * {
+    transition: none !important;
+  }
+  .kopf-knopf:active:not(:disabled),
+  .leisten-knopf:active:not(:disabled),
+  .farb-knopf:active,
+  .s-knopf:active:not(:disabled),
+  .f-knopf:active:not(:disabled),
+  .fenster-knopf:active {
+    transform: none;
+  }
 }
 
 /* ---------- Aufbau ---------- */
@@ -83,18 +178,19 @@ body {
 .tafel-kopf {
   display: flex;
   align-items: center;
-  gap: 0.75rem;
+  gap: 0.5rem;
   flex-shrink: 0;
-  padding: 0.35rem 0.75rem;
-  padding-left: max(0.75rem, env(safe-area-inset-left));
-  padding-right: max(0.75rem, env(safe-area-inset-right));
-  background: #0b1f4d;
-  color: #fff;
+  padding: var(--rand) var(--rand) 0;
+  padding-left: max(var(--rand), env(safe-area-inset-left));
+  padding-right: max(var(--rand), env(safe-area-inset-right));
+  padding-top: max(var(--rand), env(safe-area-inset-top));
+  color: var(--text);
 }
 .tafel-kopf h1 {
-  margin: 0;
-  font-size: 1.25rem;
-  font-weight: 800;
+  margin: 0 0 0 0.35rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -103,19 +199,22 @@ body {
   flex: 1;
   min-width: 0;
   margin: 0;
-  font-size: 0.9rem;
-  color: #c3cce3;
+  font-size: 0.85rem;
+  color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .speicherstand.fehler {
-  color: #ffb4ab;
-  font-weight: 700;
+  color: var(--fehler);
+  font-weight: 600;
 }
+/* Mehrere Knöpfe der Kopfzeile in einer gemeinsamen Kapsel */
 .zoom {
   display: flex;
-  gap: 0.25rem;
+  gap: 0.125rem;
+  padding: 0.25rem;
+  border-radius: 999px;
 }
 .kopf-knopf {
   display: inline-flex;
@@ -127,49 +226,66 @@ body {
   padding: 0 0.5rem;
   border: 0;
   border-radius: 999px;
-  background: rgb(255 255 255 / 0.12);
-  color: #fff;
+  background: transparent;
+  color: var(--text);
   font: inherit;
-  font-size: 1.1rem;
-  font-weight: 800;
+  font-size: 1.25rem;
+  font-weight: 500;
+  font-variant-numeric: tabular-nums;
   text-decoration: none;
   cursor: pointer;
 }
+/* einzelne Knöpfe der Kopfzeile: runde Glasknöpfe, so hoch wie die Kapseln */
+.tafel-kopf > .kopf-knopf {
+  min-width: 3.25rem;
+  height: 3.25rem;
+  box-sizing: border-box;
+}
+.tafel-kopf > .kopf-knopf.breit {
+  padding: 0 1rem;
+}
 .kopf-knopf.breit {
-  min-width: 4.5rem;
-  font-size: 0.95rem;
+  min-width: 4.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
 }
-.kopf-knopf:hover {
-  background: rgb(255 255 255 / 0.22);
+.kopf-knopf:hover:not(:disabled) {
+  background: var(--leiste-2);
 }
-.tafel-kopf :focus-visible {
-  outline-color: #ffc928;
+.kopf-knopf:active:not(:disabled) {
+  background: var(--leiste-3);
 }
 .tafel-mitte {
   flex: 1;
   min-height: 0;
   display: flex;
+  gap: var(--rand);
+  padding: var(--rand);
+  padding-left: max(var(--rand), env(safe-area-inset-left));
+  padding-right: max(var(--rand), env(safe-area-inset-right));
+  padding-bottom: max(var(--rand), env(safe-area-inset-bottom));
 }
 
 /* ---------- Linke Werkzeugleiste ---------- */
 .werkzeugleiste {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.375rem;
   flex-shrink: 0;
-  padding: 0.5rem;
-  padding-left: max(0.5rem, env(safe-area-inset-left));
+  align-self: flex-start; /* so hoch wie ihr Inhalt, schwebt oben */
+  max-height: 100%;
+  box-sizing: border-box;
+  padding: 0.375rem;
   overflow-y: auto;
-  background: var(--leiste);
-  border-right: 1px solid var(--linie);
+  border-radius: var(--rund);
   scrollbar-width: none;
 }
 .werkzeugleiste .gruppe {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.2rem;
-  padding-bottom: 0.5rem;
+  gap: 0.125rem;
+  padding-bottom: 0.375rem;
   border-bottom: 1px solid var(--linie);
 }
 .werkzeugleiste .gruppe:last-child {
@@ -184,7 +300,7 @@ body {
   height: var(--tipp);
   flex-shrink: 0;
   border: 0;
-  border-radius: 0.9rem;
+  border-radius: 0.875rem;
   background: transparent;
   color: var(--text);
   cursor: pointer;
@@ -192,12 +308,16 @@ body {
 .leisten-knopf:hover:not(:disabled) {
   background: var(--leiste-2);
 }
+.leisten-knopf:active:not(:disabled) {
+  background: var(--leiste-3);
+}
 .leisten-knopf[aria-pressed='true'] {
   background: var(--gewaehlt);
   color: var(--gewaehlt-text);
+  box-shadow: 0 2px 8px rgb(10 45 83 / 0.25);
 }
 .leisten-knopf:disabled {
-  color: var(--linie);
+  color: var(--linie-aus);
   cursor: default;
 }
 .staerke-punkt {
@@ -215,6 +335,12 @@ body {
 }
 .leisten-knopf.schmal {
   width: calc(var(--tipp) * 2 / 3);
+}
+/* Stärke: gewählt nur leicht hinterlegt – kräftig hervorgehoben ist allein das Werkzeug */
+.leisten-knopf.schmal[aria-pressed='true'] {
+  background: var(--leiste-3);
+  color: var(--text);
+  box-shadow: none;
 }
 /* Knopf mit eigenem Aufklappfeld (Radierer): kleines Dreieck unten rechts */
 .leisten-knopf.hat-feld {
@@ -236,12 +362,24 @@ body {
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
-  padding: 0.4rem;
-  background: var(--leiste);
+  padding: 0.5rem;
   color: var(--text);
-  border: 1px solid var(--linie);
-  border-radius: 1.1rem;
-  box-shadow: 0 6px 20px rgba(11, 31, 77, 0.18);
+  border-radius: var(--rund);
+  box-shadow: var(--schatten-hoch);
+  animation: erscheinen 180ms cubic-bezier(0.2, 0.9, 0.3, 1.2);
+  transform-origin: left top;
+}
+@keyframes erscheinen {
+  from {
+    opacity: 0;
+    transform: scale(0.94);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .aufklappfeld,
+  .auswahlleiste {
+    animation: none;
+  }
 }
 .aufklappfeld .feld-reihe {
   display: flex;
@@ -259,25 +397,34 @@ body {
   height: 2.25rem;
   padding: 0;
   border: 0;
-  border-radius: 0.6rem;
+  border-radius: 0.875rem;
   background: transparent;
   cursor: pointer;
 }
-.farb-knopf span {
-  width: 1.35rem;
-  height: 1.35rem;
-  border-radius: 50%;
-  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.5);
-}
-.farb-knopf[aria-pressed='true'] {
+.farb-knopf:hover {
   background: var(--leiste-2);
-  box-shadow: inset 0 0 0 2px var(--gewaehlt);
+}
+/* Farbtupfer wie bei Apple: runder Punkt, gewählt mit Ring und kleinem Abstand */
+.farb-knopf span {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  box-shadow: inset 0 0 0 1px var(--tupfer-rand);
+  transition: box-shadow var(--schnell), transform var(--schnell);
+}
+.farb-knopf[aria-pressed='true'] span {
+  box-shadow: inset 0 0 0 1px var(--tupfer-rand), 0 0 0 2.5px var(--leiste), 0 0 0 4.5px var(--gewaehlt);
+  transform: scale(0.88);
+}
+.farb-knopf.mehr[aria-pressed='true'] {
+  background: var(--leiste-2);
 }
 /* Feld „Mehr“: Palette, eigene Farben, Regler für die Stärke */
 .aufklappfeld .feld-titel {
   margin: 0.15rem 0.3rem 0;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   font-weight: 600;
+  color: var(--text-2);
 }
 .aufklappfeld .palette {
   display: grid;
@@ -291,12 +438,12 @@ body {
 .farb-knopf.klein span {
   width: 1.6rem;
   height: 1.6rem;
-  border: 1px solid rgb(11 31 77 / 0.25); /* auch Weiß bleibt sichtbar */
+  box-shadow: inset 0 0 0 1px rgb(10 45 83 / 0.25); /* auch Weiß bleibt sichtbar */
 }
 .farb-knopf.farbwahl {
   position: relative;
   color: var(--text);
-  border: 1px dashed var(--linie);
+  border: 1.5px dashed var(--linie-aus);
 }
 .farb-knopf.farbwahl input {
   position: absolute;
@@ -334,6 +481,10 @@ body {
   flex: 1;
   min-width: 0;
   overflow: hidden;
+  border-radius: 1.125rem; /* das Blatt */
+  background: #ffffff;
+  box-shadow: var(--blatt-schatten);
+  isolation: isolate; /* runde Ecken schneiden auch Canvas und Fenster */
 }
 .zeichenflaeche {
   position: absolute;
@@ -357,8 +508,12 @@ body {
 
 /* iPad quer mit Browserleisten (sichtbare Höhe um 700 px): Abstände und Farbknöpfe etwas dichter, damit die Leiste ohne Rollen passt */
 @media (max-height: 47rem) {
+  :root {
+    --rand: 0.375rem;
+  }
   .werkzeugleiste.links {
     gap: 0.3rem;
+    padding: 0.25rem;
   }
   .werkzeugleiste.links .gruppe {
     padding-bottom: 0.3rem;
@@ -384,12 +539,7 @@ body {
 }
 
 /* ---------- Rechte Leiste ---------- */
-.werkzeugleiste.rechts {
-  border-right: 0;
-  border-left: 1px solid var(--linie);
-  padding-left: 0.5rem;
-  padding-right: max(0.5rem, env(safe-area-inset-right));
-}
+/* (Abstände kommen wie links von .tafel-mitte) */
 .leisten-knopf.mit-text {
   flex-direction: column;
   gap: 0.1rem;
@@ -397,7 +547,8 @@ body {
   height: 4rem;
   font: inherit;
   font-size: 0.7rem;
-  font-weight: 700;
+  font-weight: 500;
+  letter-spacing: 0;
 }
 
 /* ---------- Fenster über der Tafel ---------- */
@@ -412,17 +563,17 @@ body {
   width: max-content;
   max-width: calc(100% - 1rem);
   pointer-events: auto;
-  border-radius: 1rem;
+  border-radius: var(--rund);
   background: var(--leiste);
   color: var(--text);
   border: 1px solid var(--linie);
-  box-shadow: 0 6px 24px rgb(6 18 51 / 0.22);
+  box-shadow: var(--schatten-hoch);
 }
 .fenster-titel {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.2rem 0.3rem 0.2rem 0.75rem;
+  padding: 0.25rem 0.25rem 0.25rem 0.875rem;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -440,7 +591,7 @@ body {
   flex: 1;
   margin: 0;
   font-size: 0.95rem;
-  font-weight: 800;
+  font-weight: 600;
 }
 .fenster-knopf {
   display: flex;
@@ -464,7 +615,8 @@ body {
 .fenster .grosse-zahl {
   margin: 0;
   font-size: 3.5rem;
-  font-weight: 900;
+  font-weight: 600;
+  letter-spacing: -0.03em;
   line-height: 1.1;
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
@@ -478,7 +630,7 @@ body {
 .fenster .hinweis {
   margin: 0.25rem 0 0;
   color: var(--text-2);
-  font-weight: 700;
+  font-weight: 500;
 }
 .fenster .reihe {
   display: flex;
@@ -506,8 +658,11 @@ body {
   background: var(--leiste-2);
   color: var(--text);
   font: inherit;
-  font-weight: 800;
+  font-weight: 600;
   cursor: pointer;
+}
+.f-knopf:hover:not(:disabled) {
+  background: var(--leiste-3);
 }
 .f-knopf .symbol {
   width: 1.2rem;
@@ -517,6 +672,11 @@ body {
 .f-knopf[aria-pressed='true'] {
   background: var(--gewaehlt);
   color: var(--gewaehlt-text);
+}
+.f-knopf.haupt:hover:not(:disabled),
+.f-knopf[aria-pressed='true']:hover:not(:disabled) {
+  background: var(--gewaehlt);
+  filter: brightness(1.12);
 }
 .f-knopf.klein {
   min-width: 2.75rem;
@@ -644,6 +804,7 @@ body {
   min-width: 0;
   display: flex;
   flex-direction: column;
+  gap: var(--rand);
 }
 .zeichenflaeche.werkzeug-auswahl {
   cursor: default;
@@ -651,13 +812,13 @@ body {
 .auswahlleiste {
   position: absolute;
   display: flex;
-  gap: 0.15rem;
-  padding: 0.25rem;
-  background: var(--leiste);
+  gap: 0.125rem;
+  padding: 0.3rem;
   color: var(--text);
-  border: 1px solid var(--linie);
-  border-radius: 1.1rem;
-  box-shadow: 0 6px 20px rgba(11, 31, 77, 0.18);
+  border-radius: var(--rund);
+  box-shadow: var(--schatten); /* liegt auf dem weißen Blatt: ein weicher Schatten genügt */
+  animation: erscheinen 160ms ease-out;
+  transform-origin: center;
 }
 .zeichenflaeche.werkzeug-hand,
 .zeichenflaeche.leertaste {
@@ -675,7 +836,7 @@ body {
   margin: 0;
   padding: 0;
   border: 0;
-  outline: 2px dashed #1d5fd1;
+  outline: 2px solid rgb(15 127 108 / 0.6);
   outline-offset: 4px;
   background: rgb(255 255 255 / 0.85);
   resize: none;
@@ -688,29 +849,31 @@ body {
 .seitenleiste {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
+  gap: 0.125rem;
   flex-shrink: 0;
-  padding: 0.25rem 0.5rem;
+  align-self: center; /* schwebende Kapsel unter dem Blatt */
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.25rem;
   overflow-x: auto;
-  background: var(--leiste);
-  border-top: 1px solid var(--linie);
+  border-radius: 999px;
   scrollbar-width: none;
 }
 .seitenzahl {
   margin: 0 0.25rem;
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .seitenleiste .trenner {
   align-self: stretch;
   width: 1px;
-  margin: 0.25rem 0.35rem;
+  margin: 0.5rem 0.3rem;
   background: var(--linie);
 }
 .seitenleiste .rueckfrage {
   margin-left: 0.5rem;
-  font-weight: 800;
+  font-weight: 600;
   white-space: nowrap;
 }
 .s-knopf {
@@ -721,14 +884,14 @@ body {
   min-width: 2.75rem;
   height: 2.75rem;
   flex-shrink: 0;
-  padding: 0 0.5rem;
+  padding: 0 0.75rem;
   border: 0;
-  border-radius: 0.75rem;
+  border-radius: 999px;
   background: transparent;
   color: var(--text);
   font: inherit;
-  font-size: 0.95rem;
-  font-weight: 700;
+  font-size: 0.9rem;
+  font-weight: 500;
   white-space: nowrap;
   cursor: pointer;
 }
@@ -739,13 +902,18 @@ body {
 .s-knopf:hover:not(:disabled) {
   background: var(--leiste-2);
 }
+.s-knopf:active:not(:disabled) {
+  background: var(--leiste-3);
+}
 .s-knopf:disabled {
-  color: var(--linie);
+  color: var(--linie-aus);
   cursor: default;
 }
-.s-knopf.gefahr {
-  background: var(--fehler);
-  color: var(--leiste);
+.s-knopf.gefahr,
+.s-knopf.gefahr:hover:not(:disabled) {
+  background: #d1342a; /* in beiden Modi gleich, damit weiße Schrift gut lesbar bleibt */
+  color: #ffffff;
+  font-weight: 600;
 }
 @media (max-width: 60rem) {
   .s-knopf.mit-text {
@@ -766,8 +934,8 @@ body {
 
 /* Hinweise zu Bildern und PDF in der Kopfzeile */
 .speicherstand.hinweis {
-  color: #ffffff;
-  font-weight: 700;
+  color: var(--text);
+  font-weight: 600;
 }
 .kopf-knopf:disabled {
   opacity: 0.45;
@@ -882,4 +1050,10 @@ body {
 }
 .pruefansicht .verlauf td.auffaellig {
   color: #b3261e;
+}
+
+/* Punkt in der gewählten Farbe (Feld „Mehr“, Knopf „Mehr“): mit feinem Rand, damit auch Dunkelblau auf Dunkel sichtbar bleibt */
+.aufklappfeld .staerke-punkt,
+.farb-knopf.mehr .staerke-punkt {
+  box-shadow: 0 0 0 1px var(--tupfer-rand);
 }

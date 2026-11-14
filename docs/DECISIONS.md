@@ -3,6 +3,13 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Aussehen im Stil von Apple (Wunsch der Lehrkraft)
+- **Schwebende Leisten neben dem Blatt, nicht darüber:** Die Leisten behalten ihren eigenen Platz; das Blatt wird nicht unter sie gezogen. Sonst lägen der Anfang einer Seite und PDF-Seiten (beide oben links) unter der linken Leiste.
+- **Glas nur, wo es trägt:** Halbdurchsichtige Flächen mit Unschärfe für alle Leisten; Fenster (Uhr, Timer, Quizzo …) bleiben deckend, damit ihr Inhalt am Beamer gut lesbar ist. Im dunklen Modus ist das Glas fast deckend (92 %), sonst wirkt es über dem weißen Blatt grau.
+- **Eine kräftige Hervorhebung:** nur das gewählte Werkzeug. Farbe (Ring) und Stärke (leichte Fläche) zurückhaltender – so sieht man auf einen Blick, womit man gerade schreibt.
+- **Türkis statt Gelb im dunklen Modus**, wie inzwischen in `tokens.css` der Startseite.
+- **Systemschrift statt `ui-rounded`/Nunito:** wirkt auf Apple-Geräten wie eine Apple-App und braucht weiterhin keine geladene Schrift.
+
 ## 2026-11-14 – PDF-Seiten drehen und entfernen (Wunsch der Lehrkraft)
 - **Drehen in 90°-Schritten mit dem Geschriebenen:** Das gedrehte Bild wird nicht neu gerechnet. Der Hintergrund merkt sich nur `drehung`, gezeichnet wird gedreht um die Mitte. Die Elemente werden um die Seitenmitte gedreht und so verschoben, dass die Seite wieder bei (0, 0) beginnt. Viermal Drehen ergibt genau den Anfang, ohne Rundungsfehler im Bild. Verworfen: ein neues, gedrehtes Bild speichern, weil das bei jedem Drehen an Schärfe verliert und mehr Speicher braucht.
 - **Datenmodell Version 4** statt stillem Umdeuten: `drehung` und `pdf` sind neue Angaben am Hintergrund. Version 3 wird unverändert übernommen. Eine mit Version 4 gespeicherte Tafel kann die frühere Fassung nicht mehr öffnen, deshalb auf jedem Gerät einmal neu laden.
