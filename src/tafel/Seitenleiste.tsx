@@ -28,6 +28,7 @@ type Props = {
   beiPdfLoeschen: () => void
   beiDrehen: (richtung: -1 | 1) => void
   beiHintergrundWeg: () => void
+  beiUebersicht: () => void
 }
 
 export function Seitenleiste(p: Props) {
@@ -38,6 +39,9 @@ export function Seitenleiste(p: Props) {
   const was = p.bild ? 'Hintergrundbild' : 'PDF-Seite'
   return (
     <nav className={p.pdf ? 'seitenleiste mit-pdf' : 'seitenleiste'} aria-label="Seiten">
+      <button type="button" className="s-knopf" aria-label="Seitenübersicht" title="Alle Seiten im Überblick" onClick={p.beiUebersicht}>
+        <Symbol name="uebersicht" />
+      </button>
       <button type="button" className="s-knopf" disabled={p.nr === 0} aria-label="Vorige Seite" onClick={() => p.beiGehe(p.nr - 1)}>
         <Symbol name="links" />
       </button>

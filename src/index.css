@@ -1245,3 +1245,137 @@ body {
   height: 1.15rem;
   accent-color: var(--gewaehlt);
 }
+
+/* ---------- Seitenübersicht (Raster aller Seiten) ---------- */
+.seitenuebersicht {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  background: var(--umgebung);
+  animation: einblenden var(--schnell);
+}
+@keyframes einblenden {
+  from {
+    opacity: 0;
+  }
+}
+.vs-kopf {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+  padding: 1rem 1.5rem 0.5rem;
+}
+.vs-kopf h2 {
+  margin: 0;
+  font-size: 1.4rem;
+}
+.vs-kopf h2 span {
+  color: var(--text-2);
+  font-weight: 500;
+}
+.vs-hinweis {
+  flex: 1;
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.95rem;
+}
+.vs-raster {
+  flex: 1;
+  margin: 0;
+  padding: 1rem 1.5rem 2rem;
+  list-style: none;
+  overflow-y: auto;
+  display: grid;
+  gap: 1.25rem;
+  grid-template-columns: repeat(auto-fill, minmax(13.5rem, 1fr));
+  align-content: start;
+}
+.vs-kachel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  touch-action: none; /* Finger: wir rollen und ziehen selbst (erst kurz halten zum Ziehen) */
+  user-select: none;
+  -webkit-user-select: none;
+}
+.vs-seite {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  aspect-ratio: var(--vs-verhaeltnis, 4 / 3);
+  max-height: 16rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.75rem;
+  background: transparent;
+  cursor: pointer;
+}
+.vs-seite .vorschau-bild {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: 0.75rem;
+  background: #ffffff;
+  box-shadow: var(--blatt-schatten);
+  transition: transform var(--schnell), box-shadow var(--schnell);
+}
+.vs-kachel.aktuell .vorschau-bild {
+  box-shadow: 0 0 0 3px var(--gewaehlt), var(--blatt-schatten);
+}
+.vs-kachel.gehoben .vorschau-bild {
+  opacity: 0.45;
+  transform: scale(0.96);
+}
+.vs-kachel.ziel-vor::before,
+.vs-kachel.ziel-nach::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 3.5rem;
+  width: 4px;
+  border-radius: 2px;
+  background: var(--fokus);
+}
+.vs-kachel.ziel-vor::before {
+  left: -0.75rem;
+}
+.vs-kachel.ziel-nach::after {
+  right: -0.75rem;
+}
+.vs-befehle {
+  display: flex;
+  align-items: center;
+  gap: 0.15rem;
+  min-height: 3.5rem;
+}
+.vs-befehle .s-knopf {
+  min-width: 3.5rem;
+  height: 3.5rem;
+}
+.vs-nummer {
+  flex: 1;
+  padding-left: 0.25rem;
+  font-weight: 600;
+}
+.vs-befehle.frage span {
+  flex: 1;
+  font-weight: 600;
+}
+.vs-kachel.neu .vs-seite {
+  align-content: center;
+  gap: 0.35rem;
+  border: 2px dashed var(--linie-aus);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+.vs-kachel.neu .vs-seite:disabled {
+  cursor: default;
+  opacity: 0.5;
+}

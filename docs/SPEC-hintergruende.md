@@ -88,8 +88,8 @@ Nicht Teil dieser Spezifikation **[Entschieden]**: Sportfelder als Hintergrund, 
 
 **Ü1 Übersicht.** Ein Knopf in der Seitenleiste öffnet eine Übersicht aller Seiten als Vorschaubilder im Raster. **[Entschieden]**
 - Antippen öffnet die Seite; die aktuelle Seite ist hervorgehoben.
-- Ziehen eines Vorschaubilds sortiert die Seite um (ein Schritt im Verlauf). Mit Maus, Finger und Stift.
-- Am Vorschaubild gibt es „Duplizieren“ und „Löschen“ (mit Rückfrage wie heute).
+- Ziehen eines Vorschaubilds sortiert die Seite um. Mit Maus, Finger und Stift (Finger und Stift: erst kurz halten, sonst rollt die Liste). *(Umgesetzt ohne Eintrag im Rückgängig-Verlauf – der gilt je Seite; stattdessen „Reihenfolge zurücksetzen“, solange die Übersicht offen ist.)*
+- Am Vorschaubild gibt es „Duplizieren“ und „Löschen“ (mit Rückfrage wie heute, leere Seiten ohne). Am Ende des Rasters „Neue Seite“.
 - Die Vorschaubilder entstehen auf dem Gerät aus dem Tafelinhalt und werden nicht gespeichert; auch mit 50 Seiten öffnet die Übersicht ohne spürbare Wartezeit. **[Vorschlag]**
 - Mit Escape oder „Fertig“ zurück zur Tafel.
 

@@ -3,6 +3,12 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Seitenübersicht: Umsetzung (Etappe 4)
+- **Umsortieren nicht im Rückgängig-Verlauf:** Der Verlauf gehört je zu einer Seite; eine Reihenfolge der ganzen Tafel passt dort nicht hinein (wie schon „Seite nach vorne/hinten schieben“). Stattdessen „Reihenfolge zurücksetzen“, solange die Übersicht offen ist. Verworfen: eigener Verlauf für die Tafel (großer Umbau für einen seltenen Fall).
+- **Finger und Stift: erst halten, dann ziehen.** Sonst ließe sich die Liste mit dem Finger nicht rollen. Die Maus zieht sofort.
+- **Zeiger erst beim Ziehen einfangen:** Ein Einfangen schon beim Aufsetzen schickt den Klick an die Kachel statt an den Knopf darin – Antippen öffnete dann keine Seite.
+- **Vorschaubilder nach und nach zeichnen** (je Bildwechsel höchstens 10 ms), nicht gespeichert: Die Übersicht geht sofort auf, auch mit vielen Seiten.
+
 ## 2026-11-14 – Eigenes Bild und Vorlage je Klasse: Umsetzung (Etappe 3)
 - **Bild-Hintergrund wie eine PDF-Seite:** Die Seite bekommt das Seitenverhältnis des Bildes und füllt das Format aus, statt das Bild mittig mit weißem Rand zu setzen. So gibt es keinen Unterschied zwischen Bild und Blatt, und Drehen, Entfernen, Export funktionieren wie bei PDF-Seiten. Verworfen: Bild mittig im 16:9-Blatt (weißer Rand, zweite Größe zu verwalten).
 - **Kein Muster auf Bildseiten:** Muster unter einem Bild wären unsichtbar, darüber störend.

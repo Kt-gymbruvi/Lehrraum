@@ -1,10 +1,20 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit dem Aussehen im Stil von Apple) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 19 Testdateien, 244 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 20 Testdateien, 251 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Hintergründe, Etappe 4: Seitenübersicht (Spezifikation Ü1) – noch nicht veröffentlicht (14.11.2026)
+- **Knopf „Seitenübersicht“** ganz links in der Seitenleiste: alle Seiten als Vorschaubilder im Raster (Kacheln im Seitenverhältnis des Formats), die gezeigte Seite hervorgehoben.
+- **Antippen** öffnet die Seite; **Fertig** oder Escape schließt die Übersicht.
+- **Ziehen** sortiert um (Maus sofort; Finger und Stift erst kurz halten, sonst rollt die Liste). Die gezeigte Seite bleibt die gezeigte. „Reihenfolge zurücksetzen“ stellt die Reihenfolge vom Öffnen wieder her.
+- An jedem Bild **Duplizieren** und **Löschen** (mit Rückfrage, leere Seiten ohne); am Ende **Neue Seite** (mit dem Muster der Vorlage bzw. der letzten Seite).
+- Vorschaubilder werden auf dem Gerät gezeichnet, nach und nach (höchstens 10 ms je Bildwechsel), und nicht gespeichert. Solange die Übersicht offen ist, gelten die Tastenkürzel der Tafel nicht.
+- Neu: `src/tafel/Seitenuebersicht.tsx`; `seiteVerschieben`, `inReihenfolge`, `seiteDoppeltBei`, `seiteWegBei` in `kern/seiten.ts`; Test `src/test/seitenuebersicht.test.tsx` (7 Tests).
+- **Getestet:** `npm test` (251 grün), `npm run build`; im Browser hell und dunkel, bei 1024 × 700: Übersicht mit drei Seiten (liniert und leer), Antippen öffnet, Ziehen mit der Maus sortiert um und „Reihenfolge zurücksetzen“ erscheint. Gefunden und behoben: Ein frühes Einfangen des Zeigers ließ das Antippen ins Leere gehen (im Test unsichtbar, weil dort ersetzt).
+- **Nicht getestet:** Ziehen und Rollen mit Finger und Stift (iPad, SMART Board), Tempo mit 50 Seiten und PDF-Seiten.
 
 ## Hintergründe, Etappe 3: Eigenes Bild und Vorlage je Klasse (Spezifikation B1, B2, V1) – noch nicht veröffentlicht (14.11.2026)
 - **Eigenes Bild als Hintergrund:** Im Feld „Hintergrund“ unter „Eigenes Bild“ → „Bild wählen …“, für diese Seite oder alle Seiten (PDF-Seiten bleiben). In einem festen Format füllt das Bild das Blatt aus, die Seite bekommt das Seitenverhältnis des Bildes (wie eine PDF-Seite). Drehen und „Hintergrundbild entfernen“ in der Seitenleiste; auf einer Seite mit Bild gibt es kein Muster.

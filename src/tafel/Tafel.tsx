@@ -13,7 +13,8 @@ import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, ty
 import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
-import { drehBefehl, gehe, hintergrundWegBefehl, kopiere, pdfSeiten, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, seitenWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
+import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, pdfSeiten, seiteDazu, seiteDoppelt, seiteDoppeltBei, seitenDazu, seiteSchieben, seiteVerschieben, seiteWeg, seiteWegBei, seitenWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
+import { Seitenuebersicht } from './Seitenuebersicht.tsx'
 import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
 import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, speichereKlasse, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
@@ -406,7 +407,12 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   }
   const vorlageGemerkt = !!klasse && JSON.stringify(klasse.vorlage ?? null) === JSON.stringify(vorlageAus(format, seite.muster) ?? null)
   /** Neue Seite: mit Vorlage der Klasse deren Muster, sonst das Muster der gezeigten Seite */
-  const neueSeiteAnlegen = () => blaettern((b) => seiteDazu(b, klasse?.vorlage ? { muster: klasse.vorlage.muster } : undefined))
+  const neueSeiteAnlegen = (amEnde = false) =>
+    blaettern((b) => seiteDazu(amEnde ? gehe(b, b.seiten.length - 1) : b, klasse?.vorlage ? { muster: klasse.vorlage.muster } : undefined))
+  /** Seitenübersicht offen? (dann gelten die Tastenkürzel der Tafel nicht) */
+  const [uebersicht, setUebersicht] = useState(false)
+  const uebersichtOffen = useRef(false)
+  uebersichtOffen.current = uebersicht
 
   // ---------- Seiten ----------
   const blaettern = (tun: (b: Seitenfolge) => Seitenfolge) => {
@@ -517,6 +523,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   }, [])
   useEffect(() => {
     const einfuegen = (e: ClipboardEvent) => {
+      if (uebersichtOffen.current) return
       const ziel = e.target as HTMLElement | null
       if (ziel && (ziel.tagName === 'INPUT' || ziel.tagName === 'TEXTAREA')) return
       ersatzWeg()
@@ -534,6 +541,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   tasten.current = { zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, kopiereAuswahl, schneideAus, fuegeEin, gruppiereOderLoese, auswahl }
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
+      if (uebersichtOffen.current) return
       const ziel = e.target as HTMLElement | null
       if (ziel && (ziel.tagName === 'INPUT' || ziel.tagName === 'TEXTAREA' || ziel.tagName === 'SELECT' || ziel.isContentEditable)) return
       const t = tasten.current
@@ -758,7 +766,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             beschrieben={seite.elemente.length > 0 || seite.hintergrund !== undefined}
             beiGehe={(nr) => blaettern((b) => gehe(b, nr))}
             weiterMitNeu={format !== 'unendlich'}
-            beiNeu={neueSeiteAnlegen}
+            beiNeu={() => neueSeiteAnlegen()}
             beiDoppelt={() => blaettern(seiteDoppelt)}
             beiSchieben={(r) => blaettern((b) => seiteSchieben(b, r))}
             beiLoeschen={() => blaettern(seiteWeg)}
@@ -768,6 +776,10 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             beiPdfLoeschen={() => blaettern((b) => seitenWeg(b, pdfSeiten(b)))}
             beiDrehen={(r) => fuehreAus(drehBefehl(seite, r))}
             beiHintergrundWeg={() => fuehreAus(hintergrundWegBefehl(seite))}
+            beiUebersicht={() => {
+              setAuswahl([])
+              setUebersicht(true)
+            }}
           />
         </div>
         <Schnellleiste
@@ -791,6 +803,23 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           }
         />
       </div>
+      {uebersicht && (
+        <Seitenuebersicht
+          seiten={buch.seiten}
+          nr={buch.nr}
+          format={format}
+          beiGehe={(nr) => {
+            blaettern((b) => gehe(b, nr))
+            setUebersicht(false)
+          }}
+          beiVerschieben={(von, nach) => blaettern((b) => seiteVerschieben(b, von, nach))}
+          beiReihenfolge={(ids) => blaettern((b) => inReihenfolge(b, ids))}
+          beiDoppelt={(nr) => blaettern((b) => seiteDoppeltBei(b, nr))}
+          beiLoeschen={(nr) => blaettern((b) => seiteWegBei(b, nr))}
+          beiNeu={() => neueSeiteAnlegen(true)}
+          beiSchliessen={() => setUebersicht(false)}
+        />
+      )}
     </div>
   )
 }

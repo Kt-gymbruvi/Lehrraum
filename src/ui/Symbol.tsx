@@ -60,6 +60,7 @@ const ZEICHNUNGEN = {
   qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18v2M18 18h2v2',
   format: 'M3 6h12v9H3zM17 9h4v11h-8v-3',
   hintergrund: 'M4 4h16v16H4zM4 9h16M4 14h16M9 4v16M14 4v16',
+  uebersicht: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
 } as const
 
 export type SymbolName = keyof typeof ZEICHNUNGEN

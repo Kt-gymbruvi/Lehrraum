@@ -67,6 +67,47 @@ export function seiteSchieben(b: Buch, richtung: -1 | 1): Buch {
   return { seiten, nr: ziel }
 }
 
+/**
+ * Schiebt die Seite an Stelle `von` an die Stelle `nach` (Seitenübersicht). Die gezeigte Seite bleibt die gezeigte –
+ * nur ihre Nummer ändert sich, wenn sie mitwandert oder eine andere an ihr vorbeizieht.
+ */
+export function seiteVerschieben(b: Buch, von: number, nach: number): Buch {
+  if (von === nach || von < 0 || nach < 0 || von >= b.seiten.length || nach >= b.seiten.length) return b
+  const seiten = [...b.seiten]
+  const [weg] = seiten.splice(von, 1)
+  seiten.splice(nach, 0, weg)
+  const gezeigt = b.seiten[b.nr].id
+  return { seiten, nr: seiten.findIndex((s) => s.id === gezeigt) }
+}
+
+/** Die gezeigte Seite nach einer Änderung wiederfinden (sonst die Seite an der alten Stelle) */
+function behalte(seiten: Seite[], gezeigt: string, nr: number): Buch {
+  const i = seiten.findIndex((s) => s.id === gezeigt)
+  return { seiten, nr: i >= 0 ? i : grenze(nr, seiten.length) }
+}
+
+/** Kopie der Seite an Stelle `nr` direkt dahinter (Seitenübersicht); die gezeigte Seite bleibt die gezeigte. */
+export function seiteDoppeltBei(b: Buch, nr: number): Buch {
+  if (nr < 0 || nr >= b.seiten.length) return b
+  const neu = seiteDoppelt({ ...b, nr })
+  return neu === b || neu.seiten.length === b.seiten.length ? b : behalte(neu.seiten, b.seiten[b.nr].id, b.nr)
+}
+
+/** Löscht die Seite an Stelle `nr` (Seitenübersicht); die gezeigte Seite bleibt die gezeigte, wenn es sie noch gibt. */
+export function seiteWegBei(b: Buch, nr: number): Buch {
+  if (nr < 0 || nr >= b.seiten.length) return b
+  const neu = seiteWeg({ ...b, nr })
+  return behalte(neu.seiten, b.seiten[b.nr].id, neu.nr)
+}
+
+/** Reihenfolge wie in `ids` (Kennungen der Seiten) – zum Zurücknehmen eines Umsortierens; Unbekanntes bleibt hinten */
+export function inReihenfolge(b: Buch, ids: string[]): Buch {
+  const stelle = new Map(ids.map((id, i) => [id, i]))
+  const seiten = [...b.seiten].sort((x, y) => (stelle.get(x.id) ?? ids.length) - (stelle.get(y.id) ?? ids.length))
+  const gezeigt = b.seiten[b.nr].id
+  return { seiten, nr: seiten.findIndex((s) => s.id === gezeigt) }
+}
+
 /** Fügt mehrere Seiten (z. B. aus einem PDF) hinter der gezeigten ein und zeigt die erste davon. Überzählige fallen weg. */
 export function seitenDazu(b: Buch, neue: Seite[]): Buch {
   const platz = Math.max(0, MAX_SEITEN - b.seiten.length)
