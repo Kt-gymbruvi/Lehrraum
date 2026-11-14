@@ -27,7 +27,7 @@ function useAngemeldet(): boolean | null {
   return an
 }
 
-function Anmeldung() {
+export function Anmeldung() {
   const [email, setEmail] = useState('')
   const [passwort, setPasswort] = useState('')
   const [fehler, setFehler] = useState('')

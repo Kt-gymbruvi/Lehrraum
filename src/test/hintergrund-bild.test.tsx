@@ -66,7 +66,7 @@ describe('Vorlage je Klasse – Logik', () => {
     expect(vorlageAus('a4-hoch')).toEqual({ format: 'a4-hoch' })
     expect(vorlageAus('16:9', { art: 'kariert-klein' })).toEqual({ format: '16:9', muster: { art: 'kariert-klein' } })
     const k = klasse({ vorlage: { format: 'a4-quer', muster: { art: 'liniert', farbe: 'blau' } } })
-    expect(k.version).toBe(2)
+    expect(k.version).toBe(3)
     expect(pruefeKlasse(JSON.parse(JSON.stringify(k)))).toEqual(k)
     expect(pruefeKlasse({ ...k, vorlage: { format: 'riesig' } })!.vorlage).toBeUndefined()
     expect(pruefeKlasse({ ...k, vorlage: { format: 'a4-hoch', muster: { art: 'karo' } } })!.vorlage).toEqual({ format: 'a4-hoch' })

@@ -29,7 +29,7 @@ const zeige = (adresse: string) =>
 describe('Klassen – Logik', () => {
   it('legt Klassen bereinigt an und prüft die Eingabe', () => {
     const k = neueKlasse({ bezeichnung: '  7b ', fach: ' Biologie  ', jahrgang: '7' })
-    expect(k).toMatchObject({ bezeichnung: '7b', fach: 'Biologie', jahrgang: '7', archiviert: false, tafelId: null, version: 2 })
+    expect(k).toMatchObject({ bezeichnung: '7b', fach: 'Biologie', jahrgang: '7', archiviert: false, tafelId: null, version: 3, schueler: [] })
     expect(k.id).toMatch(/^[0-9a-f]{24}$/)
     expect(klassenName(k)).toBe('7b Biologie')
     expect(klassenName({ bezeichnung: 'Q1', fach: '' })).toBe('Q1')
@@ -51,7 +51,7 @@ describe('Klassen – Logik', () => {
   it('prüft gespeicherte Klassen', () => {
     const k = klasse('7b')
     expect(pruefeKlasse(JSON.parse(JSON.stringify(k)))).toEqual(k)
-    expect(pruefeKlasse({ ...k, version: 3 })).toBeNull()
+    expect(pruefeKlasse({ ...k, version: 4 })).toBeNull()
     expect(pruefeKlasse({ ...k, id: '../x' })).toBeNull()
     expect(pruefeKlasse({ ...k, bezeichnung: '  ' })).toBeNull()
     expect(pruefeKlasse({ ...k, tafelId: 'kein gültiger wert', archiviert: 'ja' })).toMatchObject({ tafelId: null, archiviert: false })

@@ -9,7 +9,7 @@
 import { pruefeAblage, type Ablage } from '../kern/ablage.ts'
 import { neueEinstellungen, pruefeEinstellungen, type Einstellungen } from '../kern/einstellungen.ts'
 import { neueFarbplaetze, pruefeFarbplaetze } from '../kern/farben.ts'
-import { geaendert, klassenName, pruefeKlasse, type Klasse } from '../kern/klassen.ts'
+import { klassenName, pruefeKlasse, type Klasse } from '../kern/klassen.ts'
 import { neuesTafelbild, pruefeTafel, type Tafelbild } from '../kern/modell.ts'
 
 const NAME = 'lehrraum'
@@ -169,7 +169,8 @@ export function oeffneKlassenTafel(klasseId: string): Promise<Tafelbild | null> 
       const neu = neuesTafelbild(klassenName(klasse), klasse.vorlage?.format)
       if (klasse.vorlage?.muster) neu.seiten[0] = { ...neu.seiten[0], muster: klasse.vorlage.muster }
       await speichereTafel(neu)
-      await speichereKlasse(geaendert(klasse, { tafelId: neu.id }))
+      // Die Tafel gehört nur zu diesem Gerät: kein neuer Änderungszeitpunkt (sonst gälte die Klasse beim Abgleich als neuer)
+      await speichereKlasse({ ...klasse, tafelId: neu.id })
       return neu
     })().finally(() => oeffnet.delete(klasseId))
     oeffnet.set(klasseId, lauf)

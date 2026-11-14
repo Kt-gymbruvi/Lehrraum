@@ -1,11 +1,21 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 20 Testdateien, 251 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 21 Testdateien, 268 Tests grün (`npm test`); Build grün (`npm run build`).
+**Klassen mit Namen und Abgleich (Etappe 3 der Spezifikation `SPEC-klassen-namen-und-notenbuch.md`)** ist gebaut, aber noch nicht veröffentlicht. Bringt **Klasse Version 3**.
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Klassen mit Namen, Notenbuch, Abgleich (SPEC Etappe 3) – gebaut 14.11.2026, nicht veröffentlicht
+- **Namen je Klasse** (nur Vor- und Nachname): unter „Meine Klassen“ Knopf „Namen“ – eine Person je Zeile, „Nachname, Vorname“ oder „Vorname Nachname“, auch aus einer Tabelle kopiert; die Karte zeigt „24 Namen“ zum Aufklappen. Kopie einer Klasse behält die Namen.
+- **Klassen aus dem Notenbuch** erscheinen von selbst (Kennzeichen „aus dem Notenbuch“): Bezeichnung, Fach, Namen und Archiv kommen aus dem Notenbuch; Tafel, Vorlage und Jahrgang bleiben bei Lehrraum. Im Notenbuch gelöscht → hier archiviert (Tafel bleibt); gelöscht werden kann sie hier erst dann.
+- **Abgleich zwischen Geräten:** mit Lehrkraft-Konto und einmal je Gerät dem **Notenbuch-Passwort**. Gespeichert wird nur ein nicht exportierbarer Schlüssel (IndexedDB), nie das Passwort. Server sieht nur verschlüsselte Daten (`lr_tresore`, Art `klassen`, eigenes Salz). Tafeln bleiben auf dem Gerät. Löschungen werden vermerkt, damit gelöschte Klassen nicht wiederkommen. Neuere Änderung gewinnt; bei gleichzeitigem Speichern wird neu geladen und zusammengeführt. Passwort im Notenbuch geändert → Lehrraum fragt neu und verschlüsselt neu.
+- Abgleich beim Öffnen von „Meine Klassen“, jede Minute, beim Zurückkehren zur Seite und nach jeder Änderung. Kopfzeile: „Klassen synchronisiert · Uhrzeit“ bzw. „Nur auf diesem Gerät“.
+- Neu: `kern/tresor.ts`, `speicher/abgleich.ts`, `klassen/Abgleich.tsx`; `server.ts`: `ladeTresor`, `speichereTresor`; `kern/klassen.ts` Version 3. Das Öffnen der Klassentafel ändert den Zeitpunkt der Klasse nicht mehr. Test `src/test/abgleich.test.tsx` (17 Tests, Server nachgebaut).
+- **Getestet:** `npm test` (268 grün), `npm run build`; im Browser (ohne Anmeldung) Seite bei 1280 px hell und 375 px dunkel, Namen eintragen, Notenbuch-Karte ohne „Archivieren/Löschen/Namen“, keine Fehler in der Konsole, kein seitliches Rollen.
+- **Nicht getestet:** mit dem echten Server und echtem Konto (Entsperren, zwei Geräte, Namensliste aus dem Notenbuch); iPad/SMART Board.
 
 ## Hintergründe, Etappe 4: Seitenübersicht (Spezifikation Ü1) – veröffentlicht am 14.11.2026
 - **Knopf „Seitenübersicht“** ganz links in der Seitenleiste: alle Seiten als Vorschaubilder im Raster (Kacheln im Seitenverhältnis des Formats), die gezeigte Seite hervorgehoben.

@@ -1,6 +1,6 @@
 // Alles, was Lehrraum vom Server braucht – an einer Stelle. Benutzt nur, was Quizzo und Klassenfunk schon
 // bereitstellen (Tabellen mit Zugriffsregeln, Funktionen spiel_erstellen und kf_sitzung_starten).
-// Es werden keine Schülerdaten gelesen oder geschrieben. In Tests wird dieses Modul ersetzt.
+// Schülernamen gehen nur verschlüsselt über den Server (Tresore, siehe unten). In Tests wird dieses Modul ersetzt.
 import { db, supabase } from './supabase.ts'
 
 export const serverVorhanden = (): boolean => supabase !== null
@@ -69,6 +69,34 @@ export const starteSitzung = (praesentationId: string) => aufruf<{ id: string; p
 export async function beendeSitzung(id: string): Promise<void> {
   const { error } = await db().from('kf_sitzungen').delete().eq('id', id)
   if (error) throw error
+}
+
+// ---------- Tresore (lr_tresore): verschlüsselte Inhalte je Lehrkraft ----------
+// „namen“ schreibt das Notenbuch (Lerngruppen und Namen), „klassen“ schreibt Lehrraum (Klassen aller Geräte).
+// Der Server sieht nur Salz, IV und verschlüsselte Daten.
+export type TresorArt = 'namen' | 'klassen'
+export type TresorZeile = { rev: number; salt: string; iv: string; daten: string }
+
+export class TresorKonflikt extends Error {
+  constructor() {
+    super('Der Inhalt wurde inzwischen auf einem anderen Gerät geändert.')
+  }
+}
+
+export async function ladeTresor(art: TresorArt): Promise<TresorZeile | null> {
+  const { data, error } = await db().from('lr_tresore').select('rev, salt, iv, daten').eq('art', art).maybeSingle()
+  if (error) throw error
+  return (data as TresorZeile | null) ?? null
+}
+
+/** Speichert nur, wenn auf dem Server noch die Fassung `revErwartet` liegt (0 = noch keine); sonst TresorKonflikt. */
+export async function speichereTresor(art: TresorArt, revErwartet: number, salt: string, iv: string, daten: string): Promise<number> {
+  const { data, error } = await db().rpc('lr_tresor_speichern', { p_art: art, p_rev_erwartet: revErwartet, p_salt: salt, p_iv: iv, p_daten: daten })
+  if (error) {
+    if (/konflikt/.test(error.message ?? '')) throw new TresorKonflikt()
+    throw error
+  }
+  return data as number
 }
 
 /** Übersetzt typische Fehlermeldungen ins Deutsche. */

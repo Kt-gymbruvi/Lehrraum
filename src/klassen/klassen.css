@@ -162,3 +162,66 @@ a.f-knopf {
 .klassen-formular .fehler {
   margin: 0;
 }
+.klassen-kopf p.klassen-herkunft {
+  display: inline-block;
+  margin-top: 0.3rem;
+  padding: 0.05rem 0.55rem;
+  border-radius: 99rem;
+  background: var(--leiste-2);
+  font-size: 0.8rem;
+  font-weight: 800;
+}
+.klassen-namen {
+  margin: 0;
+  color: var(--text-2);
+}
+.klassen-namen summary {
+  cursor: pointer;
+  font-weight: 700;
+  color: var(--text);
+}
+.klassen-namen ol {
+  margin: 0.4rem 0 0;
+  padding-left: 1.6rem;
+  max-height: 14rem;
+  overflow-y: auto;
+  columns: 2;
+  column-gap: 1.2rem;
+}
+.klassen-formular textarea {
+  min-height: 10rem;
+  padding: 0.5rem 0.75rem;
+  border: 2px solid var(--linie);
+  border-radius: 0.75rem;
+  background: var(--leiste);
+  color: var(--text);
+  font: inherit;
+  resize: vertical;
+}
+.klassen-formular input[readonly] {
+  background: var(--leiste-2);
+  color: var(--text-2);
+}
+.abgleich-hinweis {
+  margin-bottom: 1.5rem;
+  padding: 1.1rem;
+  border-radius: 1rem;
+  border: 2px solid var(--linie);
+  background: var(--leiste);
+}
+.abgleich-hinweis h2 {
+  margin: 0 0 0.5rem;
+}
+.abgleich-hinweis p {
+  margin: 0 0 0.75rem;
+  max-width: 48rem;
+}
+.text-knopf {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}

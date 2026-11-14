@@ -3,6 +3,15 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Klassen mit Namen und Abgleich (SPEC Etappe 3)
+- **Notenbuch-Passwort, eigener Schlüssel:** Der Klassen-Tresor hat ein eigenes Salz; wer ihn öffnen kann, kann damit weder Notenbuch noch Namensliste öffnen. Gibt es eine Namensliste, muss das Passwort zu ihr passen – so kann kein zweites Passwort entstehen.
+- **Schlüssel statt Passwort auf dem Gerät:** nicht exportierbarer `CryptoKey` in IndexedDB. Verworfen: Passwort in jedem Besuch neu fragen (lästig im Unterricht), Passwort speichern (unsicher).
+- **Tafeln bleiben auf dem Gerät:** zu groß (Bilder, PDFs) und nicht gewünscht. Abgeglichen werden nur Klassen, Vorlage und Namen.
+- **Kennung der Notenbuch-Klassen aus der Notenbuch-Kennung abgeleitet** (Hex-Zeichen): Zwei Geräte legen dieselbe Klasse an, ohne sich abzusprechen – keine Doppelten.
+- **Neuere Änderung gewinnt je Klasse, Löschungen mit Zeitpunkt:** einfach und für eine Person mit wenigen Geräten ausreichend. Verworfen: feldweises Zusammenführen.
+- **Im Notenbuch gelöscht → hier archiviert:** Die Tafel der Klasse soll nicht unbemerkt verloren gehen.
+- **Namen von Notenbuch-Klassen nicht im Klassen-Tresor:** Sie stehen schon in der Namensliste; doppelt gespeichert könnten sie sich widersprechen.
+
 ## 2026-11-14 – Seitenübersicht: Umsetzung (Etappe 4)
 - **Umsortieren nicht im Rückgängig-Verlauf:** Der Verlauf gehört je zu einer Seite; eine Reihenfolge der ganzen Tafel passt dort nicht hinein (wie schon „Seite nach vorne/hinten schieben“). Stattdessen „Reihenfolge zurücksetzen“, solange die Übersicht offen ist. Verworfen: eigener Verlauf für die Tafel (großer Umbau für einen seltenen Fall).
 - **Finger und Stift: erst halten, dann ziehen.** Sonst ließe sich die Liste mit dem Finger nicht rollen. Die Maus zieht sofort.
