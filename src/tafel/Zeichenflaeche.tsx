@@ -17,10 +17,15 @@
 // Regeln des Zeichnens (damit auch langsame Geräte wie ein Smartboard mitkommen):
 //   Gezeichnet wird höchstens einmal je Bildwechsel, auch wenn der Stift sich öfter meldet.
 //   Kommt nur ein neuer Strich dazu, wird die untere Ebene ergänzt und nicht ganz neu gezeichnet.
+// Begradigen durch Halten:
+//   Steht der Stift beim Zeichnen etwa 0,6 s still, wird der Strich – wenn eine Form erkannt wird – noch vor dem
+//   Abheben durch die saubere Form ersetzt. Geht es danach weiter, bleibt er freihändig. Beim Abheben entstehen
+//   zwei Schritte im Verlauf (Strich hinzufügen, durch die Form ersetzen), damit Rückgängig zuerst nur begradigt.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, mitGruppen, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
 import { beruehrtRechteck, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
+import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
 import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
 import { beginneWischzug, neueTeile, RADIERER_RADIUS, RADIERER_STANDARD, wischBefehl, wischeWeiter, type Radierer, type Wischzug } from '../kern/radieren.ts'
 import { beiBildGeladen } from './bildquellen.ts'
@@ -60,7 +65,8 @@ const vorschau = (a: Extract<Aktiv, { art: 'skalieren' }>) =>
   a.s ? a.originale.map((e) => skaliert(e, a.s!.ax, a.s!.ay, a.s!.sx, a.s!.sy, a.s!.gleichmaessig)) : a.originale
 
 type Aktiv =
-  | { art: 'zeichnen'; zeiger: number; strich: Strich }
+  /** halt: wo der Stift zuletzt stillzustehen begann (Bildschirm); begradigt: die erkannte Form nach dem Halten */
+  | { art: 'zeichnen'; zeiger: number; strich: Strich; halt: { x: number; y: number }; begradigt: Form | Strich | null }
   | { art: 'form'; zeiger: number; form: Form }
   /** x/y: Zeiger (Bildschirm), vx/vy: wo er zuletzt war; wisch: der Wischzug des Schwamms (Element-Radierer: null) */
   | { art: 'radieren'; zeiger: number; ids: Set<string>; x: number; y: number; vx: number; vy: number; wisch: Wischzug | null }
@@ -81,6 +87,12 @@ let stiftGesehen = false
 /** Nur für Tests: den Handballen-Schutz zurücksetzen */
 export const vergissStift = () => {
   stiftGesehen = false
+}
+/** So lange muss der Stift zum Begradigen stillstehen (ms) */
+let haltezeit = HALTEZEIT_MS
+/** Nur für Tests: kürzere Haltezeit */
+export const setzeHaltezeit = (ms: number) => {
+  haltezeit = ms
 }
 
 export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera }: Props) {
@@ -194,7 +206,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const ctx = ebene(oben.current, k)
     if (!ctx) return
     const a = aktiv.current
-    if (a?.art === 'zeichnen') zeichne(ctx, a.strich, true)
+    if (a?.art === 'zeichnen') zeichne(ctx, a.begradigt ?? a.strich, true)
     if (a?.art === 'form') zeichne(ctx, a.form)
     if (a?.art === 'radieren' && a.wisch) neueTeile(a.wisch).forEach((e) => zeichne(ctx, e))
     // Kreis in der Größe des Radierers: beim Radieren und wenn Maus oder Stift darüber schweben
@@ -313,9 +325,23 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   useEffect(
     () => () => {
       if (geplant.current && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(geplant.current)
+      if (haltUhr.current) clearTimeout(haltUhr.current)
     },
     [],
   )
+
+  // ---------- Begradigen durch Halten ----------
+  const haltUhr = useRef<ReturnType<typeof setTimeout> | null>(null)
+  /** Beginnt die Haltezeit neu; steht der Stift dann noch, wird der Strich – wenn möglich – zur Form */
+  function halteAn(a: Extract<Aktiv, { art: 'zeichnen' }>) {
+    if (haltUhr.current) clearTimeout(haltUhr.current)
+    haltUhr.current = setTimeout(() => {
+      haltUhr.current = null
+      if (aktiv.current !== a) return
+      a.begradigt = begradige(a.strich, stand.current.kamera.zoom)
+      if (a.begradigt) plane()
+    }, haltezeit)
+  }
 
   // ---------- Text schreiben ----------
   function oeffneEditor(e: Editor) {
@@ -487,11 +513,15 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       return
     } else if (w === 'stift' || w === 'marker') {
       const stift = e.pointerType === 'pen'
-      aktiv.current = {
+      const a: Aktiv = {
         art: 'zeichnen',
         zeiger: e.pointerId,
         strich: { art: 'strich', id: neueId(), werkzeug: w, farbe: s.farbe, staerke: s.staerke, druckEcht: stift, punkte: [[tx, ty, stift ? e.pressure || 0.5 : 0.5]] },
+        halt: { x, y },
+        begradigt: null,
       }
+      aktiv.current = a
+      halteAn(a)
     } else {
       aktiv.current = { art: 'form', zeiger: e.pointerId, form: { art: 'form', id: neueId(), form: w, x1: tx, y1: ty, x2: tx, y2: ty, farbe: s.farbe, staerke: s.staerke } }
     }
@@ -592,6 +622,12 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
         if (Math.hypot(px - letzter[0], py - letzter[1]) * k.zoom < 0.5) continue
         a.strich.punkte.push([px, py, a.strich.druckEcht ? ev.pressure || letzter[2] : 0.5])
       }
+      // Weiter als ein Zittern bewegt: die Haltezeit beginnt neu, eine schon erkannte Form gilt nicht mehr
+      if (Math.hypot(x - a.halt.x, y - a.halt.y) > HALTE_TOLERANZ) {
+        a.halt = { x, y }
+        a.begradigt = null
+        halteAn(a)
+      }
     }
     plane()
   }
@@ -608,6 +644,8 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     }
     if (a.zeiger !== e.pointerId) return
     aktiv.current = null
+    if (haltUhr.current) clearTimeout(haltUhr.current)
+    haltUhr.current = null
     const k = stand.current.kamera
     // Fertiges sofort unten einzeichnen, damit es beim Leeren der oberen Ebene nicht kurz verschwindet
     const fest = (el: Element) => {
@@ -620,8 +658,15 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     }
 
     if (a.art === 'zeichnen' && !abgebrochen) {
-      fest(a.strich)
-      beiHinzu(a.strich)
+      if (a.begradigt) {
+        // zwei Schritte: Rückgängig bringt zuerst den freihändigen Strich zurück
+        fest(a.begradigt)
+        beiHinzu(a.strich)
+        beiBefehl({ art: 'ersetzen', vorher: [a.strich], nachher: [a.begradigt] })
+      } else {
+        fest(a.strich)
+        beiHinzu(a.strich)
+      }
     }
     if (a.art === 'form' && !abgebrochen && Math.hypot(a.form.x2 - a.form.x1, a.form.y2 - a.form.y1) * k.zoom >= 4) {
       fest(a.form)

@@ -3,6 +3,14 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Stift, Teil 2: Begradigen durch Halten (S3)
+- **Haltezeit 0,6 s, Zittern bis 8 Bildschirm-Pixel** zählt als Stillstehen (Vorschlag aus der Spezifikation; am SMART Board und iPad nachprüfen). Die Form erscheint noch vor dem Abheben. Bewegt sich der Stift danach weiter, gilt die Form nicht mehr und der Strich bleibt freihändig – so wird beim Schreiben mit Denkpause nichts begradigt.
+- **Erkennung ohne Lernverfahren, nur Geometrie** (keine KI-Aufrufe): erst die Linie (alle Punkte höchstens 7 % der Länge von der Strecke, kein Hin und Her). Sonst muss der Strich fast geschlossen sein (Lücke höchstens 20 % des Wegs); dann werden Rechteck (kleinstes umschließendes, auch schräg), Ellipse (im selben Rahmen) und Dreieck (größtes Dreieck in der konvexen Hülle) verglichen und die Form mit dem kleinsten mittleren Abstand genommen, wenn dieser höchstens 6 % der Größe beträgt. Fünfecke und ähnlich runde Vielecke werden dadurch zum Kreis; Herz, Stern, „8“ und offene Bögen bleiben Striche.
+- **Einrasten:** bis 5° Abweichung werden Linien waagerecht/senkrecht und Rechtecke, Ellipsen und Dreiecke gerade gestellt; darüber bleiben sie schräg (Spezifikation: „Schräg gezeichnete Rechtecke bleiben schräg“). Fast runde Ellipsen (Achsen höchstens 10 % verschieden) werden zum Kreis, Dreiecke mit fast mittiger oder fast rechtwinkliger Spitze genau so.
+- **Zwei Schritte im Verlauf mit vorhandenen Befehlen:** „hinzufügen“ (der freihändige Strich), dann „ersetzen“ (die Form mit derselben Kennung). Rückgängig bringt so zuerst den Strich zurück (Spezifikation). Kein neuer Befehl, kein neues Datenmodell – das Dreieck mit `spitze` gab es schon seit Version 3.
+- **Textmarker** wird nur zur geraden Linie (ein Strich mit zwei Punkten) und bleibt Textmarker.
+- **Stärke der Form = eingestellte Stärke** wie beim Formwerkzeug; der freihändige Stiftstrich wirkt etwas breiter. Bewusst nicht angeglichen, damit Formen aus Werkzeug und Begradigen gleich aussehen; nach der Prüfung am Gerät ggf. nachjustieren.
+
 ## 2026-11-14 – Stift, Teil 1: mehr Farben, eigene Farbplätze, Stärke-Regler (S1, S2, W1)
 - **Aufteilung:** Teil 1 baut S1, S2 und den Knopf „Mehr“ (W1). Das Begradigen durch Halten (S3, Formerkennung) folgt als Teil 2. Den Laserpointer (zweites neues Werkzeug aus W1) bringt Etappe 5.
 - **Ein Feld „Mehr“ für Farben und Stärke**, als siebter Knopf in der Farbgruppe; es öffnet sich wie das Radierer-Feld rechts neben der Leiste und schließt sich beim Antippen außerhalb, mit Escape und beim Werkzeugwechsel. Liegt Farbe oder Stärke außerhalb der Leiste, ist „Mehr“ gedrückt und zeigt einen Punkt in Farbe und Stärke (S1, S2: „erkennbar“, „als Punkt“).

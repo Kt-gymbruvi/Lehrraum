@@ -1,9 +1,18 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 13.11.2026 mit Teil 1 des Radierers) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 13 Testdateien, 182 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 14 Testdateien, 191 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
-Lokal fertig, **noch nicht veröffentlicht:** Etappe 4 „Stift“, Teil 1 – mehr Farben, eigene Farbplätze, Stärke-Regler (siehe unten).
+Lokal fertig, **noch nicht veröffentlicht:** Etappe 4 „Stift“, Teil 1 (mehr Farben, eigene Farbplätze, Stärke-Regler) und Teil 2 (Begradigen durch Halten) – siehe unten.
+
+## Stift, Teil 2: Begradigen durch Halten (Spezifikation S3) – lokal, nicht veröffentlicht
+- **Halten statt Abheben:** Steht der Stift (auch Finger oder Maus) am Ende eines Strichs etwa 0,6 Sekunden still, wird der Strich noch vor dem Abheben zu einer sauberen Form: gerade Linie, Rechteck, Kreis/Ellipse oder Dreieck. Ein Zittern bis 8 Bildschirm-Pixel zählt als Stillstehen. Ohne Halten wird nie begradigt; wird nichts erkannt (z. B. Haken, Wellen, Buchstaben, Herz, Stern), bleibt der Strich, wie er ist. Geht es nach dem Halten weiter, bleibt der Strich freihändig.
+- **Ergebnis:** eine normale Form in Farbe und Stärke des Strichs – auswählbar, skalierbar, drehbar. Schräg gezeichnete Rechtecke, Ellipsen und Dreiecke bleiben schräg; bis 5° Abweichung werden Linien, Rechtecke und Dreiecke gerade gestellt. Fast runde Ellipsen werden zum Kreis. Die Dreieck-Ecken liegen dort, wo sie gezeichnet wurden.
+- **Textmarker:** wird beim Halten nur zur geraden Linie und bleibt ein Textmarker-Strich.
+- **Rückgängig** bringt zuerst den freihändigen Strich zurück, ein zweites Mal entfernt es ihn (zwei Schritte: Strich hinzufügen, durch die Form ersetzen – die Form trägt die Kennung des Strichs).
+- Sehr kleine Striche (unter 24 Bildschirm-Pixeln) werden nie begradigt.
+- Logik in `src/kern/begradigen.ts` (Linie über den Abstand zur Strecke; sonst kleinstes umschließendes Rechteck, Ellipse im selben Rahmen und größtes Dreieck in der konvexen Hülle, genommen wird die Form mit dem kleinsten mittleren Abstand). Kein neues Datenmodell.
+- Hinweis: Formen werden wie beim Formwerkzeug mit der eingestellten Stärke gezogen und wirken dadurch etwas dünner als der freihändige Stiftstrich.
 
 ## Stift, Teil 1: mehr Farben, eigene Farbplätze, Stärke-Regler (Spezifikation S1, S2, W1) – lokal, nicht veröffentlicht
 - **Knopf „Mehr“** als siebter Knopf bei den Farben: öffnet rechts neben der Leiste ein Feld mit Palette, eigenen Farben und Regler. Es schließt sich beim Antippen der Tafel, mit Escape und beim Werkzeugwechsel.
@@ -13,7 +22,6 @@ Lokal fertig, **noch nicht veröffentlicht:** Etappe 4 „Stift“, Teil 1 – m
 - **In der Leiste erkennbar:** Liegt Farbe oder Stärke außerhalb der Leiste, ist „Mehr“ gedrückt und zeigt einen Punkt in Farbe und Stärke.
 - **Leiste bei 700 px Höhe** (iPad quer): Abstände und Farbknöpfe werden etwas dichter, dann passt alles ohne Rollen (im Browser bei 1024 × 700 gemessen).
 - Logik in `src/kern/farben.ts`; eigene Farben in IndexedDB (Lager `einstellungen`, Schlüssel `farbplaetze`, Schema `lehrraum/farbplaetze` Version 1). Kein neues Tafel-Datenmodell.
-- **S3 (Begradigen durch Halten) folgt als Teil 2.**
 
 ## Radierer, Teil 1: Schwamm, Teilstücke, Größen (Spezifikation R1–R3) – veröffentlicht am 13.11.2026
 - **Zwei Radierer:** Der Schwamm (Voreinstellung) wischt nur die überfahrenen Teile von Stift- und Textmarkerstrichen weg; Text, Formen und Bilder bleiben stehen. Der Element-Radierer entfernt wie bisher alles Berührte als Ganzes.
@@ -160,7 +168,7 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
    - Teil 2: Radieren mit Handrücken oder Faust (R4) – erst nach der Messung am SMART Board (siehe Punkt 1).
 4. **Stift** (S1–S3, W1) in zwei Teilen:
    - Teil 1 (lokal fertig, nicht veröffentlicht): mehr Farben, eigene Farbplätze, Regler für die Stärke, Knopf „Mehr“.
-   - Teil 2: Begradigen durch Halten (S3).
+   - Teil 2 (lokal fertig, nicht veröffentlicht): Begradigen durch Halten (S3). Am Gerät zu prüfen: Haltezeit, Erkennung mit echter Handschrift, versehentliches Begradigen beim Schreiben.
 5. **Laserpointer und Einstellungen merken** (L1, E1).
 6. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
 7. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.
