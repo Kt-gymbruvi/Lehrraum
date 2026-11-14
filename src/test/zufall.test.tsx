@@ -73,7 +73,7 @@ describe('Fenster „Zufall & Gruppen“', () => {
 
   it('gibt es nur in der Tafel einer Klasse', async () => {
     zeige('/tafel')
-    await screen.findByRole('button', { name: 'Würfel' })
+    await screen.findByRole('button', { name: 'Stoppuhr' })
     expect(screen.queryByRole('button', { name: 'Zufall & Gruppen' })).not.toBeInTheDocument()
   })
 

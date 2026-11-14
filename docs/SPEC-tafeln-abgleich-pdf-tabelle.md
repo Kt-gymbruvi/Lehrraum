@@ -1,6 +1,6 @@
 # SPEC – PDF als Bild, ein Passwort für alles, Tafeln auf allen Geräten, Tabelle
 
-Stand: 14.11.2026 · **freigegeben** (Etappe A gebaut)
+Stand: 14.11.2026 · **freigegeben** (Etappen A und D veröffentlicht)
 
 ## Wunsch der Lehrkraft (14.11.2026)
 - Eingefügte **PDFs verhalten sich wie Bilder**: drehen, verschieben, verändern, entfernen.

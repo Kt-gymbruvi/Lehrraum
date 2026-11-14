@@ -3,6 +3,13 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Tabelle (SPEC Etappe D)
+- **Eigenes Element `tabelle`** mit gespeicherten Spaltenbreiten und Zelltexten; die Zeilenhöhe wird aus dem Text berechnet (Zeilenumbrüche), nicht gespeichert. So bleibt das Modell klein und es gibt keine Höhe, die nicht zum Text passt. Verworfen: Tabelle aus einzelnen Linien und Textfeldern (nicht als Ganzes zu ändern).
+- **Kein automatischer Umbruch** langer Zellen: Text, der nicht passt, wird abgeschnitten; breiter ziehen oder Umschalt + Enter. Ein Umbruch nach Breite bräuchte eine Textmessung, die sich im Datenmodell (ohne Browser) nicht genau machen lässt.
+- **Zeilen und Spalten am Ende** anfügen/entfernen statt „an der gewählten Zelle“: Die Auswahl kennt keine einzelne Zelle; am Ende ist auf dem Board am einfachsten zu treffen.
+- **Datenmodell Version 7** statt mit Etappe A in Version 6, weil Etappe A schon veröffentlicht war.
+- **Würfel entfernt** auf Wunsch der Lehrkraft (Platz für das Werkzeug; Zufall & Gruppen deckt das Auslosen ab).
+
 ## 2026-11-14 – PDF-Seiten als Bild (SPEC Etappe A)
 - **PDF-Seite = Bild-Element plus Blattmaß der Seite** (`Seite.blatt`) statt Hintergrund: So gilt alles, was Bilder können (drehen, verschieben, löschen, rückgängig), ohne eigene PDF-Knöpfe. Das Blatt behält das Maß der PDF-Seite, auch wenn das Bild gelöscht oder verschoben wird. Verworfen: PDF weiter als Hintergrund mit mehr Knöpfen (doppelte Bedienung).
 - **Ältere PDF-Seiten werden beim Laden umgewandelt** (Version 5 → 6), so dass sie gleich aussehen; das Bild liegt zuunterst, das Geschriebene darüber bleibt unverändert. Die PDF-Kennung und „alle Seiten dieses PDFs löschen“ entfallen.

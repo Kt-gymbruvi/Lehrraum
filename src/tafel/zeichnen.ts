@@ -1,6 +1,7 @@
 // Zeichnet Elemente der Tafel auf ein Canvas – für die Zeichenfläche und für den PDF-Export.
 import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, pfeilspitze, rechteckEcken, stiftUmriss, ZEILENHOEHE } from '../kern/geometrie.ts'
-import { hintergrundMass, MARKER_DECKKRAFT, type Element, type Hintergrund, type Muster, type Seite, type Strich } from '../kern/modell.ts'
+import { hintergrundMass, MARKER_DECKKRAFT, type Element, type Hintergrund, type Muster, type Seite, type Strich, type Tabelle } from '../kern/modell.ts'
+import { gitter, zellRand } from '../kern/tabelle.ts'
 import { bildquelle } from './bildquellen.ts'
 import { abschnitte, type Spur } from '../kern/laser.ts'
 import { musterTeile, type Bereich, type Musterteil } from '../kern/muster.ts'
@@ -59,9 +60,52 @@ function vieleck(ctx: Ctx, punkte: [number, number][]) {
   ctx.closePath()
 }
 
+/** Tabelle: Gitter, Kopfzeile (hinterlegt, fett), Text je Zelle – Text, der nicht passt, wird abgeschnitten */
+function zeichneTabelle(ctx: Ctx, t: Tabelle) {
+  gedrehtBei(ctx, t.x, t.y, drehungVon(t), () => {
+    const { xs, ys } = gitter(t)
+    const [b, h] = [xs[xs.length - 1], ys[ys.length - 1]]
+    if (t.kopf) {
+      ctx.globalAlpha = 0.14
+      ctx.fillStyle = t.farbe
+      ctx.fillRect(0, 0, b, ys[1])
+      ctx.globalAlpha = 1
+    }
+    ctx.strokeStyle = t.farbe
+    ctx.lineWidth = Math.max(1, t.groesse / 14)
+    ctx.lineCap = 'square'
+    ctx.beginPath()
+    for (const x of xs) {
+      ctx.moveTo(x, 0)
+      ctx.lineTo(x, h)
+    }
+    for (const y of ys) {
+      ctx.moveTo(0, y)
+      ctx.lineTo(b, y)
+    }
+    ctx.stroke()
+    const rand = zellRand(t)
+    ctx.fillStyle = t.farbe
+    ctx.textBaseline = 'top'
+    t.zellen.forEach((zeile, r) => {
+      ctx.font = `${t.kopf && r === 0 ? 'bold ' : ''}${t.groesse}px ${SCHRIFT}`
+      zeile.forEach((text, s) => {
+        if (!text) return
+        ctx.save()
+        ctx.beginPath()
+        ctx.rect(xs[s], ys[r], xs[s + 1] - xs[s], ys[r + 1] - ys[r])
+        ctx.clip()
+        text.split('\n').forEach((z, i) => ctx.fillText(z, xs[s] + rand, ys[r] + rand + (i * ZEILENHOEHE + (ZEILENHOEHE - 1) / 2) * t.groesse))
+        ctx.restore()
+      })
+    })
+  })
+}
+
 /** frisch = true: der Strich entsteht oder wird bewegt – seinen Pfad nicht merken */
 export function zeichne(ctx: Ctx, e: Element, frisch = false) {
   if (e.art === 'bild') return gedrehtBei(ctx, e.x, e.y, drehungVon(e), () => zeichneBild(ctx, e.dateiId, 0, 0, e.b, e.h))
+  if (e.art === 'tabelle') return zeichneTabelle(ctx, e)
   if (e.art === 'text') {
     gedrehtBei(ctx, e.x, e.y, drehungVon(e), () => {
       ctx.fillStyle = e.farbe

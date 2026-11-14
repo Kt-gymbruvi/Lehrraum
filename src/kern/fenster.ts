@@ -1,8 +1,8 @@
-// Fenster über der Tafel (Uhr, Timer, Stoppuhr, Würfel, Zufall & Gruppen, Notiz): welche offen sind, wo sie liegen, was vorne ist.
+// Fenster über der Tafel (Uhr, Timer, Stoppuhr, Zufall & Gruppen, Notiz): welche offen sind, wo sie liegen, was vorne ist.
 // Reine Funktionen. Die Reihenfolge der Liste ist die Stapelfolge: das letzte Fenster liegt vorne.
 import { neueId } from './modell.ts'
 
-export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'wuerfel', 'zufall', 'notiz', 'quizzo', 'klassenfunk', 'lernangebote'] as const
+export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'zufall', 'notiz', 'quizzo', 'klassenfunk', 'lernangebote'] as const
 export type FensterArt = (typeof FENSTERARTEN)[number]
 
 export const NOTIZFARBEN = ['gelb', 'gruen', 'rosa', 'blau'] as const
@@ -24,7 +24,7 @@ export type FensterZustand = {
   gross?: boolean
 }
 
-export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', wuerfel: 'Würfel', zufall: 'Zufall & Gruppen', notiz: 'Notiz', quizzo: 'Quizzo', klassenfunk: 'Klassenfunk', lernangebote: 'Lernangebote' }
+export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', zufall: 'Zufall & Gruppen', notiz: 'Notiz', quizzo: 'Quizzo', klassenfunk: 'Klassenfunk', lernangebote: 'Lernangebote' }
 
 /** Fenster, die eine andere Anwendung der Plattform zeigen (größer, lassen sich auf die ganze Fläche vergrößern) */
 /** Nur in der Tafel einer Klasse (braucht ihre Namen) */
@@ -101,7 +101,7 @@ export function pruefeFenster(roh: unknown): FensterZustand[] {
   return liste
 }
 
-// ---------- Zeit und Würfel (Logik der Fenster, ohne Oberfläche) ----------
+// ---------- Zeit (Logik der Fenster, ohne Oberfläche) ----------
 
 /** 125000 ms → „2:05“; ab einer Stunde „1:02:05“. Für den Countdown wird aufgerundet (0:01 bis zum Schluss). */
 export function zeitText(ms: number, aufrunden = false): string {
@@ -114,16 +114,3 @@ export function zeitText(ms: number, aufrunden = false): string {
 
 /** Zehntelsekunden für die Stoppuhr: 61234 ms → „1:01,2“ */
 export const stoppText = (ms: number): string => `${zeitText(ms)},${Math.floor((Math.max(0, ms) % 1000) / 100)}`
-
-/** Faire Würfelzahl 1–6 (ohne die leichte Schieflage von „Zufallszahl modulo 6“). */
-export function wuerfle(zufall: () => number = zufallsByte): number {
-  for (;;) {
-    const z = zufall()
-    if (z < 252) return (z % 6) + 1 // 252 = 6 · 42: Werte darüber verwerfen
-  }
-}
-function zufallsByte(): number {
-  const z = new Uint8Array(1)
-  crypto.getRandomValues(z)
-  return z[0]
-}

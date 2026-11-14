@@ -1,6 +1,7 @@
 // Geometrie der Tafel: Kamera (Verschieben, Zoomen), Treffer des Radierers, Umriss eines Strichs als Pfad.
 import { getStroke } from 'perfect-freehand'
-import { DREHBARE_FORMEN, hintergrundMass, MARKER_FAKTOR, normiereWinkel, ZOOM_MAX, ZOOM_MIN, type Bild, type Element, type Form, type Kamera, type Seite, type Strich, type Text } from './modell.ts'
+import { DREHBARE_FORMEN, hintergrundMass, MARKER_FAKTOR, normiereWinkel, ZOOM_MAX, ZOOM_MIN, type Bild, type Element, type Form, type Kamera, type Seite, type Strich, type Tabelle, type Text } from './modell.ts'
+import { tabellenMass } from './tabelle.ts'
 
 /** Bildschirmpunkt (Pixel in der Zeichenfläche) → Tafel-Koordinaten */
 export function zuTafel(k: Kamera, sx: number, sy: number): [number, number] {
@@ -117,16 +118,20 @@ export function drehungVon(e: Element): number {
 /** Mitte des ungedrehten Rahmens einer Form – um sie wirkt ihre Drehung */
 const formMitte = (f: Form): [number, number] => [(f.x1 + f.x2) / 2, (f.y1 + f.y2) / 2]
 
-/** Ungedrehter Rahmen von Text und Bild; ihre Drehung wirkt um die linke obere Ecke */
-function grundRahmen(e: Text | Bild): Rechteck {
-  const [b, h] = e.art === 'text' ? textMass(e) : [e.b, e.h]
+/** Text, Bild und Tabelle: ein Kasten ab der linken oberen Ecke, gedreht um diese Ecke */
+type Kasten = Text | Bild | Tabelle
+const istKasten = (e: Element): e is Kasten => e.art === 'text' || e.art === 'bild' || e.art === 'tabelle'
+
+/** Ungedrehter Rahmen von Text, Bild und Tabelle; ihre Drehung wirkt um die linke obere Ecke */
+function grundRahmen(e: Kasten): Rechteck {
+  const [b, h] = e.art === 'text' ? textMass(e) : e.art === 'tabelle' ? tabellenMass(e) : [e.b, e.h]
   return [e.x, e.y, e.x + b, e.y + h]
 }
 
 const eckenVon = ([l, o, r, u]: Rechteck): [number, number][] => [[l, o], [r, o], [r, u], [l, u]]
 
 /** Die vier Ecken von Text oder Bild, so wie sie zu sehen sind */
-function sichtbareEcken(e: Text | Bild): [number, number][] {
+function sichtbareEcken(e: Kasten): [number, number][] {
   const w = drehungVon(e)
   return eckenVon(grundRahmen(e)).map(([x, y]) => drehePunkt(x, y, e.x, e.y, w))
 }
@@ -173,14 +178,14 @@ export function gedreht<T extends Element>(e: T, cx: number, cy: number, grad: n
     const [nx, ny] = drehePunkt(mx, my, cx, cy, grad)
     return { ...ohne, x1: e.x1 + nx - mx, y1: e.y1 + ny - my, x2: e.x2 + nx - mx, y2: e.y2 + ny - my } as T
   }
-  const t = e as Text | Bild
+  const t = e as Kasten
   const [x, y] = drehePunkt(t.x, t.y, cx, cy, grad)
   return { ...ohne, x, y } as T
 }
 
 /** Umschließendes Rechteck [links, oben, rechts, unten] eines Elements, so wie es zu sehen ist, einschließlich Strichbreite */
 export function rahmen(e: Element): [number, number, number, number] {
-  if (e.art === 'bild' || e.art === 'text') return drehungVon(e) ? huelle(sichtbareEcken(e)) : grundRahmen(e)
+  if (istKasten(e)) return drehungVon(e) ? huelle(sichtbareEcken(e)) : grundRahmen(e)
   if (e.art === 'form') {
     const r = e.staerke / 2
     const w = drehungVon(e)
@@ -307,7 +312,7 @@ function formStrecken(f: Form): [number, number, number, number][] {
 export function beruehrtRechteck(e: Element, r: Rechteck): boolean {
   const [l, o, re, u] = rahmen(e)
   if (re < r[0] || l > r[2] || u < r[1] || o > r[3]) return false
-  if (e.art === 'text' || e.art === 'bild') {
+  if (istKasten(e)) {
     const w = drehungVon(e)
     if (!w) return true
     // Gedreht: eine Kante liegt im Rahmen – oder der Rahmen liegt ganz im Text bzw. Bild
@@ -340,6 +345,10 @@ export function skaliert<T extends Element>(e: T, ax: number, ay: number, sx: nu
   const y = (v: number) => ay + (v - ay) * sy
   if (e.art === 'text') return { ...e, x: x(e.x), y: ay + (e.y - ay) * sx, groesse: klemme(e.groesse * sx, 6, 400) }
   if (e.art === 'bild') return { ...e, x: x(e.x), y: ay + (e.y - ay) * sx, b: e.b * sx, h: e.h * sx }
+  if (e.art === 'tabelle') {
+    const f = klemme(e.groesse * sx, 6, 400) / e.groesse // Schrift und Spalten wachsen gleich
+    return { ...e, x: x(e.x), y: ay + (e.y - ay) * sx, groesse: e.groesse * f, spalten: e.spalten.map((b) => b * f) }
+  }
   const staerke = mitStaerke ? klemme(e.staerke * sx, 0.5, 200) : e.staerke
   if (e.art === 'strich') return { ...e, staerke, punkte: e.punkte.map(([px, py, d]) => [x(px), y(py), d]) }
   return { ...e, staerke, x1: x(e.x1), y1: y(e.y1), x2: x(e.x2), y2: y(e.y2) }
@@ -348,7 +357,7 @@ export function skaliert<T extends Element>(e: T, ax: number, ay: number, sx: nu
 /** Dasselbe Element (gleiche Kennung), um dx/dy verschoben */
 export function verschoben<T extends Element>(e: T, dx: number, dy: number): T {
   if (e.art === 'strich') return { ...e, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]) }
-  if (e.art === 'text' || e.art === 'bild') return { ...e, x: e.x + dx, y: e.y + dy }
+  if (istKasten(e)) return { ...e, x: e.x + dx, y: e.y + dy }
   return { ...e, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy }
 }
 

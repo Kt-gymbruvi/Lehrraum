@@ -25,7 +25,7 @@ export function seiteDazu(b: Buch, vorlage?: { muster?: Muster }): Buch {
 export function kopie(e: Element, dx = 0, dy = 0): Element {
   const id = neueId()
   if (e.art === 'strich') return { ...e, id, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]) }
-  if (e.art === 'text' || e.art === 'bild') return { ...e, id, x: e.x + dx, y: e.y + dy }
+  if (e.art === 'text' || e.art === 'bild' || e.art === 'tabelle') return { ...e, id, x: e.x + dx, y: e.y + dy }
   return { ...e, id, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy }
 }
 

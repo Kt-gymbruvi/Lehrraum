@@ -5,10 +5,10 @@ import { begrenzeStaerke, istFarbwert, normiereFarbe } from './farben.ts'
 import { FARBEN, FORMEN, STAERKEN, type Formart, type Zeichenwerkzeug } from './modell.ts'
 import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_STANDARD, type Radierer } from './radieren.ts'
 
-export type Werkzeug = 'auswahl' | 'hand' | Zeichenwerkzeug | 'radierer' | 'text' | Formart | 'laser'
+export type Werkzeug = 'auswahl' | 'hand' | Zeichenwerkzeug | 'radierer' | 'text' | 'tabelle' | Formart | 'laser'
 
 /** Alle Werkzeuge, die gemerkt werden können (das Dreieck gibt es nur über das Begradigen, nicht als Werkzeug) */
-const WERKZEUG_WERTE: readonly Werkzeug[] = ['auswahl', 'hand', 'stift', 'marker', 'radierer', 'text', 'laser', ...FORMEN.filter((f) => f !== 'dreieck')]
+const WERKZEUG_WERTE: readonly Werkzeug[] = ['auswahl', 'hand', 'stift', 'marker', 'radierer', 'text', 'tabelle', 'laser', ...FORMEN.filter((f) => f !== 'dreieck')]
 
 export const EINSTELLUNGEN_SCHEMA = 'lehrraum/einstellungen'
 export const EINSTELLUNGEN_VERSION = 1

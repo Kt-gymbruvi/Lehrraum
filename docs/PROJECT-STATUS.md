@@ -1,12 +1,23 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 22 Testdateien, 276 Tests grün (`npm test`); Build grün (`npm run build`).
-**Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden.
+Tests: 23 Testdateien, 285 Tests grün (`npm test`); Build grün (`npm run build`).
+**Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden.
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Tabelle in der Tafel (SPEC-tafeln-abgleich-pdf-tabelle, Etappe D) – veröffentlicht 14.11.2026
+- **Werkzeug „Tabelle“** (linke Leiste, Taste K): auf die Tafel tippen → Zeilen und Spalten wählen (Vorgabe 3 × 3, bis 20 × 10) → „Einfügen“; danach wird gleich die erste Zelle beschrieben.
+- **Zellen beschreiben:** mit dem Tabellen- oder Text-Werkzeug eine Zelle antippen, mit der Auswahl doppelt antippen. Tab/Enter: nächste Zelle (nach der letzten kommt eine Zeile dazu), Umschalt + Tab: zurück, Umschalt + Enter: Zeilenumbruch in der Zelle. Die Zeile wird mit dem Text höher. Jede geänderte Zelle ist ein Schritt im Verlauf.
+- **Auswahlleiste** einer Tabelle: Zeile hinzufügen / letzte Zeile entfernen, Spalte hinzufügen / letzte Spalte entfernen (immer am Ende), Kopfzeile an/aus (erste Zeile fett und hinterlegt, bei neuen Tabellen an).
+- **Spaltenbreite ziehen:** Tabelle auswählen, dann an einer senkrechten Trennlinie (auch der rechten Außenkante) ziehen.
+- Wie andere Elemente: verschieben, vergrößern (Schrift und Spalten wachsen mit), drehen, kopieren, gruppieren, löschen, rückgängig; Farbe und Stärke (= Schriftgröße) wirken auf die ausgewählte Tabelle; im PDF-Export und in der Seitenübersicht sichtbar.
+- **Datenmodell Version 7** (Element `tabelle`): nach dem Veröffentlichen auf jedem Gerät einmal neu laden.
+- **Würfel entfernt** (Wunsch der Lehrkraft, Platz in der rechten Leiste). Ein gespeichertes Würfel-Fenster fällt beim Öffnen einfach weg.
+- Neu: `kern/tabelle.ts`, `tafel/Tabellenwahl.tsx`, Symbole `tabelle`, `zeileDazu`, `zeileWeg`, `spalteDazu`, `spalteWeg`, `kopfzeile`; Test `src/test/tabelle.test.tsx` (10 Tests).
+- Getestet: `npm test` (285 grün), Build; im Browser (1280 px, hell und dunkel) 3 × 3 angelegt, mit Tab/Enter beschrieben, Spalte breiter gezogen, Zeile angefügt, Kopfzeile aus, keine Konsolenfehler. **Am iPad und Board nicht geprüft** (Bildschirmtastatur beim Zellwechsel).
 
 ## PDF als Bild (SPEC-tafeln-abgleich-pdf-tabelle, Etappe A) – veröffentlicht 14.11.2026
 - **„PDF öffnen“** legt je PDF-Seite eine Tafelseite an; darauf liegt die PDF-Seite als **Bild-Element**, das das Blatt ausfüllt. Die Seite behält das Maß der PDF-Seite (in festen Formaten; Hochformat-PDF in einer 16:9-Tafel bleibt hoch).

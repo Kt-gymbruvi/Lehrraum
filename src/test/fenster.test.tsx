@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { aendere, begrenze, MAX_FENSTER, nachVorn, pruefeFenster, schalte, schliesse, stoppText, wuerfle, zeitText, type FensterZustand } from '../kern/fenster.ts'
+import { aendere, begrenze, MAX_FENSTER, nachVorn, pruefeFenster, schalte, schliesse, stoppText, zeitText, type FensterZustand } from '../kern/fenster.ts'
 import { neuesTafelbild, pruefeTafel } from '../kern/modell.ts'
 import { ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
@@ -33,11 +33,11 @@ describe('Fenster-Logik', () => {
   })
 
   it('schließen, ändern, nach vorne holen', () => {
-    const l = schalte(schalte(schalte([], 'uhr'), 'timer'), 'wuerfel')
-    expect(nachVorn(l, l[0].id).map((f) => f.art)).toEqual(['timer', 'wuerfel', 'uhr'])
+    const l = schalte(schalte(schalte([], 'uhr'), 'timer'), 'stoppuhr')
+    expect(nachVorn(l, l[0].id).map((f) => f.art)).toEqual(['timer', 'stoppuhr', 'uhr'])
     expect(nachVorn(l, l[2].id)).toBe(l) // schon vorne: keine neue Liste
     expect(nachVorn(l, 'fremd')).toBe(l)
-    expect(schliesse(l, l[1].id).map((f) => f.art)).toEqual(['uhr', 'wuerfel'])
+    expect(schliesse(l, l[1].id).map((f) => f.art)).toEqual(['uhr', 'stoppuhr'])
     expect(aendere(l, l[0].id, { x: 300, eingeklappt: true })[0]).toMatchObject({ art: 'uhr', x: 300, eingeklappt: true })
   })
 
@@ -77,11 +77,8 @@ describe('Fenster-Logik', () => {
     expect(stoppText(61_234)).toBe('1:01,2')
   })
 
-  it('würfelt 1 bis 6 und verwirft schiefe Zufallswerte', () => {
-    const werte = [255, 252, 251, 0, 5, 6]
-    expect([wuerfle(() => werte.shift()!), wuerfle(() => werte.shift()!), wuerfle(() => werte.shift()!), wuerfle(() => werte.shift()!)]).toEqual([6, 1, 6, 1])
-    const gesehen = new Set(Array.from({ length: 300 }, () => wuerfle()))
-    expect([...gesehen].sort()).toEqual([1, 2, 3, 4, 5, 6])
+  it('ein gespeichertes Würfel-Fenster (gibt es nicht mehr) fällt beim Laden weg', () => {
+    expect(pruefeFenster([{ id: 'w', art: 'wuerfel', x: 1, y: 1 }, { id: 'u', art: 'uhr', x: 1, y: 1 }]).map((f) => f.art)).toEqual(['uhr'])
   })
 })
 
@@ -112,13 +109,13 @@ describe('Fenster über der Tafel', () => {
       fireEvent.pointerUp(f, { pointerId: 1, pointerType: 'mouse', clientX: 90, clientY: y })
     }
     zieh(400)
-    await nutzer.click(leiste().getByRole('button', { name: 'Würfel' }))
+    await nutzer.click(leiste().getByRole('button', { name: 'Uhr' }))
     await nutzer.click(leiste().getByRole('button', { name: 'Stoppuhr' }))
     zieh(450)
     await waitFor(async () => {
       const t = await ladeLetzteTafel()
       expect(t?.seiten[0].elemente).toHaveLength(2)
-      expect(t?.fenster.map((x) => x.art)).toEqual(['wuerfel', 'stoppuhr'])
+      expect(t?.fenster.map((x) => x.art)).toEqual(['uhr', 'stoppuhr'])
     })
   })
 
@@ -138,14 +135,14 @@ describe('Fenster über der Tafel', () => {
 
   it('einklappen versteckt den Inhalt, das Fenster bleibt', async () => {
     const nutzer = userEvent.setup()
-    await speichereTafel({ ...neuesTafelbild(), fenster: [{ id: 'w', art: 'wuerfel', x: 40, y: 40, eingeklappt: false }] })
+    await speichereTafel({ ...neuesTafelbild(), fenster: [{ id: 'w', art: 'stoppuhr', x: 40, y: 40, eingeklappt: false }] })
     render(<Tafel />)
-    const fenster = await screen.findByRole('region', { name: 'Würfel' })
-    expect(within(fenster).getByRole('button', { name: 'Würfeln' })).toBeVisible()
-    await nutzer.click(screen.getByRole('button', { name: 'Würfel einklappen' }))
-    expect(within(fenster).queryByRole('button', { name: 'Würfeln' })).not.toBeInTheDocument()
-    await nutzer.click(screen.getByRole('button', { name: 'Würfel ausklappen' }))
-    expect(within(fenster).getByRole('button', { name: 'Würfeln' })).toBeVisible()
+    const fenster = await screen.findByRole('region', { name: 'Stoppuhr' })
+    expect(within(fenster).getByRole('timer', { name: 'Gestoppte Zeit' })).toBeVisible()
+    await nutzer.click(screen.getByRole('button', { name: 'Stoppuhr einklappen' }))
+    expect(within(fenster).queryByRole('timer', { name: 'Gestoppte Zeit' })).not.toBeInTheDocument()
+    await nutzer.click(screen.getByRole('button', { name: 'Stoppuhr ausklappen' }))
+    expect(within(fenster).getByRole('timer', { name: 'Gestoppte Zeit' })).toBeVisible()
   })
 
   it('verschiebt ein Fenster an der Titelzeile', async () => {
@@ -161,19 +158,6 @@ describe('Fenster über der Tafel', () => {
     fireEvent.pointerUp(titel, { pointerId: 3, pointerType: 'touch', clientX: 400, clientY: 260 })
     await waitFor(async () => expect((await ladeLetzteTafel())?.fenster[0]).toMatchObject({ x: 340, y: 240 }))
   })
-
-  it('Würfel: würfelt die gewählte Anzahl und nennt die Summe', async () => {
-    const nutzer = userEvent.setup()
-    render(<Tafel />)
-    await bereit()
-    await nutzer.click(leiste().getByRole('button', { name: 'Würfel' }))
-    await nutzer.click(screen.getByRole('button', { name: '3 Würfel' }))
-    await nutzer.click(screen.getByRole('button', { name: 'Würfeln' }))
-    const ergebnis = screen.getByRole('status', { name: /^Gewürfelt: [1-6], [1-6], [1-6]$/ })
-    const zahlen = ergebnis.getAttribute('aria-label')!.match(/\d/g)!.map(Number)
-    expect(screen.getByText(`Summe: ${zahlen.reduce((a, b) => a + b, 0)}`)).toBeInTheDocument()
-  })
-
   describe('mit gestellter Zeit', () => {
     beforeEach(() => vi.useFakeTimers({ shouldAdvanceTime: true }))
     afterEach(() => vi.useRealTimers())

@@ -1,14 +1,15 @@
-// Datenmodell der Tafel (Version 6). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 7). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
 // Version 4, nur ohne Drehung und PDF-Kennung des Hintergrunds; Version 4 hat dieselbe Gestalt wie Version 5, nur
 // ohne Seitenformat und Muster – sie wird zu „unendlich“ ohne Muster, so dass alte Tafeln genau so bleiben, wie sie waren;
-// bis Version 5 konnte eine PDF-Seite Hintergrund sein – sie wird zu einem Bild-Element auf einer Seite mit eigenem Blattmaß).
+// bis Version 5 konnte eine PDF-Seite Hintergrund sein – sie wird zu einem Bild-Element auf einer Seite mit eigenem Blattmaß;
+// Version 7 bringt das Element Tabelle, sonst gleich wie Version 6).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 6
+export const TAFEL_VERSION = 7
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -83,7 +84,31 @@ export type Bild = Gemeinsam & {
   drehung?: number
 }
 
-export type Element = Strich | Text | Form | Bild
+/** Grenzen einer Tabelle */
+export const TABELLE_MAX_ZEILEN = 20
+export const TABELLE_MAX_SPALTEN = 10
+export const MAX_ZELLTEXT = 500
+
+export type Tabelle = Gemeinsam & {
+  art: 'tabelle'
+  /** linke obere Ecke (ungedreht) */
+  x: number
+  y: number
+  /** Breite jeder Spalte in Tafel-Einheiten */
+  spalten: number[]
+  /** Text je Zelle: zellen[zeile][spalte]; die Zeilenhöhe ergibt sich aus dem Text */
+  zellen: string[][]
+  /** Schriftgröße in Tafel-Einheiten */
+  groesse: number
+  /** Farbe von Linien und Text */
+  farbe: string
+  /** erste Zeile als Kopfzeile hervorheben (fett, hinterlegt) */
+  kopf?: boolean
+  /** Drehung in Grad im Uhrzeigersinn um die linke obere Ecke (fehlt: 0) */
+  drehung?: number
+}
+
+export type Element = Strich | Text | Form | Bild | Tabelle
 
 /**
  * Hintergrund einer Seite (ein eigenes Bild): liegt bei (0, 0), lässt sich nicht auswählen oder radieren.
@@ -279,6 +304,15 @@ function pruefeElement(x: unknown): Element | null {
     return { art: 'bild', id: x.id, x: x.x, y: x.y, b: x.b, h: x.h, dateiId: x.dateiId, ...zusatz(x, true) }
   }
   if (!istFarbe(x.farbe)) return null
+  if (x.art === 'tabelle') {
+    if (!istZahl(x.x) || !istZahl(x.y) || !istZahl(x.groesse) || x.groesse < 6 || x.groesse > 400) return null
+    if (!Array.isArray(x.spalten) || !Array.isArray(x.zellen)) return null
+    const spalten = x.spalten.slice(0, TABELLE_MAX_SPALTEN)
+    if (!spalten.length || !spalten.every((b) => istZahl(b) && b >= 4 && b <= 10_000)) return null
+    const zellen = x.zellen.slice(0, TABELLE_MAX_ZEILEN).map((z) => spalten.map((_, i) => (Array.isArray(z) && typeof z[i] === 'string' ? (z[i] as string).slice(0, MAX_ZELLTEXT) : '')))
+    if (!zellen.length) return null
+    return { art: 'tabelle', id: x.id, x: x.x, y: x.y, spalten: spalten as number[], zellen, groesse: x.groesse, farbe: x.farbe, ...(x.kopf === true ? { kopf: true } : {}), ...zusatz(x, true) }
+  }
   if (x.art === 'strich') {
     if (x.werkzeug !== 'stift' && x.werkzeug !== 'marker') return null
     if (!istStaerke(x.staerke) || !Array.isArray(x.punkte) || x.punkte.length === 0) return null
@@ -309,7 +343,7 @@ export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x :
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2, 3, 4, 5 und 6.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 7.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -318,17 +352,17 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7) {
     const ids = new Set<string>()
     seiten = (Array.isArray(roh.seiten) ? roh.seiten : []).slice(0, MAX_SEITEN).flatMap((s): Seite[] => {
       if (!istObjekt(s) || typeof s.id !== 'string' || !s.id || ids.has(s.id)) return []
       ids.add(s.id)
       const hintergrund = pruefeHintergrund(s.hintergrund)
-      const muster = roh.version === 5 || roh.version === 6 ? pruefeMuster(s.muster) : undefined
+      const muster = roh.version === 5 || roh.version === 6 || roh.version === 7 ? pruefeMuster(s.muster) : undefined
       const elemente = pruefeElemente(s.elemente)
       // Bis Version 5: PDF-Seite als Hintergrund → Bild-Element (ganz unten), die Seite behält das Maß der PDF-Seite
       if (hintergrund && istObjekt(s.hintergrund) && typeof s.hintergrund.pdf === 'string') return [{ id: s.id, ...pdfAlsBild(hintergrund, elemente), ...(muster ? { muster } : {}) }]
-      const blatt = roh.version === 6 ? pruefeBlatt(s.blatt) : undefined
+      const blatt = roh.version === 6 || roh.version === 7 ? pruefeBlatt(s.blatt) : undefined
       return [{ id: s.id, elemente, ...(hintergrund ? { hintergrund } : {}), ...(muster ? { muster } : {}), ...(blatt ? { blatt } : {}) }]
     })
     if (!seiten.length) seiten = [neueSeite()]
@@ -342,7 +376,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
     id: roh.id,
     titel: typeof roh.titel === 'string' && roh.titel.trim() ? roh.titel.trim().slice(0, 200) : 'Tafel',
     // Vor Version 5 war jede Tafel unendlich – so bleibt es auch
-    format: (roh.version === 5 || roh.version === 6) && istFormat(roh.format) ? roh.format : 'unendlich',
+    format: (roh.version === 5 || roh.version === 6 || roh.version === 7) && istFormat(roh.format) ? roh.format : 'unendlich',
     seiten,
     seiteNr: istZahl(roh.seiteNr) ? Math.min(seiten.length - 1, Math.max(0, Math.round(roh.seiteNr))) : 0,
     kamera: { x: istZahl(k.x) ? k.x : 0, y: istZahl(k.y) ? k.y : 0, zoom },

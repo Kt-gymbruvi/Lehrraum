@@ -43,7 +43,7 @@ export function auswahlRahmen(inhalt: Rechteck, zoom: number): Rechteck {
  * Bilder und Text bleiben immer proportional – dann gibt es nur Eckgriffe. Ebenso bei gedrehten Rechtecken,
  * Ellipsen und Dreiecken: In einer Richtung gestreckt wären sie schief verzerrt.
  */
-export const nurEcken = (elemente: Element[]) => elemente.some((e) => e.art === 'bild' || e.art === 'text' || drehungVon(e) !== 0)
+export const nurEcken = (elemente: Element[]) => elemente.some((e) => e.art === 'bild' || e.art === 'text' || e.art === 'tabelle' || drehungVon(e) !== 0)
 
 /**
  * Die Griffe am Auswahlrahmen: Ecken, Seiten und darüber der Drehgriff. Ist die Auswahl so klein, dass sich

@@ -45,6 +45,7 @@ export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; tast
   { wert: 'marker', name: 'Textmarker', symbol: 'marker', taste: 'M' },
   { wert: 'radierer', name: 'Radierer', symbol: 'radierer', taste: 'R' },
   { wert: 'text', name: 'Text', symbol: 'text', taste: 'T' },
+  { wert: 'tabelle', name: 'Tabelle', symbol: 'tabelle', taste: 'K' },
   { wert: 'linie', name: 'Linie', symbol: 'linie', taste: 'L' },
   { wert: 'pfeil', name: 'Pfeil', symbol: 'pfeil', taste: 'P' },
   { wert: 'rechteck', name: 'Rechteck', symbol: 'rechteck', taste: 'Q' },
@@ -198,7 +199,7 @@ export function Werkzeugleiste(p: Props) {
               className="leisten-knopf"
               aria-pressed={p.werkzeug === w.wert}
               aria-label={w.name}
-              title={w.wert === 'laser' ? `${w.name} (${w.taste}) – zeigen, die Spur verschwindet von selbst` : `${w.name} (${w.taste})`}
+              title={w.wert === 'laser' ? `${w.name} (${w.taste}) – zeigen, die Spur verschwindet von selbst` : w.wert === 'tabelle' ? `${w.name} (${w.taste}) – antippen, Zeilen und Spalten wählen; Zellen antippen zum Schreiben` : `${w.name} (${w.taste})`}
               onClick={() => waehle(w.wert)}
             >
               <Symbol name={w.symbol} />

@@ -5,7 +5,7 @@ import type { Schueler } from '../kern/klassen.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 import { Fenster } from './Fenster.tsx'
 import { Klassenfunk, Lernangebote, Quizzo } from './Anwendungen.tsx'
-import { Notiz, Stoppuhr, Timer, Uhr, Wuerfel } from './Inhalte.tsx'
+import { Notiz, Stoppuhr, Timer, Uhr } from './Inhalte.tsx'
 import { Zufall } from './Zufall.tsx'
 
 type Props = { fenster: FensterZustand[]; beiAendern: (neu: (alt: FensterZustand[]) => FensterZustand[]) => void }
@@ -27,7 +27,6 @@ export function Fensterebene({ fenster, beiAendern, schueler = null, beiText }: 
           {f.art === 'uhr' && <Uhr />}
           {f.art === 'timer' && <Timer />}
           {f.art === 'stoppuhr' && <Stoppuhr />}
-          {f.art === 'wuerfel' && <Wuerfel />}
           {f.art === 'zufall' && <Zufall schueler={schueler} beiAnTafel={(t) => beiText?.(t)} />}
           {f.art === 'notiz' && <Notiz fenster={f} beiAendern={(neu) => beiAendern((alt) => aendere(alt, f.id, neu))} />}
           {f.art === 'quizzo' && <Quizzo ziel={f.ziel} beiZiel={(ziel) => beiAendern((alt) => aendere(alt, f.id, { ziel }))} />}

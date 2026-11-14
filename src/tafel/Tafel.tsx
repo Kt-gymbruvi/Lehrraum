@@ -9,13 +9,14 @@ import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, textMass, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { alsHintergrundBefehl, aufsBlattBefehl, begrenzt, bildHintergrund, bildHintergrundBefehl, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
 import { geaendert, vorlageAus, type Klasse } from '../kern/klassen.ts'
-import { benutzteDateien, MAX_SEITEN, MAX_TEXT, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tafelbild } from '../kern/modell.ts'
+import { benutzteDateien, MAX_SEITEN, MAX_TEXT, neueId, neuesTafelbild, schriftgroesse, TABELLE_MAX_SPALTEN, TABELLE_MAX_ZEILEN, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tabelle, type Tafelbild } from '../kern/modell.ts'
 import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
 import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, seiteDazu, seiteDoppelt, seiteDoppeltBei, seitenDazu, seiteSchieben, seiteVerschieben, seiteWeg, seiteWegBei, type Buch as Seitenfolge } from '../kern/seiten.ts'
 import { Seitenuebersicht } from './Seitenuebersicht.tsx'
 import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
+import { mitSchrift, spalteDazu, spalteWeg, zeileDazu, zeileWeg } from '../kern/tabelle.ts'
 import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, speichereKlasse, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { gleicheAb } from '../speicher/abgleich.ts'
@@ -364,7 +365,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   /** Stärke wählen: gilt für Neues – und ändert Strichbreite bzw. Schriftgröße der Auswahl */
   const waehleStaerke = (s: number) => {
     setStaerke(s)
-    const neu = gewaehlte.map((e): Element => (e.art === 'bild' ? e : e.art === 'text' ? { ...e, groesse: schriftgroesse(s) } : { ...e, staerke: s }))
+    const neu = gewaehlte.map((e): Element => (e.art === 'bild' ? e : e.art === 'text' || e.art === 'tabelle' ? mitSchrift(e, schriftgroesse(s)) : { ...e, staerke: s }))
     const geaendert = gewaehlte.filter((e, i) => JSON.stringify(e) !== JSON.stringify(neu[i]))
     if (geaendert.length) beiErsetzen(geaendert, neu.filter((_, i) => geaendert.includes(gewaehlte[i])))
   }
@@ -614,6 +615,27 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     kamera.x + inhalt[2] * kamera.zoom + AUSWAHL_RAND,
     kamera.y + inhalt[3] * kamera.zoom + AUSWAHL_RAND,
   ]
+  const eineTabelle = gewaehlte.length === 1 && gewaehlte[0].art === 'tabelle' ? gewaehlte[0] : null
+  /** Befehle für eine ausgewählte Tabelle; jeder ist ein Schritt im Verlauf (Zeilen und Spalten am Ende) */
+  const tabellenKnoepfe = (t: Tabelle): Befehlsknopf[] => {
+    const aendere = (neu: Tabelle | null) => neu && beiErsetzen([t], [neu])
+    const knoepfe: (Befehlsknopf | false)[] = [
+      t.zellen.length < TABELLE_MAX_ZEILEN && { name: 'Zeile hinzufügen', symbol: 'zeileDazu', titel: 'Zeile unten anfügen', tun: () => aendere(zeileDazu(t, t.zellen.length - 1)) },
+      t.zellen.length > 1 && { name: 'Letzte Zeile entfernen', symbol: 'zeileWeg', titel: 'Letzte Zeile entfernen (lässt sich rückgängig machen)', tun: () => aendere(zeileWeg(t, t.zellen.length - 1)) },
+      t.spalten.length < TABELLE_MAX_SPALTEN && { name: 'Spalte hinzufügen', symbol: 'spalteDazu', titel: 'Spalte rechts anfügen', tun: () => aendere(spalteDazu(t, t.spalten.length - 1)) },
+      t.spalten.length > 1 && { name: 'Letzte Spalte entfernen', symbol: 'spalteWeg', titel: 'Letzte Spalte entfernen (lässt sich rückgängig machen)', tun: () => aendere(spalteWeg(t, t.spalten.length - 1)) },
+      {
+        name: t.kopf ? 'Kopfzeile aus' : 'Kopfzeile an',
+        symbol: 'kopfzeile',
+        titel: t.kopf ? 'Erste Zeile nicht mehr hervorheben' : 'Erste Zeile als Kopfzeile hervorheben (fett, hinterlegt)',
+        tun: () => {
+          const { kopf: _, ...ohne } = t
+          aendere(t.kopf ? ohne : { ...t, kopf: true })
+        },
+      },
+    ]
+    return knoepfe.filter((k): k is Befehlsknopf => !!k)
+  }
   const auswahlKnoepfe: Befehlsknopf[] = [
     { name: 'Kopieren', symbol: 'kopieren', titel: 'Kopieren – einfügen lässt es sich auch in einer anderen Tafel (Strg + C)', tun: () => kopiereAuswahl() },
     { name: 'Ausschneiden', symbol: 'ausschneiden', titel: 'Ausschneiden (Strg + X)', tun: () => schneideAus() },
@@ -640,6 +662,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           },
         ]
       : []),
+    ...(eineTabelle ? tabellenKnoepfe(eineTabelle) : []),
     { name: 'Löschen', symbol: 'leeren', titel: 'Löschen (Entf)', tun: loescheAuswahl },
   ]
 

@@ -27,14 +27,22 @@
 //   Steht der Stift beim Zeichnen etwa 0,6 s still, wird der Strich – wenn eine Form erkannt wird – noch vor dem
 //   Abheben durch die saubere Form ersetzt. Geht es danach weiter, bleibt er freihändig. Beim Abheben entstehen
 //   zwei Schritte im Verlauf (Strich hinzufügen, durch die Form ersetzen), damit Rückgängig zuerst nur begradigt.
+// Tabelle:
+//   Das Werkzeug fragt nach Zeilen und Spalten und legt die Tabelle an der Stelle an; danach wird die erste Zelle
+//   beschrieben. Zellen beschreiben: mit dem Tabellen- oder Text-Werkzeug antippen, mit der Auswahl doppelt antippen.
+//   Tab/Enter springt zur nächsten Zelle (am Ende kommt eine Zeile dazu), Umschalt + Tab zurück, Umschalt + Enter
+//   bricht die Zeile um. Jede geänderte Zelle ist ein Schritt im Verlauf. Ist die Tabelle ausgewählt, lassen sich
+//   die Trennlinien zwischen den Spalten ziehen.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, mitGruppen, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
-import { beruehrtRechteck, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
+import { beruehrtRechteck, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
 import type { Werkzeug } from '../kern/einstellungen.ts'
 import { kuerze, lebt, punktLeben, type Spur } from '../kern/laser.ts'
-import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Muster, type Strich, type Text } from '../kern/modell.ts'
+import { MAX_TEXT, MAX_ZELLTEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Muster, type Strich, type Tabelle, type Text } from '../kern/modell.ts'
+import { innen, mitSpaltenbreite, mitZelle, naechsteZelle, neueTabelle, trennerBei, zeileDazu, zelleBei, zellLage, zellRand } from '../kern/tabelle.ts'
+import { Tabellenwahl } from './Tabellenwahl.tsx'
 import { beginneWischzug, neueTeile, RADIERER_RADIUS, RADIERER_STANDARD, wischBefehl, wischeWeiter, type Radierer, type Wischzug } from '../kern/radieren.ts'
 import { beiBildGeladen } from './bildquellen.ts'
 import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
@@ -96,8 +104,11 @@ type Aktiv =
   | { art: 'rahmen'; zeiger: number; x1: number; y1: number; x2: number; y2: number; dazu: string[] }
   | { art: 'schwenken'; zeiger: number; x: number; y: number }
   | { art: 'geste'; mitteX: number; mitteY: number; abstand: number }
+  /** Breite einer Tabellenspalte ziehen: startX in den Koordinaten der Tabelle */
+  | { art: 'spalte'; zeiger: number; t: Tabelle; spalte: number; startX: number; breite: number; neu: Tabelle }
 
-type Editor = { id: string | null; x: number; y: number; groesse: number; farbe: string; text: string; vorher: Text | null }
+/** zelle: es wird eine Zelle einer Tabelle beschrieben (x, y: ihre linke obere Ecke, gedreht wie die Tabelle) */
+type Editor = { id: string | null; x: number; y: number; groesse: number; farbe: string; text: string; vorher: Text | null; zelle?: { t: Tabelle; r: number; s: number } }
 
 /** Wurde in dieser Sitzung schon ein Stift benutzt? Dann verschieben Finger nur noch (gilt über Seitenwechsel hinweg). */
 let stiftGesehen = false
@@ -125,6 +136,8 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
   const [groesse, setGroesse] = useState({ b: 0, h: 0, dpr: 1 })
   const [versteckt, setVersteckt] = useState<Set<string>>(new Set())
   const [editor, setEditor] = useState<Editor | null>(null)
+  /** Feld „Tabelle einfügen“: wo angetippt wurde (Tafel) und wo das Feld steht (Bildschirm) */
+  const [wahl, setWahl] = useState<{ tx: number; ty: number; x: number; y: number } | null>(null)
   // Bilder werden nachgeladen; ist eines da, neu zeichnen
   const [bildStand, setBildStand] = useState(0)
   useEffect(() => beiBildGeladen(() => setBildStand((n) => n + 1)), [])
@@ -305,7 +318,9 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
           ? vorschau(a)
           : a?.art === 'drehen'
             ? a.originale.map((e) => gedreht(e, a.cx, a.cy, a.winkel))
-            : null
+            : a?.art === 'spalte'
+              ? [a.neu]
+              : null
     if (bewegt) aufsBlatt(() => bewegt.forEach((e) => zeichne(ctx, e, true)))
     // Auswahlrahmen mit Griffen (die Griffe nur, solange nichts bewegt wird)
     const gewaehlt = bewegt ?? s.elemente.filter((e) => s.auswahl.includes(e.id) && e.id !== s.editor?.id)
@@ -434,6 +449,11 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     setVersteckt(new Set())
     if (!uebernehmen) return
     const text = e.text.replace(/\s+$/, '')
+    if (e.zelle) {
+      const { t, r, s } = e.zelle
+      if (text !== t.zellen[r][s]) beiErsetzen([t], [mitZelle(t, r, s, text)])
+      return
+    }
     if (e.vorher) {
       if (!text.trim()) beiRadieren([e.vorher.id])
       else if (text !== e.vorher.text) beiErsetzen([e.vorher], [{ ...e.vorher, text }])
@@ -444,10 +464,54 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     }
   }
   const bearbeite = (t: Text) => oeffneEditor({ id: t.id, x: t.x, y: t.y, groesse: t.groesse, farbe: t.farbe, text: t.text, vorher: t })
+  /** Eine Zelle der Tabelle beschreiben */
+  function bearbeiteZelle(t: Tabelle, r: number, s: number) {
+    const l = zellLage(t, r, s)
+    const [x, y] = drehePunkt(t.x + l.x, t.y + l.y, t.x, t.y, drehungVon(t))
+    setVersteckt(new Set())
+    setEditor({ id: null, x, y, groesse: t.groesse, farbe: t.farbe, text: t.zellen[r][s], vorher: null, zelle: { t, r, s } })
+    if (!stand.current.auswahl.includes(t.id) || stand.current.auswahl.length !== 1) beiAuswahl([t.id])
+  }
+  /** Die Zelle an der Stelle (Tafel) beschreiben; liefert false, wenn dort keine Tabelle ist */
+  function zelleAntippen(tx: number, ty: number, fang: number): boolean {
+    const t = oberstesBei(stand.current.elemente.filter((el) => el.art === 'tabelle'), tx, ty, fang)
+    const z = t?.art === 'tabelle' ? zelleBei(t, tx, ty) : null
+    if (t?.art !== 'tabelle' || !z) return false
+    bearbeiteZelle(t, z[0], z[1])
+    return true
+  }
+  /** Tab/Enter in einer Zelle: übernehmen und zur nächsten (1) oder vorigen (−1) Zelle; am Ende eine neue Zeile */
+  function zelleWeiter(richtung: 1 | -1) {
+    const e = stand.current.editor
+    if (!e?.zelle) return
+    const { t, r, s } = e.zelle
+    let neu = mitZelle(t, r, s, e.text.replace(/\s+$/, ''))
+    let ziel = naechsteZelle(neu, r, s, richtung)
+    if (!ziel && richtung === 1) {
+      const mehr = zeileDazu(neu, neu.zellen.length - 1)
+      if (mehr) {
+        neu = mehr
+        ziel = [r + 1, 0]
+      }
+    }
+    if (JSON.stringify(neu) !== JSON.stringify(t)) beiErsetzen([t], [neu])
+    if (ziel) bearbeiteZelle(neu, ziel[0], ziel[1])
+    else setEditor(null)
+  }
+  /** „Einfügen“ im Feld Tabelle: anlegen, auswählen und die erste Zelle beschreiben */
+  function legeTabelleAn(zeilen: number, spalten: number) {
+    if (!wahl) return
+    const s = stand.current
+    const t = neueTabelle(wahl.tx, wahl.ty, zeilen, spalten, schriftgroesse(s.staerke), s.farbe)
+    setWahl(null)
+    beiHinzu(t)
+    bearbeiteZelle(t, 0, 0)
+  }
 
   // Werkzeugwechsel beendet das Schreiben
   useEffect(() => {
-    if (werkzeug !== 'text' && werkzeug !== 'auswahl') schliesseEditor()
+    if (werkzeug !== 'text' && werkzeug !== 'auswahl' && werkzeug !== 'tabelle') schliesseEditor()
+    if (werkzeug !== 'tabelle') setWahl(null)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [werkzeug])
 
@@ -512,6 +576,13 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       }
       return
     }
+    // Eine ausgewählte Tabelle: Trennlinie zwischen Spalten ziehen
+    const eine = lage && !e.shiftKey && lage.gewaehlt.length === 1 && lage.gewaehlt[0].art === 'tabelle' ? lage.gewaehlt[0] : null
+    const trenner = eine ? trennerBei(eine, tx, ty, fang * 1.5) : null
+    if (eine && trenner !== null) {
+      aktiv.current = { art: 'spalte', zeiger: e.pointerId, t: eine, spalte: trenner, startX: innen(eine, tx, ty)[0], breite: eine.spalten[trenner], neu: eine }
+      return
+    }
     const treffer = oberstesBei(s.elemente, tx, ty, fang)
     if (e.shiftKey) {
       // Umschalt: das angetippte Element hinzunehmen oder herausnehmen; auf freier Fläche einen Rahmen dazu aufziehen
@@ -522,8 +593,12 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       } else aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: s.auswahl }
       return
     }
-    if (treffer?.art === 'text' && vorher?.id === treffer.id && Date.now() - vorher.zeit < DOPPELTIPP_MS) {
+    if ((treffer?.art === 'text' || treffer?.art === 'tabelle') && vorher?.id === treffer.id && Date.now() - vorher.zeit < DOPPELTIPP_MS) {
       zeiger.current.delete(e.pointerId)
+      if (treffer.art === 'tabelle') {
+        zelleAntippen(tx, ty, fang)
+        return
+      }
       beiAuswahl([treffer.id])
       bearbeite(treffer)
       return
@@ -549,6 +624,10 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     e.preventDefault()
     if (stand.current.editor) {
       schliesseEditor() // Tippen neben das Eingabefeld übernimmt den Text
+      return
+    }
+    if (wahl) {
+      setWahl(null) // Tippen neben das Feld „Tabelle einfügen“ schließt es
       return
     }
     try {
@@ -609,8 +688,15 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     } else if (w === 'auswahl') {
       waehleAus(e, tx, ty, fang)
       if (!aktiv.current) return
+    } else if (w === 'tabelle') {
+      zeiger.current.delete(e.pointerId)
+      if (zelleAntippen(tx, ty, fang)) return
+      const r = rahmen.current!
+      setWahl({ tx, ty, x: Math.max(8, Math.min(x, r.clientWidth - 248)), y: Math.max(8, Math.min(y, r.clientHeight - 168)) })
+      return
     } else if (w === 'text') {
       zeiger.current.delete(e.pointerId)
+      if (zelleAntippen(tx, ty, fang)) return
       const treffer = oberstesBei(s.elemente.filter((el) => el.art === 'text'), tx, ty, fang)
       if (treffer?.art === 'text') bearbeite(treffer)
       else oeffneEditor({ id: null, x: tx, y: ty - schriftgroesse(s.staerke) * 0.6, groesse: schriftgroesse(s.staerke), farbe: s.farbe, text: '', vorher: null })
@@ -647,7 +733,9 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       const [tx, ty] = zuTafel(stand.current.kamera, x, y)
       const griff = griffBei(lage.griffe, tx, ty, stand.current.kamera.zoom)
       const [l, o, r, u] = lage.rahmen
-      zeiger = griff ? GRIFF_ZEIGER[griff.name] : tx >= l && tx <= r && ty >= o && ty <= u ? 'move' : ''
+      const eine = lage.gewaehlt.length === 1 && lage.gewaehlt[0].art === 'tabelle' ? lage.gewaehlt[0] : null
+      const trenner = !griff && eine ? trennerBei(eine, tx, ty, (FANG_RADIUS * 1.5) / stand.current.kamera.zoom) : null
+      zeiger = griff ? GRIFF_ZEIGER[griff.name] : trenner !== null ? 'col-resize' : tx >= l && tx <= r && ty >= o && ty <= u ? 'move' : ''
     }
     if (stand.current.werkzeug === 'laser' && !leer.current) zeiger = 'none' // der rote Punkt ersetzt den Mauszeiger
     if (el.style.cursor !== zeiger) el.style.cursor = zeiger
@@ -717,6 +805,9 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     } else if (a.art === 'skalieren') {
       if (!a.s) setVersteckt(new Set(a.originale.map((el) => el.id)))
       a.s = skalierung(a.griff, a.inhalt, tx - a.startX, ty - a.startY)
+    } else if (a.art === 'spalte') {
+      if (a.neu === a.t) setVersteckt(new Set([a.t.id]))
+      a.neu = mitSpaltenbreite(a.t, a.spalte, a.breite + innen(a.t, tx, ty)[0] - a.startX)
     } else if (a.art === 'rahmen') {
       a.x2 = tx
       a.y2 = ty
@@ -828,6 +919,13 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       }
       setVersteckt(new Set())
     }
+    if (a.art === 'spalte') {
+      if (!abgebrochen && a.neu.spalten[a.spalte] !== a.t.spalten[a.spalte]) {
+        fest(a.neu)
+        beiErsetzen([a.t], [a.neu])
+      }
+      setVersteckt(new Set())
+    }
     if (a.art === 'rahmen' && !abgebrochen) {
       const weit = Math.hypot(a.x2 - a.x1, a.y2 - a.y1) * k.zoom >= TIPP_WEG
       const r = rechteckAus(a.x1, a.y1, a.x2, a.y2)
@@ -859,6 +957,7 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
 
   const { b, h, dpr } = groesse
   const zeilen = editor ? editor.text.split('\n') : []
+  const zelle = editor?.zelle ? { ...editor.zelle, l: zellLage(editor.zelle.t, editor.zelle.r, editor.zelle.s), rand: zellRand(editor.zelle.t) } : null
   return (
     <div
       ref={rahmen}
@@ -881,12 +980,12 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       <canvas ref={oben} width={Math.round(b * dpr)} height={Math.round(h * dpr)} />
       {editor && (
         <textarea
-          className="text-eingabe"
-          aria-label="Text auf der Tafel"
+          className={zelle ? 'text-eingabe zell-eingabe' : 'text-eingabe'}
+          aria-label={zelle ? `Zelle ${zelle.r + 1}/${zelle.s + 1} der Tabelle` : 'Text auf der Tafel'}
           autoFocus
-          maxLength={MAX_TEXT}
+          maxLength={zelle ? MAX_ZELLTEXT : MAX_TEXT}
           value={editor.text}
-          cols={Math.max(8, ...zeilen.map((z) => z.length + 2))}
+          cols={zelle ? undefined : Math.max(8, ...zeilen.map((z) => z.length + 2))}
           rows={Math.max(1, zeilen.length)}
           style={{
             left: kamera.x + editor.x * kamera.zoom,
@@ -895,15 +994,29 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
             lineHeight: ZEILENHOEHE,
             color: editor.farbe,
             fontFamily: SCHRIFT,
+            ...(zelle
+              ? {
+                  width: zelle.l.b * kamera.zoom,
+                  minHeight: zelle.l.h * kamera.zoom,
+                  padding: zelle.rand * kamera.zoom,
+                  fontWeight: zelle.t.kopf && zelle.r === 0 ? 700 : undefined,
+                  transform: drehungVon(zelle.t) ? `rotate(${drehungVon(zelle.t)}deg)` : undefined,
+                }
+              : {}),
           }}
           onChange={(e) => setEditor({ ...editor, text: e.target.value })}
           onBlur={() => schliesseEditor()}
           onKeyDown={(e) => {
             e.stopPropagation() // Buchstaben sollen kein Werkzeug umschalten
             if (e.key === 'Escape') schliesseEditor(false)
+            if (zelle && (e.key === 'Tab' || (e.key === 'Enter' && !e.shiftKey))) {
+              e.preventDefault()
+              zelleWeiter(e.key === 'Tab' && e.shiftKey ? -1 : 1)
+            }
           }}
         />
       )}
+      {wahl && <Tabellenwahl links={wahl.x} oben={wahl.y} beiFertig={legeTabelleAn} beiAbbrechen={() => setWahl(null)} />}
     </div>
   )
 }
