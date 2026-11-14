@@ -1,13 +1,14 @@
 // Die Tafel: Kopfzeile, linke Werkzeugleiste, Zeichenfläche mit Fenstern darüber, rechte Schnellzugriffsleiste,
 // unten die Seiten. Speichert automatisch auf diesem Gerät und stellt beim Öffnen die zuletzt benutzte Tafel wieder her.
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Fensterebene, Schnellleiste } from '../fenster/Fensterebene.tsx'
 import { einzufuegen, neueAblage, type Ablage } from '../kern/ablage.ts'
 import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl.ts'
 import { ausfuehrenAuf, entfernenBefehl, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
-import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
+import { aufsBlattBefehl, begrenzt, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
+import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Format, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
 import { drehBefehl, gehe, hintergrundWegBefehl, kopiere, pdfSeiten, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, seitenWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
@@ -18,6 +19,7 @@ import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 import { Auswahlleiste, type Befehlsknopf } from './Auswahlleiste.tsx'
+import { Formatwahl } from './Formatwahl.tsx'
 
 /** Steht nach dem Kopieren in der Zwischenablage des Systems (eingefügt wird in der Tafel die Kopie selbst) */
 const KOPIE_HINWEIS = 'Aus einer Lehrraum-Tafel kopiert – einfügen lässt es sich nur in einer Lehrraum-Tafel.'
@@ -48,7 +50,8 @@ const LEER: Seite = { id: '', elemente: [] }
 export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string; pruefen?: boolean }) {
   const [kopf, setKopf] = useState<Pick<Tafelbild, 'schema' | 'version' | 'id' | 'titel'> | null>(null)
   const [buch, setBuch] = useState<Buch>({ seiten: [LEER], nr: 0, verlaeufe: {} })
-  const [kamera, setKamera] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
+  const [kamera, setKameraRoh] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
+  const [format, setFormat] = useState<Format>('unendlich')
   const [fenster, setFenster] = useState<FensterZustand[]>([])
   const [werkzeug, setWerkzeug] = useState<Werkzeug>(STANDARD_EINSTELLUNGEN.werkzeug)
   const [farbe, setFarbe] = useState<string>(STANDARD_EINSTELLUNGEN.farbe)
@@ -71,6 +74,54 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   // Ausgewählt kann nur sein, was es auf der gezeigten Seite (noch) gibt
   const auswahl = auswahlRoh.filter((id) => seite.elemente.some((e) => e.id === id))
   const gewaehlte = seite.elemente.filter((e) => auswahl.includes(e.id))
+
+  // ---------- Blatt: Seiten mit fester Größe ----------
+  // Größe der Fläche (für Einpassen und Begrenzen der Ansicht)
+  const [mass, setMass] = useState({ b: 0, h: 0 })
+  useLayoutEffect(() => {
+    const el = flaeche.current
+    if (!el) return
+    const messen = () => setMass((alt) => (alt.b === el.clientWidth && alt.h === el.clientHeight ? alt : { b: el.clientWidth, h: el.clientHeight }))
+    messen()
+    if (typeof ResizeObserver === 'undefined') return
+    const beobachter = new ResizeObserver(messen)
+    beobachter.observe(el)
+    return () => beobachter.disconnect()
+  }, [fehlt])
+  const blattB = blattVon(format, seite)?.[0]
+  const blattH = blattVon(format, seite)?.[1]
+  // dasselbe Blatt behält dieselbe Liste – sonst zeichnete die Fläche bei jedem Durchlauf ganz neu
+  const blatt = useMemo<Blatt | null>(() => (blattB !== undefined && blattH !== undefined ? [blattB, blattH] : null), [blattB, blattH])
+  const begrenze = useCallback((k: Kamera) => begrenzt(k, blatt, mass.b, mass.h), [blatt, mass])
+  const setKamera = useCallback((k: Kamera | ((alt: Kamera) => Kamera)) => setKameraRoh((alt) => begrenze(typeof k === 'function' ? k(alt) : k)), [begrenze])
+  const passeEin = useCallback(() => {
+    if (blatt && mass.b > 0 && mass.h > 0) setKameraRoh(eingepasst(blatt, mass.b, mass.h))
+  }, [blatt, mass])
+  // Neue Seite, anderes Blatt oder anderes Format: das ganze Blatt zeigen
+  useEffect(passeEin, [seite.id, blatt, format]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Andere Größe der Fläche: war das ganze Blatt zu sehen, bleibt es so; sonst nur begrenzen
+  const altesMass = useRef(mass)
+  useEffect(() => {
+    const vorher = altesMass.current
+    altesMass.current = mass
+    if (!blatt) return
+    setKameraRoh((k) => (vorher.b <= 0 || istEingepasst(k, blatt, vorher.b, vorher.h) ? (mass.b > 0 ? eingepasst(blatt, mass.b, mass.h) : k) : begrenzt(k, blatt, mass.b, mass.h)))
+  }, [mass]) // eslint-disable-line react-hooks/exhaustive-deps
+  const ueberstand = useMemo(() => (format === 'unendlich' ? 0 : seitenMitUeberstand(buch.seiten, format)), [buch.seiten, format])
+  /** Holt auf allen Seiten den Inhalt aufs Blatt – je Seite ein Schritt in ihrem Verlauf */
+  const inhaltEinpassen = () =>
+    setBuch((alt) => {
+      const verlaeufe = { ...alt.verlaeufe }
+      const seiten = alt.seiten.map((s) => {
+        const b = blattVon(format, s)
+        const befehl = b && aufsBlattBefehl(s, b)
+        if (!befehl) return s
+        const neu = ausfuehrenAuf(s.hintergrund ? { elemente: s.elemente, hintergrund: s.hintergrund } : { elemente: s.elemente }, alt.verlaeufe[s.id] ?? leererVerlauf(), befehl)
+        verlaeufe[s.id] = neu.verlauf
+        return { ...s, elemente: neu.inhalt.elemente }
+      })
+      return { ...alt, seiten, verlaeufe }
+    })
 
   // ---------- Einstellungen merken (je Gerät): erst nach dem Laden, und ohne den Speicherstand der Tafel zu berühren ----------
   const einstellungenDa = useRef(false)
@@ -98,8 +149,9 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         const t = gefunden ?? neuesTafelbild()
         if (!gefunden) void merkeFreieTafel(t.id).catch(() => undefined) // neue freie Tafel: gleich festhalten, welche es ist
         setKopf({ schema: t.schema, version: t.version, id: t.id, titel: t.titel })
+        setFormat(t.format)
         setBuch({ seiten: t.seiten, nr: t.seiteNr, verlaeufe: {} })
-        setKamera(t.kamera)
+        setKameraRoh(t.kamera) // mit festem Format wird gleich danach eingepasst
         setFenster(t.fenster)
         setSpeicher('gespeichert')
         // Bilder wegräumen, die keine Tafel mehr braucht – dabei ALLE Tafeln berücksichtigen, nicht nur diese,
@@ -138,7 +190,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
 
   useEffect(() => {
     if (!kopf) return
-    aktuell.current = { ...kopf, seiten: buch.seiten, seiteNr: buch.nr, kamera, fenster, geaendertAm: '' }
+    aktuell.current = { ...kopf, format, seiten: buch.seiten, seiteNr: buch.nr, kamera, fenster, geaendertAm: '' }
     if (!geladen.current) {
       geladen.current = true // der erste Durchlauf ist das Laden selbst, keine Änderung
       return
@@ -147,7 +199,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     setSpeicher('ungespeichert')
     const warten = setTimeout(jetztSpeichern, SPEICHERN_NACH_MS)
     return () => clearTimeout(warten)
-  }, [kopf, buch.seiten, buch.nr, kamera, fenster, jetztSpeichern])
+  }, [kopf, format, buch.seiten, buch.nr, kamera, fenster, jetztSpeichern])
 
   // Beim Verlassen oder Wegschalten sofort speichern (Schutz vor versehentlichem Schließen)
   useEffect(() => {
@@ -344,7 +396,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     try {
       const { seiten, ausgelassen } = await importierePdf(datei, platz, (nr, von) => setMeldung({ text: `PDF: Seite ${nr} von ${von} …`, laeuft: true }))
       blaettern((b) => seitenDazu(b, seiten))
-      setKamera({ x: 0, y: 0, zoom: 1 })
+      if (format === 'unendlich') setKamera({ x: 0, y: 0, zoom: 1 }) // sonst wird die neue Seite eingepasst
       setMeldung({ text: (seiten.length === 1 ? '1 Seite eingefügt.' : `${seiten.length} Seiten eingefügt.`) + (ausgelassen ? ` ${ausgelassen} weitere passen nicht mehr (höchstens ${MAX_SEITEN}).` : ''), fehler: ausgelassen > 0 })
     } catch (e) {
       fehlerMeldung(e)
@@ -355,7 +407,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     setMeldung({ text: 'PDF wird erstellt …', laeuft: true })
     try {
       const titel = kopf?.titel ?? 'Tafel'
-      const pdf = await exportierePdf(buch.seiten, titel, (nr, von) => setMeldung({ text: `PDF: Seite ${nr} von ${von} …`, laeuft: true }))
+      const pdf = await exportierePdf(buch.seiten, titel, (nr, von) => setMeldung({ text: `PDF: Seite ${nr} von ${von} …`, laeuft: true }), format)
       if (weitergeben) {
         setMeldung(null)
         await teile(pdf, pdfName(titel), titel)
@@ -495,8 +547,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     { name: 'Löschen', symbol: 'leeren', titel: 'Löschen (Entf)', tun: loescheAuswahl },
   ]
 
-  const zoomen = (faktor: number) => setKamera((k) => zoomeUm(k, window.innerWidth / 2, window.innerHeight / 2, faktor))
-  const ansichtZurueck = () => setKamera({ x: 0, y: 0, zoom: 1 })
+  const zoomen = (faktor: number) => setKamera((k) => zoomeUm(k, (mass.b || window.innerWidth) / 2, (mass.h || window.innerHeight) / 2, faktor))
+  const ansichtZurueck = () => (blatt ? passeEin() : setKamera({ x: 0, y: 0, zoom: 1 }))
 
   if (fehlt) {
     return (
@@ -543,11 +595,12 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         </div>
         <input ref={pdfWahl} type="file" accept="application/pdf,.pdf" hidden aria-label="PDF-Datei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
         <input ref={bildWahl} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden aria-label="Bilddatei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
+        <Formatwahl format={format} ueberstand={ueberstand} beiFormat={setFormat} beiEinpassen={inhaltEinpassen} />
         <div className="zoom" role="group" aria-label="Ansicht">
           <button type="button" className="kopf-knopf" aria-label="Verkleinern" onClick={() => zoomen(1 / 1.25)}>
             −
           </button>
-          <button type="button" className="kopf-knopf breit" aria-label="Ansicht zurücksetzen" title="Ansicht zurücksetzen" onClick={ansichtZurueck}>
+          <button type="button" className="kopf-knopf breit" aria-label={blatt ? 'Ganzes Blatt zeigen' : 'Ansicht zurücksetzen'} title={blatt ? 'Ganzes Blatt zeigen' : 'Ansicht zurücksetzen'} onClick={ansichtZurueck}>
             {Math.round(kamera.zoom * 100)} %
           </button>
           <button type="button" className="kopf-knopf" aria-label="Vergrößern" onClick={() => zoomen(1.25)}>
@@ -581,7 +634,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         />
         <div className="tafel-spalte">
           <div
-            className="tafel-flaeche"
+            className={blatt ? 'tafel-flaeche mit-blatt' : 'tafel-flaeche'}
             ref={flaeche}
             onPointerDown={(e) => (e.target as HTMLElement).closest('[data-testid="zeichenflaeche"]') && setZieht(true)}
             onPointerUp={() => setZieht(false)}
@@ -609,6 +662,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
               beiErsetzen={beiErsetzen}
               beiAuswahl={setAuswahl}
               beiKamera={setKamera}
+              blatt={blatt}
+              begrenze={begrenze}
             />
             {leistenRahmen && <Auswahlleiste rahmen={leistenRahmen} knoepfe={auswahlKnoepfe} />}
             <Fensterebene fenster={fenster} beiAendern={setFenster} />
@@ -619,6 +674,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             anzahl={buch.seiten.length}
             beschrieben={seite.elemente.length > 0 || seite.hintergrund !== undefined}
             beiGehe={(nr) => blaettern((b) => gehe(b, nr))}
+            weiterMitNeu={format !== 'unendlich'}
             beiNeu={() => blaettern(seiteDazu)}
             beiDoppelt={() => blaettern(seiteDoppelt)}
             beiSchieben={(r) => blaettern((b) => seiteSchieben(b, r))}

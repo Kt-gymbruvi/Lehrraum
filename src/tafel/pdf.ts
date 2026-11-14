@@ -3,8 +3,9 @@
 //   Import:  PDF.js (Mozilla) zeichnet jede Seite als Bild; das Bild wird Hintergrund einer Tafelseite.
 //   Export:  jede Tafelseite wird gezeichnet und mit pdf-lib als Seite in ein PDF gelegt.
 // (Braucht einen echten Browser; in Tests wird dieses Modul ersetzt.)
+import { blattVon } from '../kern/blatt.ts'
 import { seitenMass } from '../kern/geometrie.ts'
-import { benutzteDateien, MAX_SEITEN, neueId, neueSeite, type Seite } from '../kern/modell.ts'
+import { benutzteDateien, MAX_SEITEN, neueId, neueSeite, type Format, type Seite } from '../kern/modell.ts'
 import { alsBlob, speichereCanvas } from './bilder.ts'
 import { ladeBildquelle } from './bildquellen.ts'
 import { zeichneSeite } from './zeichnen.ts'
@@ -58,7 +59,7 @@ export async function importierePdf(datei: Blob, platz: number, fortschritt: (se
 }
 
 /** Zeichnet alle Seiten und baut daraus ein PDF. */
-export async function exportierePdf(seiten: Seite[], titel: string, fortschritt: (seite: number, von: number) => void): Promise<Blob> {
+export async function exportierePdf(seiten: Seite[], titel: string, fortschritt: (seite: number, von: number) => void, format: Format = 'unendlich'): Promise<Blob> {
   const { PDFDocument } = await import('pdf-lib')
   await Promise.all([...benutzteDateien(seiten)].map(ladeBildquelle)) // alle Bilder müssen vor dem Zeichnen da sein
   const pdf = await PDFDocument.create()
@@ -67,7 +68,7 @@ export async function exportierePdf(seiten: Seite[], titel: string, fortschritt:
   const canvas = document.createElement('canvas')
   for (const [i, s] of seiten.entries()) {
     fortschritt(i + 1, seiten.length)
-    const ausschnitt = seitenMass(s)
+    const ausschnitt = seitenMass(s, blattVon(format, s))
     const [, , b, h] = ausschnitt
     const massstab = Math.min(2, EXPORT_MAX_KANTE / Math.max(b, h))
     canvas.width = Math.round(b * massstab)

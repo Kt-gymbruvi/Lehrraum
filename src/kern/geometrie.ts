@@ -369,9 +369,11 @@ const SEITENRAND = 24
 /**
  * Der Ausschnitt [links, oben, Breite, Höhe], der beim Export zu einer PDF-Seite wird:
  * mit Hintergrund genau dessen Fläche (plus was darüber hinausragt), sonst mindestens A4 quer ab (0, 0)
- * und alles Gezeichnete mit etwas Rand.
+ * und alles Gezeichnete mit etwas Rand. Mit Blatt (Tafel mit festem Format) genau das Blatt – was darüber
+ * hinausragt, ist auch auf der Tafel nicht zu sehen.
  */
-export function seitenMass(s: Seite): [number, number, number, number] {
+export function seitenMass(s: Seite, blatt?: [number, number] | null): [number, number, number, number] {
+  if (blatt) return [0, 0, Math.round(blatt[0]), Math.round(blatt[1])]
   const inhalt = gesamtRahmen(s.elemente)
   const basis: [number, number, number, number] = s.hintergrund ? [0, 0, ...hintergrundMass(s.hintergrund)] : [0, 0, A4_QUER[0], A4_QUER[1]]
   if (!inhalt) return [basis[0], basis[1], basis[2] - basis[0], basis[3] - basis[1]]

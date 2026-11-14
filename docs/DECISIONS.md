@@ -3,6 +3,17 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Seitenformat: Umsetzung (Etappe 1)
+- **Format nicht im Verlauf:** Der Rückgängig-Verlauf gehört je zu einer Seite, das Format zur ganzen Tafel. Das Format lässt sich stattdessen jederzeit zurückstellen, ohne dass etwas verloren geht; „Inhalt einpassen“ ist je Seite ein Schritt im Verlauf.
+- **Abschneiden statt verbieten:** Elemente dürfen über den Blattrand ragen (z. B. beim Verschieben); gezeigt und exportiert wird nur, was auf dem Blatt liegt. Das Gespeicherte bleibt vollständig.
+- **Blatt auf das Canvas gezeichnet** (statt eines eigenen HTML-Elements): so passen Zoom, Verschieben und Abschneiden ohne zweite Rechnung zusammen. Schatten ohne `shadowBlur`, damit Verschieben am SMART Board flüssig bleibt.
+- **16:9 = 1600 × 900 Tafel-Einheiten:** bei Zoom 1 etwa so groß wie ein Laptop-Bildschirm; Strichstärken und Schriftgrößen behalten ihr gewohntes Verhältnis.
+
+## 2026-11-14 – Umfang „Seitenformat und Hintergründe“ (Antworten der Lehrkraft)
+- **Feste Seiten wie in GoodNotes, 16:9 als Standard:** passt genau auf das SMART Board; A4 hoch/quer und „Unendlich“ bleiben wählbar. Bestehende Tafeln werden zu „Unendlich“, damit sich an ihnen nichts ändert.
+- **Gewünscht:** Muster wählbar (liniert, kariert …), für diese Seite oder alle Seiten; eigenes Bild als Hintergrund; Vorlage je Klasse; Seitenübersicht. Export ohne Muster nehme ich mit („wie du willst“).
+- **Verworfen:** Sportfelder als Hintergrund, Taktiktafel mit Spielerplättchen, Abdecken/Aufdecken (vorerst), farbige Hintergründe – das Blatt bleibt weiß.
+
 ## 2026-11-14 – Aussehen im Stil von Apple (Wunsch der Lehrkraft)
 - **Schwebende Leisten neben dem Blatt, nicht darüber:** Die Leisten behalten ihren eigenen Platz; das Blatt wird nicht unter sie gezogen. Sonst lägen der Anfang einer Seite und PDF-Seiten (beide oben links) unter der linken Leiste.
 - **Glas nur, wo es trägt:** Halbdurchsichtige Flächen mit Unschärfe für alle Leisten; Fenster (Uhr, Timer, Quizzo …) bleiben deckend, damit ihr Inhalt am Beamer gut lesbar ist. Im dunklen Modus ist das Glas fast deckend (92 %), sonst wirkt es über dem weißen Blatt grau.

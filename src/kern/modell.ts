@@ -1,12 +1,13 @@
-// Datenmodell der Tafel (Version 4). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 5). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
-// Version 4, nur ohne Drehung und PDF-Kennung des Hintergrunds – beide werden unverändert übernommen).
+// Version 4, nur ohne Drehung und PDF-Kennung des Hintergrunds; Version 4 hat dieselbe Gestalt wie Version 5, nur
+// ohne Seitenformat – sie wird zu „unendlich“, so dass alte Tafeln genau so bleiben, wie sie waren).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 4
+export const TAFEL_VERSION = 5
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -98,11 +99,20 @@ export type Seite = { id: string; elemente: Element[]; hintergrund?: Hintergrund
 
 export type Kamera = { x: number; y: number; zoom: number }
 
+/** Format einer Tafel: feste Blätter (wie ein Heft) oder eine unendliche Fläche */
+export const FORMATE = ['16:9', 'a4-hoch', 'a4-quer', 'unendlich'] as const
+export type Format = (typeof FORMATE)[number]
+/** Neue Tafeln beginnen mit Blättern im Format des Bildschirms (passt genau aufs SMART Board) */
+export const STANDARD_FORMAT: Format = '16:9'
+export const istFormat = (x: unknown): x is Format => FORMATE.includes(x as Format)
+
 export type Tafelbild = {
   schema: typeof TAFEL_SCHEMA
   version: typeof TAFEL_VERSION
   id: string
   titel: string
+  /** feste Blätter oder unendliche Fläche */
+  format: Format
   /** mindestens eine Seite */
   seiten: Seite[]
   /** welche Seite gerade zu sehen ist (0 = erste) */
@@ -173,12 +183,13 @@ export function benutzteDateien(seiten: Seite[]): Set<string> {
   return ids
 }
 
-export function neuesTafelbild(titel = 'Tafel'): Tafelbild {
+export function neuesTafelbild(titel = 'Tafel', format: Format = STANDARD_FORMAT): Tafelbild {
   return {
     schema: TAFEL_SCHEMA,
     version: TAFEL_VERSION,
     id: neueId(),
     titel,
+    format,
     seiten: [neueSeite()],
     seiteNr: 0,
     kamera: { x: 0, y: 0, zoom: 1 },
@@ -246,7 +257,7 @@ export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x :
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2, 3 und 4.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2, 3, 4 und 5.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -255,7 +266,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5) {
     const ids = new Set<string>()
     seiten = (Array.isArray(roh.seiten) ? roh.seiten : []).slice(0, MAX_SEITEN).flatMap((s): Seite[] => {
       if (!istObjekt(s) || typeof s.id !== 'string' || !s.id || ids.has(s.id)) return []
@@ -273,6 +284,8 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
     version: TAFEL_VERSION,
     id: roh.id,
     titel: typeof roh.titel === 'string' && roh.titel.trim() ? roh.titel.trim().slice(0, 200) : 'Tafel',
+    // Vor Version 5 war jede Tafel unendlich – so bleibt es auch
+    format: roh.version === 5 && istFormat(roh.format) ? roh.format : 'unendlich',
     seiten,
     seiteNr: istZahl(roh.seiteNr) ? Math.min(seiten.length - 1, Math.max(0, Math.round(roh.seiteNr))) : 0,
     kamera: { x: istZahl(k.x) ? k.x : 0, y: istZahl(k.y) ? k.y : 0, zoom },

@@ -58,6 +58,7 @@ const ZEICHNUNGEN = {
   gross: 'M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5',
   klein: 'M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5',
   qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18v2M18 18h2v2',
+  format: 'M3 6h12v9H3zM17 9h4v11h-8v-3',
 } as const
 
 export type SymbolName = keyof typeof ZEICHNUNGEN

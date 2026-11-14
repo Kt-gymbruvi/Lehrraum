@@ -36,7 +36,8 @@ import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Fo
 import { beginneWischzug, neueTeile, RADIERER_RADIUS, RADIERER_STANDARD, wischBefehl, wischeWeiter, type Radierer, type Wischzug } from '../kern/radieren.ts'
 import { beiBildGeladen } from './bildquellen.ts'
 import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
-import { SCHRIFT, zeichne, zeichneHintergrund, zeichneLaser } from './zeichnen.ts'
+import { aufBlatt, type Blatt } from '../kern/blatt.ts'
+import { schneideAufBlatt, SCHRIFT, zeichne, zeichneBlatt, zeichneHintergrund, zeichneLaser } from './zeichnen.ts'
 
 export type { Werkzeug }
 
@@ -60,6 +61,10 @@ type Props = {
   beiErsetzen: (vorher: Element[], nachher: Element[]) => void
   beiAuswahl: (ids: string[]) => void
   beiKamera: (k: Kamera) => void
+  /** Größe des Blatts (Tafel mit festem Format) oder null/fehlt: unendliche Fläche */
+  blatt?: Blatt | null
+  /** Begrenzt eine Ansicht beim Verschieben und Zoomen (auf das Blatt); fehlt: keine Grenze */
+  begrenze?: (k: Kamera) => Kamera
 }
 
 /** Fangradius der Auswahl in Bildschirm-Pixeln */
@@ -103,7 +108,9 @@ export const setzeHaltezeit = (ms: number) => {
   haltezeit = ms
 }
 
-export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera }: Props) {
+const keineGrenze = (k: Kamera) => k
+
+export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -117,8 +124,8 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   /** Eine verschobene Ansicht, die erst mit dem nächsten Bildwechsel weitergemeldet wird */
   const kameraOffen = useRef<Kamera | null>(null)
   // Aktuelle Werte für die Eingabe-Funktionen (die sich sonst bei jedem Zeichnen neu anmelden müssten)
-  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahl, editor })
-  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahl, editor }
+  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahl, editor, blatt, begrenze })
+  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahl, editor, blatt, begrenze }
   /** Wo Maus oder schwebender Stift gerade ist (Bildschirm) – dort zeigt ein Kreis die Größe des Radierers (beim Laserpointer: ein roter Punkt) */
   const schwebe = useRef<{ x: number; y: number } | null>(null)
   /** Spuren des Laserpointers: nur hier auf der oberen Ebene, nie gespeichert, nicht im Verlauf */
@@ -188,14 +195,19 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   const schonFest = useRef(new WeakSet<Element>())
   useEffect(() => {
     const beginn = messBeginn()
-    const rest = [hintergrund, kamera, groesse, versteckt, bildStand]
+    const rest = [hintergrund, kamera, groesse, versteckt, bildStand, blatt]
     const alt = gezeigt.current
     gezeigt.current = { elemente, rest }
     const nurDazu = alt !== null && alt.rest.every((x, i) => x === rest[i]) && alt.elemente.length <= elemente.length && alt.elemente.every((e, i) => e === elemente[i])
     if (nurDazu) {
       // Alles Bisherige steht noch da: nur das Neue einzeichnen. Bei vollen Seiten spart das nach jedem Strich viel Zeit.
       const ctx = unten.current?.getContext('2d')
-      if (ctx) for (const e of elemente.slice(alt.elemente.length)) if (!schonFest.current.has(e) && !versteckt.has(e.id)) zeichne(ctx, e)
+      if (ctx) {
+        ctx.save()
+        if (blatt) schneideAufBlatt(ctx, blatt[0], blatt[1], kamera.zoom)
+        for (const e of elemente.slice(alt.elemente.length)) if (!schonFest.current.has(e) && !versteckt.has(e.id)) zeichne(ctx, e)
+        ctx.restore()
+      }
     } else {
       schonFest.current = new WeakSet()
       const ctx = ebene(unten.current, kamera)
@@ -203,12 +215,19 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
         gezeigt.current = null
         return
       }
+      ctx.save()
+      if (blatt) {
+        // Festes Format: weißes Blatt, und nichts ragt darüber hinaus
+        zeichneBlatt(ctx, blatt[0], blatt[1], kamera.zoom)
+        schneideAufBlatt(ctx, blatt[0], blatt[1], kamera.zoom)
+      }
       if (hintergrund) zeichneHintergrund(ctx, hintergrund)
       for (const e of elemente) if (!versteckt.has(e.id)) zeichne(ctx, e)
+      ctx.restore()
     }
     untenGezeichnet(beginn)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elemente, hintergrund, kamera, groesse, versteckt, bildStand])
+  }, [elemente, hintergrund, kamera, groesse, versteckt, bildStand, blatt])
 
   function zeichneOben() {
     const beginn = messBeginn()
@@ -217,9 +236,18 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const ctx = ebene(oben.current, k)
     if (!ctx) return
     const a = aktiv.current
-    if (a?.art === 'zeichnen') zeichne(ctx, a.begradigt ?? a.strich, true)
-    if (a?.art === 'form') zeichne(ctx, a.form)
-    if (a?.art === 'radieren' && a.wisch) neueTeile(a.wisch).forEach((e) => zeichne(ctx, e))
+    // Was entsteht oder bewegt wird, endet wie auf der unteren Ebene am Blattrand
+    const aufsBlatt = (tun: () => void) => {
+      ctx.save()
+      if (s.blatt) schneideAufBlatt(ctx, s.blatt[0], s.blatt[1], k.zoom)
+      tun()
+      ctx.restore()
+    }
+    aufsBlatt(() => {
+      if (a?.art === 'zeichnen') zeichne(ctx, a.begradigt ?? a.strich, true)
+      if (a?.art === 'form') zeichne(ctx, a.form)
+      if (a?.art === 'radieren' && a.wisch) neueTeile(a.wisch).forEach((e) => zeichne(ctx, e))
+    })
     // Laserpointer: leuchtender Schweif, der hinten verlischt, und ein Leuchtpunkt an der Spitze
     const jetzt = Date.now()
     spuren.current = spuren.current.filter((sp) => lebt(sp, jetzt))
@@ -265,7 +293,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
           : a?.art === 'drehen'
             ? a.originale.map((e) => gedreht(e, a.cx, a.cy, a.winkel))
             : null
-    bewegt?.forEach((e) => zeichne(ctx, e, true))
+    if (bewegt) aufsBlatt(() => bewegt.forEach((e) => zeichne(ctx, e, true)))
     // Auswahlrahmen mit Griffen (die Griffe nur, solange nichts bewegt wird)
     const gewaehlt = bewegt ?? s.elemente.filter((e) => s.auswahl.includes(e.id) && e.id !== s.editor?.id)
     const inhalt = gesamtRahmen(gewaehlt)
@@ -537,6 +565,11 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       aktiv.current = { art: 'schwenken', zeiger: e.pointerId, x, y }
       return
     }
+    // Neben dem Blatt beginnt nichts Neues (Stift, Textmarker, Formen, Text)
+    if (s.blatt && !aufBlatt(s.blatt, tx, ty) && w !== 'radierer' && w !== 'auswahl' && w !== 'laser') {
+      zeiger.current.delete(e.pointerId)
+      return
+    }
     if (w === 'radierer') {
       const a: Aktiv = { art: 'radieren', zeiger: e.pointerId, ids: new Set(), x, y, vx: x, vy: y, wisch: s.radierer.art === 'schwamm' ? beginneWischzug(s.elemente) : null }
       aktiv.current = a
@@ -613,6 +646,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       const abstand = Math.hypot(p.x - q.x, p.y - q.y)
       let neu = verschiebe(k, mitteX - a.mitteX, mitteY - a.mitteY)
       if (f.length >= 2 && a.abstand > 0 && abstand > 0) neu = zoomeUm(neu, mitteX, mitteY, abstand / a.abstand)
+      neu = stand.current.begrenze(neu)
       aktiv.current = { art: 'geste', mitteX, mitteY, abstand }
       stand.current.kamera = neu
       kameraOffen.current = neu
@@ -623,7 +657,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const [tx, ty] = zuTafel(k, x, y)
 
     if (a.art === 'schwenken') {
-      const neu = verschiebe(k, x - a.x, y - a.y)
+      const neu = stand.current.begrenze(verschiebe(k, x - a.x, y - a.y))
       a.x = x
       a.y = y
       stand.current.kamera = neu
@@ -779,7 +813,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       e.preventDefault()
       const r = el.getBoundingClientRect()
       const k = stand.current.kamera
-      const neu = e.ctrlKey || e.metaKey ? zoomeUm(k, e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.01)) : verschiebe(k, -e.deltaX, -e.deltaY)
+      const neu = stand.current.begrenze(e.ctrlKey || e.metaKey ? zoomeUm(k, e.clientX - r.left, e.clientY - r.top, Math.exp(-e.deltaY * 0.01)) : verschiebe(k, -e.deltaX, -e.deltaY))
       stand.current.kamera = neu
       kameraOffen.current = neu
       plane()

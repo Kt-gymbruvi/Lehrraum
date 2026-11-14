@@ -486,6 +486,15 @@ body {
   box-shadow: var(--blatt-schatten);
   isolation: isolate; /* runde Ecken schneiden auch Canvas und Fenster */
 }
+/* Festes Format: das Blatt zeichnet die Fläche selbst (weiß, mit runden Ecken), daneben liegt die Umgebung */
+.tafel-flaeche.mit-blatt {
+  background: transparent;
+  box-shadow: none;
+  border-radius: 0;
+}
+.tafel-flaeche.mit-blatt .zeichenflaeche {
+  background: transparent;
+}
 .zeichenflaeche {
   position: absolute;
   inset: 0;
@@ -1056,4 +1065,80 @@ body {
 .aufklappfeld .staerke-punkt,
 .farb-knopf.mehr .staerke-punkt {
   box-shadow: 0 0 0 1px var(--tupfer-rand);
+}
+
+/* ---------- Format der Seiten ---------- */
+.formatfeld {
+  width: 17rem;
+  transform-origin: right top;
+}
+.feld-titel {
+  margin: 0.25rem 0.5rem 0.125rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.formatwahl {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.25rem;
+}
+.format-knopf {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 5.25rem;
+  padding: 0.5rem 0.25rem;
+  border: 0;
+  border-radius: 0.875rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--schnell);
+}
+.format-knopf:hover {
+  background: var(--leiste-2);
+}
+.format-knopf[aria-pressed='true'] {
+  background: var(--gewaehlt);
+  color: var(--gewaehlt-text);
+}
+.format-bild {
+  display: block;
+  border: 1.8px solid currentColor;
+  border-radius: 3px;
+}
+.format-16-9 {
+  width: 2.5rem;
+  height: 1.406rem;
+}
+.format-a4-hoch {
+  width: 1.4rem;
+  height: 1.98rem;
+}
+.format-a4-quer {
+  width: 1.98rem;
+  height: 1.4rem;
+}
+.format-unendlich {
+  width: 2.5rem;
+  height: 1.6rem;
+  border-style: dashed;
+}
+.format-hinweis {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+  border-top: 1px solid var(--linie);
+}
+.format-hinweis p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: var(--text-2);
 }

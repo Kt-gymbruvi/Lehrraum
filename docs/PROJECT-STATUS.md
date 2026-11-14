@@ -1,10 +1,21 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit dem Aussehen im Stil von Apple) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 16 Testdateien, 209 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 17 Testdateien, 220 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Hintergründe, Etappe 1: Seitenformat und Blättern (Spezifikation F1–F4) – noch nicht veröffentlicht (14.11.2026)
+- **Format der Tafel:** 16:9 (Standard für neue Tafeln), A4 hoch, A4 quer oder Unendlich. Knopf „Format“ in der Kopfzeile (neben der Zoom-Kapsel). Bestehende Tafeln werden zu „Unendlich“ und bleiben, wie sie waren. **Datenmodell Version 5** (`format`): nach dem Veröffentlichen auf jedem Gerät einmal neu laden.
+- **Blatt:** In festen Formaten ist jede Seite ein weißes Blatt (16:9 = 1600 × 900 Tafel-Einheiten) auf der ruhigen Umgebung. Beim Öffnen, Blättern und bei anderer Fenstergröße wird es eingepasst; der Prozent-Knopf heißt dann „Ganzes Blatt zeigen“. Hineinzoomen geht, weiter heraus als das ganze Blatt nicht, und beim Verschieben bleibt das Blatt im Bild. PDF-Seiten behalten ihre Größe.
+- **Rand:** Neben dem Blatt beginnt kein Strich, keine Form, kein Text. Was über den Rand ragt, wird abgeschnitten angezeigt und exportiert (bleibt aber gespeichert).
+- **Blättern:** Auf der letzten Seite wird aus dem Pfeil nach rechts „Neue Seite anlegen“ (+). Bild auf / Bild ab wie bisher.
+- **Inhalt einpassen:** Nach dem Umstellen auf ein festes Format zeigt das Feld „Format“, wie viele Seiten Inhalt außerhalb des Blatts haben, und bietet „Inhalt einpassen“ an (verkleinert nur wenn nötig, je Seite rückgängig zu machen).
+- **Export:** In festen Formaten ist jede PDF-Seite genau so groß wie das Blatt.
+- Neu: `src/kern/blatt.ts` (Maße, Einpassen, Begrenzen, Überstand, Einpassen-Befehl), `src/tafel/Formatwahl.tsx`, Test `src/test/blatt.test.tsx` (11 Tests).
+- **Getestet:** `npm test` (220 grün), `npm run build`; im Browser bei 1024 × 768 hell und dunkel: Blatt eingepasst, Strich neben dem Blatt wird nicht angefangen, Strich über den Rand abgeschnitten, Zoom und Verschieben begrenzt, Format wechseln (16:9, A4 hoch, Unendlich), Inhalt einpassen, neue Seite über den Pfeil.
+- **Nicht getestet:** am iPad und SMART Board (Blattgröße beim Schreiben, Zwei-Finger-Zoom an der Grenze), PDF-Export in einem festen Format mit echter Datei.
 
 ## Aussehen: Tafel im Stil von Apple – veröffentlicht am 14.11.2026
 - **Blatt statt Rahmen:** Die Zeichenfläche ist ein weißes Blatt mit runden Ecken und feinem Schatten auf einem ruhigen, hellen Hintergrund (dunkel: Nachtblau).
@@ -195,5 +206,6 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
    - Teil 1 (veröffentlicht am 14.11.2026, am Gerät noch nicht geprüft): mehr Farben, eigene Farbplätze, Regler für die Stärke, Knopf „Mehr“.
    - Teil 2 (veröffentlicht am 14.11.2026): Begradigen durch Halten (S3). Am Gerät zu prüfen: Haltezeit, Erkennung mit echter Handschrift, versehentliches Begradigen beim Schreiben.
 5. **Laserpointer und Einstellungen merken** (L1, E1): veröffentlicht am 14.11.2026, am Gerät noch nicht geprüft. Am Gerät zu prüfen: Sichtbarkeit der Spur am SMART Board, Dauer bis zum Verblassen.
-6. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
-7. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.
+6. **Seitenformat, Hintergründe, Seitenübersicht:** Spezifikation `docs/SPEC-hintergruende.md` freigegeben am 14.11.2026. Etappe 1 (Format und Blättern) umgesetzt, noch nicht veröffentlicht. Offen: Etappe 2 Muster, Etappe 3 eigenes Bild und Vorlage je Klasse, Etappe 4 Seitenübersicht.
+7. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
+8. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.

@@ -17,6 +17,8 @@ type Props = {
   /** Wie viele Seiten der Tafel stammen aus demselben PDF wie die aktuelle (0: unbekannt) */
   pdfAnzahl: number
   beiGehe: (nr: number) => void
+  /** Blätter mit fester Größe: auf der letzten Seite legt der Pfeil nach rechts eine neue Seite an */
+  weiterMitNeu?: boolean
   beiNeu: () => void
   beiDoppelt: () => void
   beiSchieben: (richtung: -1 | 1) => void
@@ -39,9 +41,15 @@ export function Seitenleiste(p: Props) {
       <p className="seitenzahl" role="status">
         Seite {p.nr + 1} von {p.anzahl}
       </p>
-      <button type="button" className="s-knopf" disabled={p.nr === p.anzahl - 1} aria-label="Nächste Seite" onClick={() => p.beiGehe(p.nr + 1)}>
-        <Symbol name="rechts" />
-      </button>
+      {p.weiterMitNeu && p.nr === p.anzahl - 1 ? (
+        <button type="button" className="s-knopf" disabled={voll} aria-label="Neue Seite anlegen" title="Neue Seite anlegen" onClick={p.beiNeu}>
+          <Symbol name="plus" />
+        </button>
+      ) : (
+        <button type="button" className="s-knopf" disabled={p.nr === p.anzahl - 1} aria-label="Nächste Seite" onClick={() => p.beiGehe(p.nr + 1)}>
+          <Symbol name="rechts" />
+        </button>
+      )}
       {!(frage && allePdf) && ( // bei der Rückfrage mit drei Antworten wäre die Leiste sonst zu breit
         <>
           <span className="trenner" />

@@ -63,6 +63,8 @@ describe('Zeichnen ohne unnötige Arbeit', () => {
     expect((await gespeichert())[0].punkte).toHaveLength(31)
   })
 
+  /** So viele Flächen füllt das Blatt beim Zeichnen: drei Schichten Schatten und das weiße Blatt */
+  const BLATT_FLAECHEN = 4
   it('ergänzt nach einem neuen Strich nur diesen, statt alles neu zu zeichnen', async () => {
     const nutzer = userEvent.setup()
     render(<Tafel />)
@@ -82,7 +84,7 @@ describe('Zeichnen ohne unnötige Arbeit', () => {
     await waitFor(async () => expect(await gespeichert()).toHaveLength(1))
     const c = ebenen().unten
     expect(c.clearRect).toBe(b.clearRect + 1)
-    expect(c.fill).toBe(b.fill + 1)
+    expect(c.fill).toBe(b.fill + 1 + BLATT_FLAECHEN) // ein Strich und das Blatt (neue Tafeln haben das Format 16:9)
 
     // … und Wiederholen zeichnet den Strich wieder ein, obwohl er schon einmal eingezeichnet war
     await nutzer.click(screen.getByRole('button', { name: 'Wiederholen' }))

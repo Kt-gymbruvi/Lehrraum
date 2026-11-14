@@ -39,11 +39,11 @@ describe('PDF-Seiten – Logik', () => {
         { id: 'b', elemente: [], hintergrund: { ...hg(), drehung: 45, pdf: '../x' } },
       ],
     })!
-    expect(t.version).toBe(4)
+    expect(t.version).toBe(5)
     expect(t.seiten[0].hintergrund).toEqual(hg('abcdef12', { drehung: 90 }))
     expect(t.seiten[1].hintergrund).toEqual(hg())
     const alt = pruefeTafel({ ...neuesTafelbild(), version: 3, seiten: [{ id: 'a', elemente: [], hintergrund: hg() }] })!
-    expect(alt.version).toBe(4)
+    expect(alt.version).toBe(5)
     expect(alt.seiten[0].hintergrund).toEqual(hg())
   })
 

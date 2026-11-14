@@ -110,6 +110,35 @@ export function zeichne(ctx: Ctx, e: Element, frisch = false) {
 }
 
 /** Zeichnet eine ganze Seite (weißer Grund, Hintergrund, Elemente). Bilder müssen vorher geladen sein. */
+// ---------- Blatt (Tafel mit festem Format) ----------
+/**
+ * Zeichnet das weiße Blatt mit runden Ecken und feinem Schatten (Rundung und Schatten in Bildschirm-Pixeln,
+ * unabhängig vom Zoom). Ohne shadowBlur – das kostet langsame Geräte bei jedem Verschieben zu viel Zeit.
+ */
+export function zeichneBlatt(ctx: Ctx, b: number, h: number, zoom: number) {
+  const r = 14 / zoom
+  ctx.save()
+  for (const [abstand, deckkraft] of [[4, 0.035], [2, 0.05], [1, 0.07]] as const) {
+    const a = abstand / zoom
+    ctx.beginPath()
+    ctx.roundRect(-a, -a + a / 2, b + 2 * a, h + 2 * a, r + a)
+    ctx.fillStyle = `rgba(10, 45, 83, ${deckkraft})`
+    ctx.fill()
+  }
+  ctx.beginPath()
+  ctx.roundRect(0, 0, b, h, r)
+  ctx.fillStyle = '#ffffff'
+  ctx.fill()
+  ctx.restore()
+}
+
+/** Beschränkt alles weitere Zeichnen auf das Blatt (vorher ctx.save(), danach ctx.restore()) */
+export function schneideAufBlatt(ctx: Ctx, b: number, h: number, zoom: number) {
+  ctx.beginPath()
+  ctx.roundRect(0, 0, b, h, 14 / zoom)
+  ctx.clip()
+}
+
 export function zeichneSeite(ctx: Ctx, s: Seite, ausschnitt: [number, number, number, number], massstab: number) {
   const [l, o, b, h] = ausschnitt
   ctx.setTransform(1, 0, 0, 1, 0, 0)

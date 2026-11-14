@@ -109,7 +109,7 @@ describe('Tafel', () => {
   })
 
   it('stellt die zuletzt benutzte Tafel nach dem Schließen wieder her', async () => {
-    await speichereTafel({ ...neuesTafelbild('Herz und Kreislauf'), seiten: [neueSeite([strich('a'), strich('b')])], kamera: { x: 5, y: 6, zoom: 2 } })
+    await speichereTafel({ ...neuesTafelbild('Herz und Kreislauf', 'unendlich'), seiten: [neueSeite([strich('a'), strich('b')])], kamera: { x: 5, y: 6, zoom: 2 } })
     render(<Tafel />)
     expect(await screen.findByRole('heading', { name: 'Herz und Kreislauf' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Ansicht zurücksetzen' })).toHaveTextContent('200 %')
@@ -130,8 +130,9 @@ describe('Tafel', () => {
     expect(e[1].punkte[0][2]).toBeCloseTo(0.8)
   })
 
-  it('Zoom-Knöpfe ändern die Ansicht und setzen sie zurück', async () => {
+  it('Zoom-Knöpfe ändern die Ansicht und setzen sie zurück (unendliche Fläche)', async () => {
     const nutzer = userEvent.setup()
+    await speichereTafel(neuesTafelbild('Tafel', 'unendlich'))
     render(<Tafel />)
     await bereit()
     await nutzer.click(screen.getByRole('button', { name: 'Vergrößern' }))
