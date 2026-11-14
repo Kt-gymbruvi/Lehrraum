@@ -1,11 +1,13 @@
 // Lokaler Speicher der Tafel: IndexedDB auf diesem Gerät. Nichts davon wird an einen Server geschickt.
 //   tafeln         – Tafelbilder (Schlüssel: id)
 //   einstellungen  – einzelne Werte, z. B. welche Tafel zuletzt offen war, die Kopie zum Einfügen („ablage“)
-//                    und die eigenen Farbplätze („farbplaetze“)
+//                    die eigenen Farbplätze („farbplaetze“) und das zuletzt benutzte Werkzeug mit Farbe, Stärke
+//                    und Radierer („werkzeugwahl“)
 //   dateien        – Bilder und importierte PDF-Seiten (siehe dateien.ts)
 //   klassen        – Klassen der Lehrkraft (Schlüssel: id)
 // Die Startseite der Plattform liest „klassen“ mit (gleiche Adresse, gleiche Datenbank) – nur lesend.
 import { pruefeAblage, type Ablage } from '../kern/ablage.ts'
+import { neueEinstellungen, pruefeEinstellungen, type Einstellungen } from '../kern/einstellungen.ts'
 import { neueFarbplaetze, pruefeFarbplaetze } from '../kern/farben.ts'
 import { geaendert, klassenName, pruefeKlasse, type Klasse } from '../kern/klassen.ts'
 import { neuesTafelbild, pruefeTafel, type Tafelbild } from '../kern/modell.ts'
@@ -118,6 +120,16 @@ export async function ladeFarbplaetze(): Promise<string[]> {
 }
 export async function merkeFarbplaetze(farben: string[]): Promise<void> {
   await vorgang('einstellungen', 'readwrite', (s) => s.put(neueFarbplaetze(farben), FARBPLAETZE))
+}
+
+// ---------- Zuletzt benutzt: Werkzeug, Farbe, Stärke, Radierer (je Gerät, für alle Tafeln) ----------
+const WERKZEUGWAHL = 'werkzeugwahl'
+
+export async function ladeEinstellungen(): Promise<Einstellungen> {
+  return pruefeEinstellungen(await vorgang<unknown>('einstellungen', 'readonly', (s) => s.get(WERKZEUGWAHL)))
+}
+export async function merkeEinstellungen(e: Einstellungen): Promise<void> {
+  await vorgang('einstellungen', 'readwrite', (s) => s.put(neueEinstellungen(e), WERKZEUGWAHL))
 }
 
 // ---------- Klassen ----------

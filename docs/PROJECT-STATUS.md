@@ -1,9 +1,17 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Etappe 4 „Stift“, Teil 1 und 2) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 14 Testdateien, 191 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 15 Testdateien, 197 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) ist veröffentlicht, am Gerät aber noch nicht geprüft.
+Lokal fertig, **noch nicht veröffentlicht:** Etappe 5 – Laserpointer und Einstellungen merken (siehe unten).
+
+## Laserpointer und Einstellungen merken (Spezifikation L1, E1) – lokal, nicht veröffentlicht
+- **Laserpointer** als zwölftes Werkzeug (unterste Reihe links, neben „Bild“; Taste Z): zeichnet eine rote, leicht leuchtende Spur. Nach dem Abheben bleibt sie 1 Sekunde stehen und verblasst in 0,5 Sekunden. Mit Maus oder schwebendem Stift zeigt ein roter Punkt, wohin gezeigt wird (der Mauszeiger verschwindet dafür).
+- Die Spur liegt nur auf der oberen Zeichenebene: nicht gespeichert, nicht im Verlauf, nicht im PDF; der Speicherstand bleibt „Auf diesem Gerät gespeichert“. Eine Farbe antippen wechselt (wie beim Radierer) zum Stift.
+- **Einstellungen merken:** Werkzeug, Farbe, Stärke sowie Art und Größe des Radierers sind nach dem Neuladen wie zuletzt – je Gerät und Browser, für alle Tafeln gemeinsam (die eigenen Farbplätze wurden schon in Etappe 4 gemerkt). War zuletzt Radierer, Laserpointer oder Hand gewählt, beginnt die Tafel mit dem Stift.
+- Gespeichert in IndexedDB (Lager `einstellungen`, Schlüssel `werkzeugwahl`, Schema `lehrraum/einstellungen` Version 1, beim Laden geprüft: Unbekanntes wird zur Voreinstellung). Geladen wird zusammen mit der Tafel, damit beim ersten Strich alles stimmt. Logik in `src/kern/einstellungen.ts` (dort jetzt auch der Typ `Werkzeug`). Kein neues Tafel-Datenmodell.
+- Die Leiste hat damit zwölf Knöpfe in sechs Reihen und passt bei 1024 × 700 weiter ohne Rollen (im Browser gemessen).
 
 ## Stift, Teil 2: Begradigen durch Halten (Spezifikation S3) – veröffentlicht am 14.11.2026
 - **Halten statt Abheben:** Steht der Stift (auch Finger oder Maus) am Ende eines Strichs etwa 0,6 Sekunden still, wird der Strich noch vor dem Abheben zu einer sauberen Form: gerade Linie, Rechteck, Kreis/Ellipse oder Dreieck. Ein Zittern bis 8 Bildschirm-Pixel zählt als Stillstehen. Ohne Halten wird nie begradigt; wird nichts erkannt (z. B. Haken, Wellen, Buchstaben, Herz, Stern), bleibt der Strich, wie er ist. Geht es nach dem Halten weiter, bleibt der Strich freihändig.
@@ -169,6 +177,6 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
 4. **Stift** (S1–S3, W1) in zwei Teilen:
    - Teil 1 (veröffentlicht am 14.11.2026, am Gerät noch nicht geprüft): mehr Farben, eigene Farbplätze, Regler für die Stärke, Knopf „Mehr“.
    - Teil 2 (veröffentlicht am 14.11.2026): Begradigen durch Halten (S3). Am Gerät zu prüfen: Haltezeit, Erkennung mit echter Handschrift, versehentliches Begradigen beim Schreiben.
-5. **Laserpointer und Einstellungen merken** (L1, E1).
+5. **Laserpointer und Einstellungen merken** (L1, E1): lokal fertig, nicht veröffentlicht. Am Gerät zu prüfen: Sichtbarkeit der Spur am SMART Board, Dauer bis zum Verblassen.
 6. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
 7. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.

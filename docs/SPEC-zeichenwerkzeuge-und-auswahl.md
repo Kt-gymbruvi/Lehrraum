@@ -170,7 +170,7 @@ Befund im Code zum SMART Board (Vermutung, am Gerät zu bestätigen): Bei jeder 
 2. **Auswahl** (A1–A8, H1, Datenmodell Version 3). **[Entschieden]** In drei Teilen (13.11.2026): Teil 1 A1–A3 und H1 (veröffentlicht am 13.11.2026), Teil 2 A4 mit Datenmodell Version 3 und Teil 3 A5–A8 (beide veröffentlicht am 13.11.2026; die Auswahlleiste hat zusätzlich „Ausschneiden“).
 3. **Radierer** (R1–R4). In zwei Teilen (13.11.2026): Teil 1 R1–R3 (veröffentlicht am 13.11.2026), Teil 2 R4 nach der Messung am SMART Board (7.1).
 4. **Stift** (S1–S3, W1). In zwei Teilen (14.11.2026): Teil 1 S1, S2 und der Knopf „Mehr“ aus W1, Teil 2 S3 Begradigen durch Halten (beide veröffentlicht am 14.11.2026).
-5. **Laserpointer und Einstellungen merken** (L1, E1).
+5. **Laserpointer und Einstellungen merken** (L1, E1). Stand 14.11.2026: lokal fertig, nicht veröffentlicht.
 
 Jede Etappe endet mit Tests, Build, aktualisierten `docs/` und einer Prüfung am Gerät durch die Lehrkraft. Veröffentlicht wird erst nach Zustimmung.
 

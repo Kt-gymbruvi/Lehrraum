@@ -49,6 +49,7 @@ export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; tast
   { wert: 'pfeil', name: 'Pfeil', symbol: 'pfeil', taste: 'P' },
   { wert: 'rechteck', name: 'Rechteck', symbol: 'rechteck', taste: 'Q' },
   { wert: 'ellipse', name: 'Ellipse', symbol: 'ellipse', taste: 'O' },
+  { wert: 'laser', name: 'Laserpointer', symbol: 'laser', taste: 'Z' },
 ]
 
 type Feldart = 'radierer' | 'mehr'
@@ -191,7 +192,15 @@ export function Werkzeugleiste(p: Props) {
               <Symbol name={p.radierer.art === 'schwamm' ? 'schwamm' : 'radierer'} />
             </button>
           ) : (
-            <button key={w.wert} type="button" className="leisten-knopf" aria-pressed={p.werkzeug === w.wert} aria-label={w.name} title={`${w.name} (${w.taste})`} onClick={() => waehle(w.wert)}>
+            <button
+              key={w.wert}
+              type="button"
+              className="leisten-knopf"
+              aria-pressed={p.werkzeug === w.wert}
+              aria-label={w.name}
+              title={w.wert === 'laser' ? `${w.name} (${w.taste}) – zeigen, die Spur verschwindet von selbst` : `${w.name} (${w.taste})`}
+              onClick={() => waehle(w.wert)}
+            >
               <Symbol name={w.symbol} />
             </button>
           ),

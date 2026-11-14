@@ -7,11 +7,12 @@ import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl
 import { ausfuehren, entfernenBefehl, leererVerlauf, ordnenBefehl, rueckgaengig, wiederholen, type Befehl, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
-import { benutzteDateien, FARBEN, MAX_SEITEN, STAERKEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
-import { RADIERER_STANDARD, type Radierer } from '../kern/radieren.ts'
+import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
+import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
 import { gehe, kopiere, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
-import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeAlleTafeln, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
+import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
@@ -49,10 +50,10 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const [buch, setBuch] = useState<Buch>({ seiten: [LEER], nr: 0, verlaeufe: {} })
   const [kamera, setKamera] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
   const [fenster, setFenster] = useState<FensterZustand[]>([])
-  const [werkzeug, setWerkzeug] = useState<Werkzeug>('stift')
-  const [farbe, setFarbe] = useState<string>(FARBEN[0].wert)
-  const [staerke, setStaerke] = useState<number>(STAERKEN[1].wert)
-  const [radierer, setRadierer] = useState<Radierer>(RADIERER_STANDARD)
+  const [werkzeug, setWerkzeug] = useState<Werkzeug>(STANDARD_EINSTELLUNGEN.werkzeug)
+  const [farbe, setFarbe] = useState<string>(STANDARD_EINSTELLUNGEN.farbe)
+  const [staerke, setStaerke] = useState<number>(STANDARD_EINSTELLUNGEN.staerke)
+  const [radierer, setRadierer] = useState<Radierer>(STANDARD_EINSTELLUNGEN.radierer)
   const [eigeneFarben, setEigeneFarben] = useState<string[]>([])
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
@@ -71,17 +72,29 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const auswahl = auswahlRoh.filter((id) => seite.elemente.some((e) => e.id === id))
   const gewaehlte = seite.elemente.filter((e) => auswahl.includes(e.id))
 
+  // ---------- Einstellungen merken (je Gerät): erst nach dem Laden, und ohne den Speicherstand der Tafel zu berühren ----------
+  const einstellungenDa = useRef(false)
+  useEffect(() => {
+    if (!einstellungenDa.current) return
+    merkeEinstellungen({ werkzeug, farbe, staerke, radierer }).catch(() => undefined) // misslingt es, startet die Tafel eben wie neu
+  }, [werkzeug, farbe, staerke, radierer])
+
   // ---------- Laden: zuletzt benutzte Tafel oder eine neue ----------
   useEffect(() => {
     let abgebrochen = false
-    ;(klasseId ? oeffneKlassenTafel(klasseId) : ladeFreieTafel())
-      .catch(() => null)
-      .then(async (gefunden) => {
+    // Die zuletzt benutzten Einstellungen kommen zusammen mit der Tafel – so ist alles da, bevor gezeichnet wird
+    Promise.all([(klasseId ? oeffneKlassenTafel(klasseId) : ladeFreieTafel()).catch(() => null), ladeEinstellungen().catch(() => STANDARD_EINSTELLUNGEN)])
+      .then(async ([gefunden, e]) => {
         if (abgebrochen) return
         if (klasseId && !gefunden) {
           setFehlt(true)
           return
         }
+        setWerkzeug(e.werkzeug)
+        setFarbe(e.farbe)
+        setStaerke(e.staerke)
+        setRadierer(e.radierer)
+        einstellungenDa.current = true
         const t = gefunden ?? neuesTafelbild()
         if (!gefunden) void merkeFreieTafel(t.id).catch(() => undefined) // neue freie Tafel: gleich festhalten, welche es ist
         setKopf({ schema: t.schema, version: t.version, id: t.id, titel: t.titel })
@@ -246,7 +259,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   /** Farbe wählen: gilt für Neues – und färbt die Auswahl um */
   const waehleFarbe = (f: string) => {
     setFarbe(f)
-    if (werkzeug === 'radierer') setWerkzeug('stift')
+    if (werkzeug === 'radierer' || werkzeug === 'laser') setWerkzeug('stift')
     const andere = gewaehlte.filter((e): e is Exclude<Element, Bild> => e.art !== 'bild' && e.farbe !== f)
     if (andere.length) beiErsetzen(andere, andere.map((e) => ({ ...e, farbe: f })))
   }

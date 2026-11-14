@@ -3,6 +3,14 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Laserpointer und Einstellungen merken (L1, E1)
+- **Laserpointer: die ganze Spur verblasst nach dem Abheben** (1 s stehen, 0,5 s verblassen – zusammen die vorgeschlagenen etwa 1,5 s), nicht Punkt für Punkt wie ein Kometenschweif: Beim Umkreisen oder Unterstreichen bleibt so die ganze Geste sichtbar, solange gezeigt wird. Rot `#e53935` mit hellem Schein, Breite in Bildschirm-Pixeln (unabhängig vom Zoom). Ein roter Punkt folgt Maus und schwebendem Stift.
+- **Spur nur auf der oberen Ebene** der Zeichenfläche (kein Element, kein Befehl): so steht sie nie im Verlauf, nie im Gespeicherten oder im PDF, und der Speicherstand ändert sich nicht. Das Verblassen läuft mit höchstens einem Bild je Bildwechsel.
+- **Platz und Taste:** zwölfter Knopf in der untersten Reihe neben „Bild“ (W1: zwölf Knöpfe in sechs Reihen); Taste Z („zeigen“), weil L schon die Linie ist. Strg + Z bleibt Rückgängig.
+- **Einstellungen getrennt von den Farbplätzen** unter eigenem Schlüssel `werkzeugwahl` mit Schema `lehrraum/einstellungen` Version 1; die Prüfung ersetzt Unbekanntes einzeln durch die Voreinstellung, statt alles zu verwerfen. Gemerkt wird sofort bei jeder Änderung (eine kleine Schreibaktion), ohne den Speicherstand der Tafel zu berühren.
+- **Laden zusammen mit der Tafel:** sonst könnten die gemerkten Einstellungen eine Wahl überschreiben, die schon vor dem Ende des Ladens getroffen wurde.
+- **Start mit dem Stift** nach Radierer, Laserpointer oder Hand (Vorschlag der Spezifikation); Auswahl, Text und Formwerkzeuge bleiben erhalten. Gespeichert wird trotzdem das tatsächliche Werkzeug, damit Art und Größe des Radierers erhalten bleiben.
+
 ## 2026-11-14 – Stift, Teil 2: Begradigen durch Halten (S3)
 - **Haltezeit 0,6 s, Zittern bis 8 Bildschirm-Pixel** zählt als Stillstehen (Vorschlag aus der Spezifikation; am SMART Board und iPad nachprüfen). Die Form erscheint noch vor dem Abheben. Bewegt sich der Stift danach weiter, gilt die Form nicht mehr und der Strich bleibt freihändig – so wird beim Schreiben mit Denkpause nichts begradigt.
 - **Erkennung ohne Lernverfahren, nur Geometrie** (keine KI-Aufrufe): erst die Linie (alle Punkte höchstens 7 % der Länge von der Strecke, kein Hin und Her). Sonst muss der Strich fast geschlossen sein (Lücke höchstens 20 % des Wegs); dann werden Rechteck (kleinstes umschließendes, auch schräg), Ellipse (im selben Rahmen) und Dreieck (größtes Dreieck in der konvexen Hülle) verglichen und die Form mit dem kleinsten mittleren Abstand genommen, wenn dieser höchstens 6 % der Größe beträgt. Fünfecke und ähnlich runde Vielecke werden dadurch zum Kreis; Herz, Stern, „8“ und offene Bögen bleiben Striche.

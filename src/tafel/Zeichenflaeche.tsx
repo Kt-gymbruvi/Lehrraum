@@ -17,6 +17,9 @@
 // Regeln des Zeichnens (damit auch langsame Geräte wie ein Smartboard mitkommen):
 //   Gezeichnet wird höchstens einmal je Bildwechsel, auch wenn der Stift sich öfter meldet.
 //   Kommt nur ein neuer Strich dazu, wird die untere Ebene ergänzt und nicht ganz neu gezeichnet.
+// Laserpointer:
+//   Zeichnet eine rote Spur nur auf der oberen Ebene; sie verblasst nach dem Abheben (1 s stehen, 0,5 s verblassen).
+//   Nichts davon wird gespeichert, nichts kommt in den Verlauf oder ins PDF, der Speicherstand bleibt unberührt.
 // Begradigen durch Halten:
 //   Steht der Stift beim Zeichnen etwa 0,6 s still, wird der Strich – wenn eine Form erkannt wird – noch vor dem
 //   Abheben durch die saubere Form ersetzt. Geht es danach weiter, bleibt er freihändig. Beim Abheben entstehen
@@ -26,13 +29,23 @@ import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, grif
 import { beruehrtRechteck, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
-import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Formart, type Hintergrund, type Kamera, type Strich, type Text, type Zeichenwerkzeug } from '../kern/modell.ts'
+import type { Werkzeug } from '../kern/einstellungen.ts'
+import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Strich, type Text } from '../kern/modell.ts'
 import { beginneWischzug, neueTeile, RADIERER_RADIUS, RADIERER_STANDARD, wischBefehl, wischeWeiter, type Radierer, type Wischzug } from '../kern/radieren.ts'
 import { beiBildGeladen } from './bildquellen.ts'
 import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
 import { SCHRIFT, zeichne, zeichneHintergrund } from './zeichnen.ts'
 
-export type Werkzeug = 'auswahl' | 'hand' | Zeichenwerkzeug | 'radierer' | 'text' | Formart
+export type { Werkzeug }
+
+/** Laserpointer: rot; nach dem Abheben bleibt die Spur so lange stehen (ms) und verblasst dann so lange */
+const LASER_STEHT = 1000
+const LASER_VERBLASST = 500
+const LASER_FARBE = '#e53935'
+/** Eine Spur des Laserpointers (Tafel-Koordinaten); ende: wann der Stift abgehoben wurde (null: zeigt noch) */
+type Spur = { punkte: [number, number][]; ende: number | null }
+/** Deckkraft einer Spur zum Zeitpunkt jetzt (0: verschwunden) */
+const laserDeckkraft = (s: Spur, jetzt: number) => (s.ende === null ? 1 : Math.max(0, Math.min(1, 1 - (jetzt - s.ende - LASER_STEHT) / LASER_VERBLASST)))
 
 type Props = {
   elemente: Element[]
@@ -68,6 +81,7 @@ type Aktiv =
   /** halt: wo der Stift zuletzt stillzustehen begann (Bildschirm); begradigt: die erkannte Form nach dem Halten */
   | { art: 'zeichnen'; zeiger: number; strich: Strich; halt: { x: number; y: number }; begradigt: Form | Strich | null }
   | { art: 'form'; zeiger: number; form: Form }
+  | { art: 'zeigen'; zeiger: number; spur: Spur }
   /** x/y: Zeiger (Bildschirm), vx/vy: wo er zuletzt war; wisch: der Wischzug des Schwamms (Element-Radierer: null) */
   | { art: 'radieren'; zeiger: number; ids: Set<string>; x: number; y: number; vx: number; vy: number; wisch: Wischzug | null }
   /** tipp: das angetippte Element – wird bei einem bloßen Antippen (ohne Ziehen) allein ausgewählt */
@@ -111,8 +125,11 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   // Aktuelle Werte für die Eingabe-Funktionen (die sich sonst bei jedem Zeichnen neu anmelden müssten)
   const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahl, editor })
   stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahl, editor }
-  /** Wo Maus oder schwebender Stift gerade ist (Bildschirm) – dort zeigt ein Kreis die Größe des Radierers */
+  /** Wo Maus oder schwebender Stift gerade ist (Bildschirm) – dort zeigt ein Kreis die Größe des Radierers (beim Laserpointer: ein roter Punkt) */
   const schwebe = useRef<{ x: number; y: number } | null>(null)
+  /** Spuren des Laserpointers: nur hier auf der oberen Ebene, nie gespeichert, nicht im Verlauf */
+  const spuren = useRef<Spur[]>([])
+  const nachgeplant = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const zeiger = useRef(new Map<number, { x: number; y: number; typ: string }>())
   const aktiv = useRef<Aktiv | null>(null)
@@ -209,6 +226,44 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     if (a?.art === 'zeichnen') zeichne(ctx, a.begradigt ?? a.strich, true)
     if (a?.art === 'form') zeichne(ctx, a.form)
     if (a?.art === 'radieren' && a.wisch) neueTeile(a.wisch).forEach((e) => zeichne(ctx, e))
+    // Laserpointer: Spuren, die nach dem Abheben verblassen, und ein roter Punkt am Zeiger
+    const jetzt = Date.now()
+    spuren.current = spuren.current.filter((sp) => laserDeckkraft(sp, jetzt) > 0)
+    ctx.lineCap = 'round'
+    ctx.lineJoin = 'round'
+    for (const sp of spuren.current) {
+      ctx.globalAlpha = laserDeckkraft(sp, jetzt)
+      ctx.beginPath()
+      sp.punkte.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+      if (sp.punkte.length === 1) ctx.lineTo(sp.punkte[0][0] + 0.01, sp.punkte[0][1])
+      ctx.strokeStyle = 'rgba(229, 57, 53, 0.25)'
+      ctx.lineWidth = 14 / k.zoom
+      ctx.stroke()
+      ctx.strokeStyle = LASER_FARBE
+      ctx.lineWidth = 4 / k.zoom
+      ctx.stroke()
+    }
+    ctx.globalAlpha = 1
+    const laserPunkt = a?.art === 'zeigen' ? a.spur.punkte[a.spur.punkte.length - 1] : !a && s.werkzeug === 'laser' && schwebe.current ? zuTafel(k, schwebe.current.x, schwebe.current.y) : null
+    if (laserPunkt) {
+      ctx.fillStyle = 'rgba(229, 57, 53, 0.3)'
+      ctx.beginPath()
+      ctx.arc(laserPunkt[0], laserPunkt[1], 11 / k.zoom, 0, Math.PI * 2)
+      ctx.fill()
+      ctx.fillStyle = LASER_FARBE
+      ctx.beginPath()
+      ctx.arc(laserPunkt[0], laserPunkt[1], 5 / k.zoom, 0, Math.PI * 2)
+      ctx.fill()
+    }
+    // Verblassende Spuren: im nächsten Bild weiterzeichnen (ohne Bildwechsel-Takt, z. B. in Tests, etwas später)
+    if (spuren.current.some((sp) => sp.ende !== null)) {
+      if (typeof requestAnimationFrame === 'function') plane()
+      else if (!nachgeplant.current)
+        nachgeplant.current = setTimeout(() => {
+          nachgeplant.current = null
+          plane()
+        }, 16)
+    }
     // Kreis in der Größe des Radierers: beim Radieren und wenn Maus oder Stift darüber schweben
     const kreis = a?.art === 'radieren' ? a : !a && s.werkzeug === 'radierer' ? schwebe.current : null
     if (kreis) {
@@ -326,6 +381,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     () => () => {
       if (geplant.current && typeof cancelAnimationFrame === 'function') cancelAnimationFrame(geplant.current)
       if (haltUhr.current) clearTimeout(haltUhr.current)
+      if (nachgeplant.current) clearTimeout(nachgeplant.current)
     },
     [],
   )
@@ -382,6 +438,8 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   const finger = () => [...zeiger.current.values()].filter((z) => z.typ === 'touch')
 
   function gesteBeginnen() {
+    // Eine angefangene Spur des Laserpointers verblasst wie nach dem Abheben
+    if (aktiv.current?.art === 'zeigen') aktiv.current.spur.ende = Date.now()
     const f = finger()
     if (!f.length) {
       aktiv.current = null
@@ -511,6 +569,10 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       if (treffer?.art === 'text') bearbeite(treffer)
       else oeffneEditor({ id: null, x: tx, y: ty - schriftgroesse(s.staerke) * 0.6, groesse: schriftgroesse(s.staerke), farbe: s.farbe, text: '', vorher: null })
       return
+    } else if (w === 'laser') {
+      const spur: Spur = { punkte: [[tx, ty]], ende: null }
+      spuren.current.push(spur)
+      aktiv.current = { art: 'zeigen', zeiger: e.pointerId, spur }
     } else if (w === 'stift' || w === 'marker') {
       const stift = e.pointerType === 'pen'
       const a: Aktiv = {
@@ -541,6 +603,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       const [l, o, r, u] = lage.rahmen
       zeiger = griff ? GRIFF_ZEIGER[griff.name] : tx >= l && tx <= r && ty >= o && ty <= u ? 'move' : ''
     }
+    if (stand.current.werkzeug === 'laser' && !leer.current) zeiger = 'none' // der rote Punkt ersetzt den Mauszeiger
     if (el.style.cursor !== zeiger) el.style.cursor = zeiger
   }
 
@@ -548,7 +611,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     const z = zeiger.current.get(e.pointerId)
     const a = aktiv.current
     if (!a && e.pointerType === 'mouse') zeigeMauszeiger(e)
-    if (!a && e.pointerType !== 'touch' && stand.current.werkzeug === 'radierer') {
+    if (!a && e.pointerType !== 'touch' && (stand.current.werkzeug === 'radierer' || stand.current.werkzeug === 'laser')) {
       const [x, y] = ort(e)
       schwebe.current = { x, y }
       plane()
@@ -612,6 +675,9 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     } else if (a.art === 'form') {
       a.form.x2 = tx
       a.form.y2 = ty
+    } else if (a.art === 'zeigen') {
+      const letzter = a.spur.punkte[a.spur.punkte.length - 1]
+      if (Math.hypot(tx - letzter[0], ty - letzter[1]) * k.zoom >= 0.5) a.spur.punkte.push([tx, ty])
     } else {
       // Zwischenpunkte, die der Browser zusammengefasst hat, mitnehmen (glattere Linien bei schnellem Stift)
       const einzeln = e.nativeEvent.getCoalescedEvents?.() ?? []
@@ -657,6 +723,11 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       untenGezeichnet(beginn)
     }
 
+    if (a.art === 'zeigen') {
+      // nichts speichern, nichts in den Verlauf: die Spur verblasst nur
+      a.spur.ende = Date.now()
+      plane()
+    }
     if (a.art === 'zeichnen' && !abgebrochen) {
       if (a.begradigt) {
         // zwei Schritte: Rückgängig bringt zuerst den freihändigen Strich zurück
