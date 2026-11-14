@@ -154,14 +154,14 @@ describe('Muster – Bedienung', () => {
     await waitFor(async () => expect(await muster()).toEqual([{ art: 'noten' }, { art: 'noten' }, undefined, { art: 'noten' }]))
   })
 
-  it('auf einer PDF-Seite ist „Diese Seite“ gesperrt; Seitenmuster nur in festen Formaten', async () => {
+  it('auf einer Seite mit Hintergrundbild ist „Diese Seite“ gesperrt; Seitenmuster nur in festen Formaten', async () => {
     const nutzer = userEvent.setup()
-    await speichereTafel({ ...neuesTafelbild('PDF', 'unendlich'), seiten: [neueSeite([], { dateiId: 'abcdef12', b: 800, h: 600, pdf: 'abcdef13' })] })
+    await speichereTafel({ ...neuesTafelbild('Bild', 'unendlich'), seiten: [neueSeite([], { dateiId: 'abcdef12', b: 800, h: 600 })] })
     render(<Tafel />)
     await bereit()
     await nutzer.click(screen.getByRole('button', { name: 'Hintergrund' }))
     const feld = screen.getByRole('dialog', { name: 'Hintergrund' })
-    expect(within(feld).getByText(/ist eine PDF-Seite/)).toBeInTheDocument()
+    expect(within(feld).getByText(/hat ein Bild als Hintergrund/)).toBeInTheDocument()
     expect(within(feld).getByRole('button', { name: 'Liniert' })).toBeDisabled()
     await nutzer.click(within(feld).getByRole('button', { name: 'Alle Seiten' }))
     expect(within(feld).getByRole('button', { name: 'Liniert' })).toBeEnabled()

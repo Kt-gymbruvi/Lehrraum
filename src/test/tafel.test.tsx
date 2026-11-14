@@ -122,12 +122,48 @@ describe('Tafel', () => {
     await bereit()
     ziehe([10, 10], [100, 10], { pointerType: 'touch', pointerId: 5 }) // Finger zeichnet, solange kein Stift da war
     ziehe([10, 50], [100, 50], { pointerType: 'pen', pointerId: 6, pressure: 0.8 })
-    ziehe([10, 90], [100, 130], { pointerType: 'touch', pointerId: 7 }) // jetzt: verschieben
+    ziehe([10, 70], [100, 70], { pointerType: 'touch', pointerId: 8 }) // gleich nach dem Stift: Handballen, tut nichts
+    const spaeter = Date.now() + 2000
+    const uhr = vi.spyOn(Date, 'now').mockReturnValue(spaeter)
+    ziehe([10, 90], [100, 130], { pointerType: 'touch', pointerId: 7 }) // später: verschieben
+    uhr.mockRestore()
     await waitFor(async () => expect((await ladeLetzteTafel())?.kamera).toEqual({ x: 90, y: 40, zoom: 1 }))
     const e = await gespeichert()
     expect(e).toHaveLength(2)
     expect(e[1]).toMatchObject({ druckEcht: true })
     expect(e[1].punkte[0][2]).toBeCloseTo(0.8)
+  })
+
+  it('aufgelegte Hand: der Stift schreibt trotzdem, die Ansicht bleibt (Handballen-Schutz)', async () => {
+    render(<Tafel />)
+    await bereit()
+    const f = screen.getByTestId('zeichenflaeche')
+    const hand = { pointerId: 20, pointerType: 'touch' }
+    // 1. Noch kein Stift benutzt: die Hand liegt zuerst auf und malt – der Stift verwirft das und schreibt
+    fireEvent.pointerDown(f, { ...hand, clientX: 300, clientY: 300 })
+    fireEvent.pointerMove(f, { ...hand, clientX: 320, clientY: 310 })
+    ziehe([10, 10], [100, 10], { pointerType: 'pen', pointerId: 21 })
+    fireEvent.pointerMove(f, { ...hand, clientX: 350, clientY: 330 })
+    fireEvent.pointerUp(f, { ...hand, clientX: 350, clientY: 330 })
+    // 2. Später: Hand liegt auf (würde verschieben), dann setzt der Stift an – er schreibt, die Ansicht bleibt stehen
+    const uhr = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 5000)
+    fireEvent.pointerDown(f, { ...hand, pointerId: 22, clientX: 300, clientY: 300 })
+    fireEvent.pointerDown(f, { pointerId: 23, pointerType: 'pen', clientX: 10, clientY: 50 })
+    fireEvent.pointerMove(f, { ...hand, pointerId: 22, clientX: 340, clientY: 330 }) // Hand rutscht mit
+    fireEvent.pointerMove(f, { pointerId: 23, pointerType: 'pen', clientX: 100, clientY: 50 })
+    // 3. Während des Schreibens kommt ein zweiter Teil der Hand dazu: kein Zoom, der Strich bleibt
+    fireEvent.pointerDown(f, { ...hand, pointerId: 24, clientX: 250, clientY: 320 })
+    fireEvent.pointerMove(f, { ...hand, pointerId: 24, clientX: 200, clientY: 380 })
+    fireEvent.pointerMove(f, { pointerId: 23, pointerType: 'pen', clientX: 150, clientY: 50 })
+    fireEvent.pointerUp(f, { pointerId: 23, pointerType: 'pen', clientX: 150, clientY: 50 })
+    fireEvent.pointerUp(f, { ...hand, pointerId: 22, clientX: 340, clientY: 330 })
+    fireEvent.pointerUp(f, { ...hand, pointerId: 24, clientX: 200, clientY: 380 })
+    uhr.mockRestore()
+    await waitFor(async () => expect(await gespeichert()).toHaveLength(2))
+    const e = await gespeichert()
+    expect(e.every((x) => x.druckEcht)).toBe(true) // nur Stiftstriche, nichts von der Hand
+    expect(e[1].punkte.at(-1)?.[0]).toBe(150)
+    expect((await ladeLetzteTafel())?.kamera).toMatchObject({ x: 0, y: 0, zoom: 1 })
   })
 
   it('Zoom-Knöpfe ändern die Ansicht und setzen sie zurück (unendliche Fläche)', async () => {

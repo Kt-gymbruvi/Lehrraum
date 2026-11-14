@@ -1,8 +1,7 @@
 // Untere Leiste: Seiten der Tafel – blättern, hinzufügen, duplizieren, umsortieren, löschen.
-// Hat die Seite eine PDF-Seite als Hintergrund, kommen drei Knöpfe dazu: nach links und rechts drehen (das
-// Geschriebene dreht sich mit) und nur den PDF-Hintergrund entfernen (das Geschriebene bleibt) – alle drei lassen
-// sich rückgängig machen. Beim Löschen einer Seite aus einem mehrseitigen PDF fragt die Leiste, ob nur diese oder
-// alle Seiten dieses PDFs gehen sollen.
+// Hat die Seite ein Bild als Hintergrund, kommen drei Knöpfe dazu: nach links und rechts drehen (das Geschriebene
+// dreht sich mit) und nur das Hintergrundbild entfernen (das Geschriebene bleibt) – alle drei lassen sich rückgängig
+// machen. (PDF-Seiten sind Bild-Elemente: drehen und löschen wie jedes Bild.)
 import { useEffect, useState } from 'react'
 import { MAX_SEITEN } from '../kern/modell.ts'
 import { Symbol } from '../ui/Symbol.tsx'
@@ -12,12 +11,8 @@ type Props = {
   anzahl: number
   /** Hat die aktuelle Seite Inhalt? (dann fragt „Löschen“ nach) */
   beschrieben: boolean
-  /** Hat die aktuelle Seite eine PDF-Seite (oder ein anderes Bild) als Hintergrund? */
-  pdf: boolean
-  /** Ist der Hintergrund ein eigenes Bild (kein PDF)? Dann heißen die Knöpfe „Hintergrundbild …“ */
-  bild?: boolean
-  /** Wie viele Seiten der Tafel stammen aus demselben PDF wie die aktuelle (0: unbekannt) */
-  pdfAnzahl: number
+  /** Hat die aktuelle Seite ein Bild als Hintergrund? */
+  hintergrund: boolean
   beiGehe: (nr: number) => void
   /** Blätter mit fester Größe: auf der letzten Seite legt der Pfeil nach rechts eine neue Seite an */
   weiterMitNeu?: boolean
@@ -25,7 +20,6 @@ type Props = {
   beiDoppelt: () => void
   beiSchieben: (richtung: -1 | 1) => void
   beiLoeschen: () => void
-  beiPdfLoeschen: () => void
   beiDrehen: (richtung: -1 | 1) => void
   beiHintergrundWeg: () => void
   beiUebersicht: () => void
@@ -35,10 +29,8 @@ export function Seitenleiste(p: Props) {
   const [frage, setFrage] = useState(false)
   useEffect(() => setFrage(false), [p.nr, p.anzahl]) // Rückfrage gilt nur für die Seite, auf der sie gestellt wurde
   const voll = p.anzahl >= MAX_SEITEN
-  const allePdf = p.pdfAnzahl > 1
-  const was = p.bild ? 'Hintergrundbild' : 'PDF-Seite'
   return (
-    <nav className={p.pdf ? 'seitenleiste mit-pdf' : 'seitenleiste'} aria-label="Seiten">
+    <nav className={p.hintergrund ? 'seitenleiste mit-hintergrund' : 'seitenleiste'} aria-label="Seiten">
       <button type="button" className="s-knopf" aria-label="Seitenübersicht" title="Alle Seiten im Überblick" onClick={p.beiUebersicht}>
         <Symbol name="uebersicht" />
       </button>
@@ -57,39 +49,35 @@ export function Seitenleiste(p: Props) {
           <Symbol name="rechts" />
         </button>
       )}
-      {!(frage && allePdf) && ( // bei der Rückfrage mit drei Antworten wäre die Leiste sonst zu breit
+      <span className="trenner" />
+      <button type="button" className="s-knopf mit-text" disabled={voll} onClick={p.beiNeu}>
+        <Symbol name="plus" />
+        Neue Seite
+      </button>
+      <button type="button" className="s-knopf mit-text" disabled={voll} onClick={p.beiDoppelt}>
+        <Symbol name="duplizieren" />
+        Seite duplizieren
+      </button>
+      <button type="button" className="s-knopf" disabled={p.nr === 0} aria-label="Seite nach vorne schieben" title="Seite nach vorne schieben" onClick={() => p.beiSchieben(-1)}>
+        <Symbol name="nachVorne" />
+      </button>
+      <button type="button" className="s-knopf" disabled={p.nr === p.anzahl - 1} aria-label="Seite nach hinten schieben" title="Seite nach hinten schieben" onClick={() => p.beiSchieben(1)}>
+        <Symbol name="nachHinten" />
+      </button>
+      {p.hintergrund && !frage && ( // während der Rückfrage nicht – sonst wird die Leiste zu breit
         <>
           <span className="trenner" />
-          <button type="button" className="s-knopf mit-text" disabled={voll} onClick={p.beiNeu}>
-            <Symbol name="plus" />
-            Neue Seite
-          </button>
-          <button type="button" className="s-knopf mit-text" disabled={voll} onClick={p.beiDoppelt}>
-            <Symbol name="duplizieren" />
-            Seite duplizieren
-          </button>
-          <button type="button" className="s-knopf" disabled={p.nr === 0} aria-label="Seite nach vorne schieben" title="Seite nach vorne schieben" onClick={() => p.beiSchieben(-1)}>
-            <Symbol name="nachVorne" />
-          </button>
-          <button type="button" className="s-knopf" disabled={p.nr === p.anzahl - 1} aria-label="Seite nach hinten schieben" title="Seite nach hinten schieben" onClick={() => p.beiSchieben(1)}>
-            <Symbol name="nachHinten" />
-          </button>
-        </>
-      )}
-      {p.pdf && !frage && ( // während der Rückfrage nicht – sonst wird die Leiste zu breit
-        <>
-          <span className="trenner" />
-          <button type="button" className="s-knopf" aria-label={`${was} nach links drehen`} title={`${was} nach links drehen – das Geschriebene dreht sich mit`} onClick={() => p.beiDrehen(-1)}>
+          <button type="button" className="s-knopf" aria-label="Hintergrundbild nach links drehen" title={`Hintergrundbild nach links drehen – das Geschriebene dreht sich mit`} onClick={() => p.beiDrehen(-1)}>
             <Symbol name="drehenLinks" />
           </button>
-          <button type="button" className="s-knopf" aria-label={`${was} nach rechts drehen`} title={`${was} nach rechts drehen – das Geschriebene dreht sich mit`} onClick={() => p.beiDrehen(1)}>
+          <button type="button" className="s-knopf" aria-label="Hintergrundbild nach rechts drehen" title={`Hintergrundbild nach rechts drehen – das Geschriebene dreht sich mit`} onClick={() => p.beiDrehen(1)}>
             <Symbol name="drehenRechts" />
           </button>
           <button
             type="button"
             className="s-knopf"
-            aria-label={p.bild ? 'Hintergrundbild entfernen' : 'PDF-Hintergrund entfernen'}
-            title={`Nur ${p.bild ? 'das Hintergrundbild' : 'die PDF-Seite'} entfernen – das Geschriebene bleibt (lässt sich rückgängig machen)`}
+            aria-label="Hintergrundbild entfernen"
+            title="Nur das Hintergrundbild entfernen – das Geschriebene bleibt (lässt sich rückgängig machen)"
             onClick={p.beiHintergrundWeg}
           >
             <Symbol name="hintergrundWeg" />
@@ -100,13 +88,8 @@ export function Seitenleiste(p: Props) {
         <>
           <span className="rueckfrage">Seite {p.nr + 1} löschen?</span>
           <button type="button" className="s-knopf mit-text gefahr" onClick={p.beiLoeschen}>
-            {allePdf ? 'Nur diese Seite' : 'Ja, löschen'}
+            Ja, löschen
           </button>
-          {allePdf && (
-            <button type="button" className="s-knopf mit-text gefahr" onClick={p.beiPdfLoeschen}>
-              Alle {p.pdfAnzahl} PDF-Seiten
-            </button>
-          )}
           <button type="button" className="s-knopf mit-text" onClick={() => setFrage(false)}>
             Nein
           </button>

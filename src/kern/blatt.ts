@@ -32,6 +32,7 @@ export type Blatt = [number, number]
 export function blattVon(format: Format, seite: Seite): Blatt | null {
   if (format === 'unendlich') return null
   if (seite.hintergrund) return hintergrundMass(seite.hintergrund)
+  if (seite.blatt) return [seite.blatt.b, seite.blatt.h]
   return FORMAT_MASS[format]
 }
 
@@ -125,15 +126,13 @@ export function bildHintergrund(bild: { dateiId: string; b: number; h: number },
   return { dateiId: bild.dateiId, b: Math.max(1, Math.round(bild.b * f)), h: Math.max(1, Math.round(bild.h * f)) }
 }
 
-/** Setzt ein Bild als Hintergrund einer Seite (ein Schritt im Verlauf); eine PDF-Seite bleibt, wie sie ist (null) */
-export function bildHintergrundBefehl(seite: Seite, hintergrund: Hintergrund): Befehl | null {
-  if (seite.hintergrund?.pdf) return null
+/** Setzt ein Bild als Hintergrund einer Seite (ein Schritt im Verlauf) */
+export function bildHintergrundBefehl(seite: Seite, hintergrund: Hintergrund): Befehl {
   return { art: 'hintergrund', vorher: seite.hintergrund, nachher: hintergrund, elementeVorher: [], elementeNachher: [] }
 }
 
 /** Ein Bild der Seite wird zu ihrem Hintergrund: es verschwindet als Element (ein Schritt im Verlauf) */
 export function alsHintergrundBefehl(seite: Seite, bild: Bild, format: Format): Befehl | null {
-  if (seite.hintergrund?.pdf) return null
   const weg = entfernenBefehl(seite.elemente, [bild.id])
   if (!weg || weg.art !== 'entfernen') return null
   return { art: 'hintergrund', vorher: seite.hintergrund, nachher: bildHintergrund(bild, format), elementeVorher: [], elementeNachher: [], entfernt: weg.eintraege }

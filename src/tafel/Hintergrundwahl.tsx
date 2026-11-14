@@ -12,7 +12,8 @@ type Props = {
   /** Muster der gezeigten Seite (fehlt: leer) */
   muster?: Muster
   /** Hintergrund der gezeigten Seite: PDF-Seite, eigenes Bild oder keiner */
-  hintergrund: 'pdf' | 'bild' | null
+  /** Hat die Seite ein eigenes Bild als Hintergrund? */
+  hintergrund: boolean
   beiMuster: (m: Muster | undefined, alleSeiten: boolean) => void
   /** Eigenes Bild wählen – für diese Seite oder alle Seiten */
   beiBild: (alleSeiten: boolean) => void
@@ -82,7 +83,7 @@ export function Hintergrundwahl({ format, muster, hintergrund, beiMuster, beiBil
   }
 
   const unendlich = format === 'unendlich'
-  const gesperrt = !alle && hintergrund !== null
+  const gesperrt = !alle && hintergrund
   const angaben = muster ? MUSTER[muster.art] : null
   const waehle = (art: Musterart | null) => beiMuster(art ? { art, ...(muster?.abstand ? { abstand: muster.abstand } : {}), ...(muster?.farbe ? { farbe: muster.farbe } : {}) } : undefined, alle)
   const aendere = (neu: Partial<Muster>) => {
@@ -113,12 +114,10 @@ export function Hintergrundwahl({ format, muster, hintergrund, beiMuster, beiBil
           </div>
           {gesperrt && (
             <p className="feld-hinweis">
-              {hintergrund === 'pdf'
-                ? 'Diese Seite ist eine PDF-Seite – dort gibt es kein Muster.'
-                : 'Diese Seite hat ein Bild als Hintergrund. „Hintergrundbild entfernen“ in der Seitenleiste macht sie wieder frei.'}
+              Diese Seite hat ein Bild als Hintergrund. „Hintergrundbild entfernen“ in der Seitenleiste macht sie wieder frei.
             </p>
           )}
-          {alle && <p className="feld-hinweis">Seiten mit PDF oder Bild als Hintergrund bleiben, wie sie sind.</p>}
+          {alle && <p className="feld-hinweis">Seiten mit einem Bild als Hintergrund bleiben, wie sie sind; PDF-Seiten bekommen kein Hintergrundbild.</p>}
           <div className="muster-liste">
             {MUSTERGRUPPEN.map((gruppe, i) => (
               <section key={gruppe} aria-label={gruppe}>
@@ -152,9 +151,9 @@ export function Hintergrundwahl({ format, muster, hintergrund, beiMuster, beiBil
             ))}
             <section aria-label="Eigenes Bild">
               <p className="feld-titel">Eigenes Bild</p>
-              <button type="button" className="f-knopf breit" disabled={!alle && hintergrund === 'pdf'} onClick={() => beiBild(alle)}>
+              <button type="button" className="f-knopf breit" onClick={() => beiBild(alle)}>
                 <Symbol name="bild" />
-                {hintergrund === 'bild' && !alle ? 'Anderes Bild wählen …' : 'Bild wählen …'}
+                {hintergrund && !alle ? 'Anderes Bild wählen …' : 'Bild wählen …'}
               </button>
             </section>
           </div>

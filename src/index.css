@@ -1025,7 +1025,7 @@ body {
 }
 /* Mit den drei PDF-Knöpfen braucht die Leiste mehr Platz: dann schon früher nur Symbole */
 @media (max-width: 80rem) {
-  .seitenleiste.mit-pdf .s-knopf.mit-text:has(.symbol) {
+  .seitenleiste.mit-hintergrund .s-knopf.mit-text:has(.symbol) {
     font-size: 0;
     gap: 0;
   }

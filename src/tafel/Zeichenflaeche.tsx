@@ -3,6 +3,8 @@
 // Regeln der Eingabe:
 //   Stift und Maus arbeiten immer mit dem gewählten Werkzeug. Ein Finger tut das auch, bis einmal ein Stift
 //   benutzt wurde – danach verschiebt er die Ansicht (Handballen-Schutz). Zwei Finger verschieben und zoomen immer.
+//   Der Stift hat immer Vorrang: Liegt die Hand schon auf, wird ihre Geste (oder ein Fingerstrich) verworfen und der
+//   Stift schreibt. Berührungen während des Schreibens und kurz danach gelten als Handballen und werden übergangen.
 //   Mausrad verschiebt, Strg + Mausrad zoomt. Das Hand-Werkzeug verschiebt die Ansicht, am Laptop auch die
 //   gehaltene Leertaste bei jedem Werkzeug.
 // Regeln der Auswahl:
@@ -99,9 +101,13 @@ type Editor = { id: string | null; x: number; y: number; groesse: number; farbe:
 
 /** Wurde in dieser Sitzung schon ein Stift benutzt? Dann verschieben Finger nur noch (gilt über Seitenwechsel hinweg). */
 let stiftGesehen = false
+/** Wann der Stift zuletzt die Fläche berührte (ms) – kurz danach aufgelegte Finger sind der Handballen */
+let letzterStift = -Infinity
+const BALLEN_MS = 1000
 /** Nur für Tests: den Handballen-Schutz zurücksetzen */
 export const vergissStift = () => {
   stiftGesehen = false
+  letzterStift = -Infinity
 }
 /** So lange muss der Stift zum Begradigen stillstehen (ms) */
 let haltezeit = HALTEZEIT_MS
@@ -551,8 +557,27 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       /* manche Browser erlauben das nicht für jeden Zeiger */
     }
     const [x, y] = ort(e)
+    const laufend = aktiv.current
+    const laufendTyp = laufend && laufend.art !== 'geste' ? zeiger.current.get(laufend.zeiger)?.typ : undefined
+    if (e.pointerType === 'touch' && stiftGesehen && (laufendTyp === 'pen' || Date.now() - letzterStift < BALLEN_MS)) {
+      // Handballen beim Schreiben: merken (damit das Abheben nichts auslöst), sonst nichts tun
+      zeiger.current.set(e.pointerId, { x, y, typ: 'ballen' })
+      return
+    }
     zeiger.current.set(e.pointerId, { x, y, typ: e.pointerType })
-    if (e.pointerType === 'pen') stiftGesehen = true
+    if (e.pointerType === 'pen') {
+      stiftGesehen = true
+      letzterStift = Date.now()
+      // Der Stift hat Vorrang: eine Geste der aufliegenden Hand oder ein Fingerstrich wird verworfen
+      if (laufend && (laufend.art === 'geste' || laufendTyp === 'touch')) {
+        for (const z of zeiger.current.values()) if (z.typ === 'touch') z.typ = 'ballen'
+        if (haltUhr.current) clearTimeout(haltUhr.current)
+        haltUhr.current = null
+        if (laufend.art !== 'geste') setVersteckt(new Set())
+        aktiv.current = null
+        zeichneOben()
+      }
+    }
 
     if (e.pointerType === 'touch' && (stiftGesehen || finger().length >= 2)) {
       // Zweiter Finger während der Arbeit: das Angefangene verwerfen und verschieben/zoomen
@@ -637,6 +662,7 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       schwebe.current = { x, y }
       plane()
     }
+    if (e.pointerType === 'pen') letzterStift = Date.now()
     if (!z || !a) return
     const [x, y] = ort(e)
     z.x = x
@@ -721,6 +747,7 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
   }
 
   function hoch(e: ReactPointerEvent<HTMLDivElement>, abgebrochen = false) {
+    if (e.pointerType === 'pen') letzterStift = Date.now()
     if (!zeiger.current.delete(e.pointerId)) return
     if (kameraOffen.current) sofort() // die zuletzt verschobene Ansicht gilt ab jetzt
     const a = aktiv.current

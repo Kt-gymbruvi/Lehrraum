@@ -101,7 +101,9 @@ describe('Zeichnen ohne unnötige Arbeit', () => {
     fireEvent.pointerUp(flaeche(), { pointerId: 9, pointerType: 'pen', clientX: 5, clientY: 5 })
     const vorher = ebenen().unten.clearRect
     const finger = { pointerId: 2, pointerType: 'touch' }
+    const uhr = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 2000) // nicht gleich nach dem Stift (sonst Handballen)
     fireEvent.pointerDown(flaeche(), { ...finger, clientX: 100, clientY: 100 })
+    uhr.mockRestore()
     for (let i = 1; i <= 20; i++) fireEvent.pointerMove(flaeche(), { ...finger, clientX: 100 + i * 3, clientY: 100 + i })
     expect(ebenen().unten.clearRect).toBe(vorher) // 20 Bewegungen, noch kein Neuzeichnen
     fireEvent.pointerUp(flaeche(), { ...finger, clientX: 160, clientY: 120 })

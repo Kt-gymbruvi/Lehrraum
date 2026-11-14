@@ -6,7 +6,7 @@ import App from '../App.tsx'
 import { ausfuehrenAuf, leererVerlauf, rueckgaengigAuf } from '../kern/befehle.ts'
 import { alsHintergrundBefehl, bildHintergrund, bildHintergrundBefehl } from '../kern/blatt.ts'
 import { kopierteKlasse, neueKlasse, pruefeKlasse, vorlageAus, type Klasse } from '../kern/klassen.ts'
-import { neueSeite, neuesTafelbild, type Bild, type Strich } from '../kern/modell.ts'
+import { neueSeite, neuesTafelbild, pdfAlsBild, type Bild, type Strich } from '../kern/modell.ts'
 import { seiteDazu } from '../kern/seiten.ts'
 import { ladeKlasse, ladeKlassen, ladeLetzteTafel, ladeTafel, oeffneKlassenTafel, speichereKlasse, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
@@ -42,9 +42,8 @@ describe('Bild als Hintergrund – Logik', () => {
     expect(bildHintergrund({ dateiId: 'ab12cd34', b: 3200, h: 1000 }, 'unendlich')).toEqual({ dateiId: 'ab12cd34', b: 1600, h: 500 })
   })
 
-  it('PDF-Seiten bekommen kein Bild als Hintergrund', () => {
+  it('Bild als Hintergrund ist ein Schritt im Verlauf', () => {
     const h = { dateiId: 'ab12cd34', b: 900, h: 900 }
-    expect(bildHintergrundBefehl(neueSeite([], { dateiId: 'ffee0011', b: 794, h: 1123, pdf: 'ffee0012' }), h)).toBeNull()
     expect(bildHintergrundBefehl(neueSeite(), h)).toMatchObject({ art: 'hintergrund', nachher: h })
   })
 
@@ -105,9 +104,9 @@ const zeige = (adresse: string) =>
   )
 
 describe('Bild als Hintergrund – Bedienung', () => {
-  it('„Bild wählen …“ im Feld Hintergrund setzt das Bild auf alle Seiten außer PDF-Seiten', async () => {
+  it('„Bild wählen …“ im Feld Hintergrund setzt das Bild auf alle Seiten außer PDF-Seiten (sie behalten ihr Maß)', async () => {
     const nutzer = userEvent.setup()
-    const pdfSeite = neueSeite([], { dateiId: 'ffee0011', b: 794, h: 1123, pdf: 'ffee0012' })
+    const pdfSeite = { ...neueSeite(pdfAlsBild({ dateiId: 'ffee0011', b: 794, h: 1123 }).elemente), blatt: { b: 794, h: 1123 } }
     await speichereTafel({ ...neuesTafelbild('Drei'), seiten: [neueSeite(), pdfSeite, neueSeite()] })
     render(<Tafel />)
     await bereit()
@@ -117,7 +116,7 @@ describe('Bild als Hintergrund – Bedienung', () => {
     await nutzer.click(within(feld).getByRole('button', { name: 'Bild wählen …' }))
     await nutzer.upload(screen.getByLabelText('Bild für den Hintergrund wählen'), new File(['x'], 'tafel.png', { type: 'image/png' }))
     await waitFor(async () =>
-      expect((await ladeLetzteTafel())!.seiten.map((s) => s.hintergrund?.dateiId)).toEqual(['ab12cd3401', 'ffee0011', 'ab12cd3401']),
+      expect((await ladeLetzteTafel())!.seiten.map((s) => s.hintergrund?.dateiId)).toEqual(['ab12cd3401', undefined, 'ab12cd3401']),
     )
     expect((await ladeLetzteTafel())!.seiten[0].hintergrund).toMatchObject({ b: 900, h: 900 })
     // Auf der Seite mit Bild heißt der Knopf in der Seitenleiste „Hintergrundbild entfernen“

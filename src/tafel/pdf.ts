@@ -1,11 +1,12 @@
 // PDF hinein und hinaus. Beide Bibliotheken werden erst geladen, wenn man sie braucht (sie sind groß),
 // und stecken im eigenen Paket – es wird nichts von fremden Servern geholt.
-//   Import:  PDF.js (Mozilla) zeichnet jede Seite als Bild; das Bild wird Hintergrund einer Tafelseite.
+//   Import:  PDF.js (Mozilla) zeichnet jede Seite als Bild; das Bild liegt als Bild-Element auf einer eigenen
+//            Tafelseite, die genau so groß ist wie die PDF-Seite (drehen, verschieben, löschen wie jedes Bild).
 //   Export:  jede Tafelseite wird gezeichnet und mit pdf-lib als Seite in ein PDF gelegt.
 // (Braucht einen echten Browser; in Tests wird dieses Modul ersetzt.)
 import { blattVon } from '../kern/blatt.ts'
 import { seitenMass } from '../kern/geometrie.ts'
-import { benutzteDateien, MAX_SEITEN, neueId, neueSeite, type Format, type Seite } from '../kern/modell.ts'
+import { benutzteDateien, MAX_SEITEN, neueSeite, pdfAlsBild, type Format, type Seite } from '../kern/modell.ts'
 import { alsBlob, speichereCanvas } from './bilder.ts'
 import { ladeBildquelle } from './bildquellen.ts'
 import { zeichneSeite } from './zeichnen.ts'
@@ -21,7 +22,7 @@ export const MAX_PDF = 60 * 1024 * 1024
 export const istPdf = (d: { type: string; name?: string }) => d.type === 'application/pdf' || /\.pdf$/i.test(d.name ?? '')
 
 /**
- * Liest ein PDF und liefert je Seite eine Tafelseite mit der PDF-Seite als Hintergrund.
+ * Liest ein PDF und liefert je Seite eine Tafelseite mit der PDF-Seite als Bild, das das Blatt ausfüllt.
  * `fortschritt` meldet, wie weit der Import ist. Höchstens `platz` Seiten (und nie mehr als MAX_SEITEN).
  */
 export async function importierePdf(datei: Blob, platz: number, fortschritt: (seite: number, von: number) => void): Promise<{ seiten: Seite[]; ausgelassen: number }> {
@@ -39,7 +40,6 @@ export async function importierePdf(datei: Blob, platz: number, fortschritt: (se
   try {
     const anzahl = Math.min(dokument.numPages, platz, MAX_SEITEN)
     const seiten: Seite[] = []
-    const pdf = neueId() // alle Seiten dieses Imports gehören zusammen (zum gemeinsamen Löschen)
     for (let nr = 1; nr <= anzahl; nr++) {
       fortschritt(nr, anzahl)
       const pdfSeite = await dokument.getPage(nr)
@@ -49,7 +49,8 @@ export async function importierePdf(datei: Blob, platz: number, fortschritt: (se
       canvas.height = Math.ceil(ansicht.height)
       await pdfSeite.render({ canvas, viewport: ansicht }).promise
       const dateiId = await speichereCanvas(canvas, 'image/jpeg')
-      seiten.push(neueSeite([], { dateiId, b: Math.round(canvas.width / IMPORT_SCHAERFE), h: Math.round(canvas.height / IMPORT_SCHAERFE), pdf }))
+      const { elemente, blatt } = pdfAlsBild({ dateiId, b: Math.round(canvas.width / IMPORT_SCHAERFE), h: Math.round(canvas.height / IMPORT_SCHAERFE) })
+      seiten.push({ ...neueSeite(elemente), blatt })
       pdfSeite.cleanup()
     }
     return { seiten, ausgelassen: dokument.numPages - anzahl }

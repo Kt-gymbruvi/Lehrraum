@@ -1,13 +1,14 @@
-// Datenmodell der Tafel (Version 5). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 6). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
 // Version 4, nur ohne Drehung und PDF-Kennung des Hintergrunds; Version 4 hat dieselbe Gestalt wie Version 5, nur
-// ohne Seitenformat und Muster – sie wird zu „unendlich“ ohne Muster, so dass alte Tafeln genau so bleiben, wie sie waren).
+// ohne Seitenformat und Muster – sie wird zu „unendlich“ ohne Muster, so dass alte Tafeln genau so bleiben, wie sie waren;
+// bis Version 5 konnte eine PDF-Seite Hintergrund sein – sie wird zu einem Bild-Element auf einer Seite mit eigenem Blattmaß).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 5
+export const TAFEL_VERSION = 6
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -85,12 +86,12 @@ export type Bild = Gemeinsam & {
 export type Element = Strich | Text | Form | Bild
 
 /**
- * Hintergrund einer Seite, z. B. eine importierte PDF-Seite: liegt bei (0, 0), lässt sich nicht auswählen oder radieren.
+ * Hintergrund einer Seite (ein eigenes Bild): liegt bei (0, 0), lässt sich nicht auswählen oder radieren.
  * b, h: Größe des Bildes (ungedreht). drehung: in 90°-Schritten im Uhrzeigersinn (fehlt: 0) – gedreht liegt die
- * Seite weiter bei (0, 0), mit vertauschter Breite und Höhe bei 90° und 270°. pdf: Kennung des PDF-Imports,
- * aus dem die Seite stammt (für „alle Seiten dieses PDFs löschen“; fehlt bei älteren Seiten).
+ * Seite weiter bei (0, 0), mit vertauschter Breite und Höhe bei 90° und 270°.
+ * (Bis Version 5 waren auch PDF-Seiten Hintergrund; seit Version 6 sind sie Bild-Elemente.)
  */
-export type Hintergrund = { dateiId: string; b: number; h: number; drehung?: 90 | 180 | 270; pdf?: string }
+export type Hintergrund = { dateiId: string; b: number; h: number; drehung?: 90 | 180 | 270 }
 
 /** Sichtbare Breite und Höhe eines Hintergrunds (mit Drehung) */
 export const hintergrundMass = (h: Hintergrund): [number, number] => (h.drehung === 90 || h.drehung === 270 ? [h.h, h.b] : [h.b, h.h])
@@ -117,7 +118,8 @@ export type Musterart = (typeof MUSTERARTEN)[number]
 /** abstand fehlt: mittel; farbe fehlt: grau */
 export type Muster = { art: Musterart; abstand?: 'eng' | 'weit'; farbe?: 'blau' }
 
-export type Seite = { id: string; elemente: Element[]; hintergrund?: Hintergrund; muster?: Muster }
+/** blatt: eigenes Blattmaß der Seite (z. B. einer PDF-Seite) statt des Formats der Tafel; gilt nur bei festen Formaten */
+export type Seite = { id: string; elemente: Element[]; hintergrund?: Hintergrund; muster?: Muster; blatt?: { b: number; h: number } }
 
 export type Kamera = { x: number; y: number; zoom: number }
 
@@ -203,8 +205,24 @@ function pruefeHintergrund(x: unknown): Hintergrund | undefined {
   if (!istDateiId(h.dateiId) || !istMass(h.b) || !istMass(h.h)) return undefined
   const g: Hintergrund = { dateiId: h.dateiId, b: h.b, h: h.h }
   if (h.drehung === 90 || h.drehung === 180 || h.drehung === 270) g.drehung = h.drehung
-  if (typeof h.pdf === 'string' && /^[0-9a-f]{8,64}$/.test(h.pdf)) g.pdf = h.pdf
   return g
+}
+
+function pruefeBlatt(x: unknown): { b: number; h: number } | undefined {
+  if (typeof x !== 'object' || x === null) return undefined
+  const m = x as Record<string, unknown>
+  return istMass(m.b) && istMass(m.h) ? { b: m.b, h: m.h } : undefined
+}
+
+/**
+ * Eine PDF-Seite als Bild, das das Blatt genau ausfüllt (auch gedreht: Bilder drehen um ihre linke obere Ecke).
+ * Liefert Elemente (Bild zuunterst) und das Blattmaß der Seite.
+ */
+export function pdfAlsBild(h: Hintergrund, elemente: Element[] = []): { elemente: Element[]; blatt: { b: number; h: number } } {
+  const [b, hoehe] = hintergrundMass(h)
+  const [x, y] = h.drehung === 90 ? [b, 0] : h.drehung === 180 ? [b, hoehe] : h.drehung === 270 ? [0, hoehe] : [0, 0]
+  const bild: Bild = { art: 'bild', id: neueId(), x, y, b: h.b, h: h.h, dateiId: h.dateiId, ...(h.drehung ? { drehung: h.drehung === 270 ? -90 : h.drehung } : {}) } // Bilder: −180° bis 180°
+  return { elemente: [bild, ...elemente], blatt: { b, h: hoehe } }
 }
 
 /** Alle Dateien, die ein Tafelbild braucht (Bilder und Hintergründe) */
@@ -291,7 +309,7 @@ export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x :
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2, 3, 4 und 5.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2, 3, 4, 5 und 6.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -300,14 +318,18 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6) {
     const ids = new Set<string>()
     seiten = (Array.isArray(roh.seiten) ? roh.seiten : []).slice(0, MAX_SEITEN).flatMap((s): Seite[] => {
       if (!istObjekt(s) || typeof s.id !== 'string' || !s.id || ids.has(s.id)) return []
       ids.add(s.id)
       const hintergrund = pruefeHintergrund(s.hintergrund)
-      const muster = roh.version === 5 ? pruefeMuster(s.muster) : undefined
-      return [{ id: s.id, elemente: pruefeElemente(s.elemente), ...(hintergrund ? { hintergrund } : {}), ...(muster ? { muster } : {}) }]
+      const muster = roh.version === 5 || roh.version === 6 ? pruefeMuster(s.muster) : undefined
+      const elemente = pruefeElemente(s.elemente)
+      // Bis Version 5: PDF-Seite als Hintergrund → Bild-Element (ganz unten), die Seite behält das Maß der PDF-Seite
+      if (hintergrund && istObjekt(s.hintergrund) && typeof s.hintergrund.pdf === 'string') return [{ id: s.id, ...pdfAlsBild(hintergrund, elemente), ...(muster ? { muster } : {}) }]
+      const blatt = roh.version === 6 ? pruefeBlatt(s.blatt) : undefined
+      return [{ id: s.id, elemente, ...(hintergrund ? { hintergrund } : {}), ...(muster ? { muster } : {}), ...(blatt ? { blatt } : {}) }]
     })
     if (!seiten.length) seiten = [neueSeite()]
   } else return null
@@ -320,7 +342,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
     id: roh.id,
     titel: typeof roh.titel === 'string' && roh.titel.trim() ? roh.titel.trim().slice(0, 200) : 'Tafel',
     // Vor Version 5 war jede Tafel unendlich – so bleibt es auch
-    format: roh.version === 5 && istFormat(roh.format) ? roh.format : 'unendlich',
+    format: (roh.version === 5 || roh.version === 6) && istFormat(roh.format) ? roh.format : 'unendlich',
     seiten,
     seiteNr: istZahl(roh.seiteNr) ? Math.min(seiten.length - 1, Math.max(0, Math.round(roh.seiteNr))) : 0,
     kamera: { x: istZahl(k.x) ? k.x : 0, y: istZahl(k.y) ? k.y : 0, zoom },

@@ -111,7 +111,7 @@ describe('Drehen – Logik', () => {
 describe('Datenmodell Version 3', () => {
   it('übernimmt Version 2 unverändert und speichert in der aktuellen Version', () => {
     const t = pruefeTafel({ ...neuesTafelbild(), version: 2, seiten: [{ id: 's', elemente: [text(), form('rechteck')] }] })!
-    expect(t.version).toBe(5)
+    expect(t.version).toBe(6)
     expect(t.seiten[0].elemente).toEqual([text(), form('rechteck')])
   })
 
@@ -179,7 +179,7 @@ describe('Drehen – Bedienung', () => {
     // Rahmen 92..308 × 92..208, Mitte (200, 150): Drehgriff 48 px über der Oberkante bei (200, 44)
     ziehe([200, 44], [303, 147]) // fast genau nach rechts: 88,3° → rastet bei 90° ein
     await waitFor(async () => expect((await seite())[0]).toMatchObject({ x1: 100, y1: 100, x2: 300, y2: 200, drehung: 90 }))
-    expect((await tafel()).version).toBe(5)
+    expect((await tafel()).version).toBe(6)
     tippe(100, 150) // dort war der linke Rand – nach dem Drehen ist da nichts
     expect(knopf('Seite leeren')).toBeInTheDocument()
     tippe(200, 50) // jetzt liegt dort die obere Schmalseite

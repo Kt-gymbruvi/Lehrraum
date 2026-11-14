@@ -130,13 +130,6 @@ export function seitenWeg(b: Buch, nrs: number[]): Buch {
   return { seiten, nr: grenze(b.nr - davor, seiten.length) }
 }
 
-/** Stellen aller Seiten, die aus demselben PDF stammen wie die gezeigte (leer, wenn sie keines hat) */
-export function pdfSeiten(b: Buch): number[] {
-  const pdf = b.seiten[b.nr]?.hintergrund?.pdf
-  if (!pdf) return []
-  return b.seiten.flatMap((s, i) => (s.hintergrund?.pdf === pdf ? [i] : []))
-}
-
 /**
  * Dreht eine Seite mit Hintergrund um 90° im Uhrzeigersinn (richtung 1) oder dagegen (−1). Alles darauf Geschriebene
  * dreht sich mit, die Seite liegt danach wieder bei (0, 0). Ein Schritt im Verlauf. Ohne Hintergrund: null.

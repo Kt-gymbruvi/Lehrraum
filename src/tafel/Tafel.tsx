@@ -13,7 +13,7 @@ import { benutzteDateien, MAX_SEITEN, MAX_TEXT, neueId, neuesTafelbild, schriftg
 import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
-import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, pdfSeiten, seiteDazu, seiteDoppelt, seiteDoppeltBei, seitenDazu, seiteSchieben, seiteVerschieben, seiteWeg, seiteWegBei, seitenWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
+import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, seiteDazu, seiteDoppelt, seiteDoppeltBei, seitenDazu, seiteSchieben, seiteVerschieben, seiteWeg, seiteWegBei, type Buch as Seitenfolge } from '../kern/seiten.ts'
 import { Seitenuebersicht } from './Seitenuebersicht.tsx'
 import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
 import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, speichereKlasse, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
@@ -47,6 +47,8 @@ const SPEICHERN_NACH_MS = 700
 /** Seiten, gezeigte Seite und der Rückgängig-Verlauf je Seite (der Verlauf wird nicht gespeichert) */
 type Buch = Seitenfolge & { verlaeufe: Record<string, Verlauf> }
 const LEER: Seite = { id: '', elemente: [] }
+/** Seite mit neuem Inhalt; Kennung und eigenes Blattmaß (PDF-Seite) bleiben */
+const alsSeite = (s: Seite, i: Inhalt): Seite => ({ id: s.id, ...inhaltVon(i), ...(s.blatt ? { blatt: s.blatt } : {}) })
 
 /**
  * Ohne `klasseId` öffnet sich die freie Tafel, sonst die Tafel dieser Klasse (wird beim ersten Öffnen angelegt).
@@ -237,7 +239,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
       if (!s) return alt
       const neu = tun(inhaltVon(s), alt.verlaeufe[s.id] ?? leererVerlauf())
       if (neu.inhalt.elemente === s.elemente && neu.inhalt.hintergrund === s.hintergrund && neu.inhalt.muster === s.muster) return alt
-      const seite: Seite = { id: s.id, ...inhaltVon(neu.inhalt) }
+      const seite = alsSeite(s, neu.inhalt)
       return { ...alt, seiten: alt.seiten.map((x) => (x === s ? seite : x)), verlaeufe: { ...alt.verlaeufe, [s.id]: neu.verlauf } }
     })
   }, [])
@@ -386,7 +388,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         if ((!alleSeiten && i !== alt.nr) || s.hintergrund || gleichesMuster(s.muster, m)) return s
         const neu = ausfuehrenAuf(inhaltVon(s), alt.verlaeufe[s.id] ?? leererVerlauf(), { art: 'muster', vorher: s.muster, nachher: m })
         verlaeufe[s.id] = neu.verlauf
-        return { id: s.id, ...inhaltVon(neu.inhalt) }
+        return alsSeite(s, neu.inhalt)
       })
       return { ...alt, seiten, verlaeufe }
     })
@@ -399,11 +401,11 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
       setBuch((alt) => {
         const verlaeufe = { ...alt.verlaeufe }
         const seiten = alt.seiten.map((s, i) => {
-          const befehl = (alleSeiten || i === alt.nr) && bildHintergrundBefehl(s, h)
+          const befehl = (i === alt.nr || (alleSeiten && !s.blatt)) && bildHintergrundBefehl(s, h) // „alle“ lässt PDF-Seiten aus
           if (!befehl) return s
           const neu = ausfuehrenAuf(inhaltVon(s), alt.verlaeufe[s.id] ?? leererVerlauf(), befehl)
           verlaeufe[s.id] = neu.verlauf
-          return { id: s.id, ...inhaltVon(neu.inhalt) }
+          return alsSeite(s, neu.inhalt)
         })
         return { ...alt, seiten, verlaeufe }
       })
@@ -625,7 +627,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
       : []),
     { name: 'Ganz nach vorne', symbol: 'ganzVorne', titel: 'Ganz nach vorne – liegt über allem anderen', tun: () => ordne('vorne') },
     { name: 'Ganz nach hinten', symbol: 'ganzHinten', titel: 'Ganz nach hinten – liegt unter allem anderen', tun: () => ordne('hinten') },
-    ...(gewaehlte.length === 1 && gewaehlte[0].art === 'bild' && !seite.hintergrund?.pdf
+    ...(gewaehlte.length === 1 && gewaehlte[0].art === 'bild'
       ? [
           {
             name: 'Als Hintergrund',
@@ -786,10 +788,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             beiDoppelt={() => blaettern(seiteDoppelt)}
             beiSchieben={(r) => blaettern((b) => seiteSchieben(b, r))}
             beiLoeschen={() => blaettern(seiteWeg)}
-            pdf={!!seite.hintergrund}
-            bild={!!seite.hintergrund && !seite.hintergrund.pdf}
-            pdfAnzahl={pdfSeiten(buch).length}
-            beiPdfLoeschen={() => blaettern((b) => seitenWeg(b, pdfSeiten(b)))}
+            hintergrund={!!seite.hintergrund}
             beiDrehen={(r) => fuehreAus(drehBefehl(seite, r))}
             beiHintergrundWeg={() => fuehreAus(hintergrundWegBefehl(seite))}
             beiUebersicht={() => {
@@ -806,7 +805,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             <Hintergrundwahl
               format={format}
               muster={seite.muster}
-              hintergrund={seite.hintergrund ? (seite.hintergrund.pdf ? 'pdf' : 'bild') : null}
+              hintergrund={!!seite.hintergrund}
               beiMuster={setzeMuster}
               beiBild={(alleSeiten) => {
                 hintergrundFuerAlle.current = alleSeiten
