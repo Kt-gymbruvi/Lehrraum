@@ -1,12 +1,13 @@
 # Projektstand – Lehrraum
 
-Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit dem Aussehen im Stil von Apple) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
 Tests: 20 Testdateien, 251 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
+**Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
-## Hintergründe, Etappe 4: Seitenübersicht (Spezifikation Ü1) – noch nicht veröffentlicht (14.11.2026)
+## Hintergründe, Etappe 4: Seitenübersicht (Spezifikation Ü1) – veröffentlicht am 14.11.2026
 - **Knopf „Seitenübersicht“** ganz links in der Seitenleiste: alle Seiten als Vorschaubilder im Raster (Kacheln im Seitenverhältnis des Formats), die gezeigte Seite hervorgehoben.
 - **Antippen** öffnet die Seite; **Fertig** oder Escape schließt die Übersicht.
 - **Ziehen** sortiert um (Maus sofort; Finger und Stift erst kurz halten, sonst rollt die Liste). Die gezeigte Seite bleibt die gezeigte. „Reihenfolge zurücksetzen“ stellt die Reihenfolge vom Öffnen wieder her.
@@ -16,7 +17,7 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 - **Getestet:** `npm test` (251 grün), `npm run build`; im Browser hell und dunkel, bei 1024 × 700: Übersicht mit drei Seiten (liniert und leer), Antippen öffnet, Ziehen mit der Maus sortiert um und „Reihenfolge zurücksetzen“ erscheint. Gefunden und behoben: Ein frühes Einfangen des Zeigers ließ das Antippen ins Leere gehen (im Test unsichtbar, weil dort ersetzt).
 - **Nicht getestet:** Ziehen und Rollen mit Finger und Stift (iPad, SMART Board), Tempo mit 50 Seiten und PDF-Seiten.
 
-## Hintergründe, Etappe 3: Eigenes Bild und Vorlage je Klasse (Spezifikation B1, B2, V1) – noch nicht veröffentlicht (14.11.2026)
+## Hintergründe, Etappe 3: Eigenes Bild und Vorlage je Klasse (Spezifikation B1, B2, V1) – veröffentlicht am 14.11.2026
 - **Eigenes Bild als Hintergrund:** Im Feld „Hintergrund“ unter „Eigenes Bild“ → „Bild wählen …“, für diese Seite oder alle Seiten (PDF-Seiten bleiben). In einem festen Format füllt das Bild das Blatt aus, die Seite bekommt das Seitenverhältnis des Bildes (wie eine PDF-Seite). Drehen und „Hintergrundbild entfernen“ in der Seitenleiste; auf einer Seite mit Bild gibt es kein Muster.
 - **Bild der Tafel zum Hintergrund:** Ist genau ein Bild ausgewählt, zeigt die Auswahlleiste „Als Hintergrund“. Ein Schritt im Verlauf; Zurücknehmen legt das Bild an seine Stelle zurück.
 - **Vorlage je Klasse:** Unter „Meine Klassen“ im Formular der Klasse „Vorlage für die Tafel“ (Format, Hintergrund neuer Seiten); die Karte zeigt sie an. An der Tafel einer Klasse im Feld „Hintergrund“: „Für 7b merken“ (Format der Tafel und Muster der gezeigten Seite). Die Vorlage gilt beim ersten Anlegen der Klassentafel und für jede neue Seite; die Kopie einer Klasse behält sie.
@@ -25,7 +26,7 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 - **Getestet:** `npm test` (244 grün), `npm run build`; im Browser: Klasse mit Vorlage A4 quer, liniert angelegt → Klassentafel startet so; Feld „Hintergrund“ mit „Bild wählen …“ und „Vorlage von …“; ein 4:3-Bild als Hintergrund (Seite im Seitenverhältnis des Bildes, Knöpfe „Hintergrundbild …“).
 - **Nicht getestet:** „Als Hintergrund“ nur in den automatischen Tests, nicht im Browser; echte Fotos (groß, hochkant) und SVG als Hintergrund; am iPad und SMART Board.
 
-## Hintergründe, Etappe 2: Muster (Spezifikation M1–M3, E1) – noch nicht veröffentlicht (14.11.2026)
+## Hintergründe, Etappe 2: Muster (Spezifikation M1–M3, E1) – veröffentlicht am 14.11.2026
 - **Knopf „Hintergrund“** oben in der rechten Leiste. Das Feld zeigt Vorschaubilder in drei Gruppen: Allgemein (Leer, Liniert, Liniert mit Rand, Kariert klein, Kariert groß, Punkteraster, Schreiblineatur), Mathematik (Millimeterpapier, Koordinaten 1. Quadrant und 4 Quadranten, Isometrisch), Sprachen, Musik, Ordnen (Notenlinien, Cornell-Notizen, Zwei Spalten, Drei Spalten, Wochenplan).
 - **Diese Seite / Alle Seiten;** Abstand (eng, mittel, weit) und Linienfarbe (grau, blau). Jeder Wechsel ist je Seite ein Schritt im Verlauf. „Alle Seiten“ lässt PDF-Seiten aus; auf einer PDF-Seite ist „Diese Seite“ gesperrt.
 - Linienmuster laufen auf der unendlichen Fläche endlos weiter; Koordinaten, Cornell, Spalten und Wochenplan gibt es nur in festen Formaten. Zu feine Linien beim Herauszoomen fallen weg (Millimeterpapier zeigt dann jede fünfte).
@@ -35,7 +36,7 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 - **Getestet:** `npm test` (234 grün), `npm run build`; im Browser hell und dunkel: Feld, Kariert klein, Koordinaten (4 Quadranten), Wochenplan, Schreiblineatur auf dem Blatt; PDF-Export mit und ohne Muster (Zeichnung geprüft, PDF entsteht).
 - **Nicht getestet:** am Beamer/SMART Board (Sind die Linien sichtbar, ohne zu stören? Ist die Beschriftung der Achsen groß genug?), Tempo beim Verschieben mit Muster am SMART Board (`#/pruefen`).
 
-## Hintergründe, Etappe 1: Seitenformat und Blättern (Spezifikation F1–F4) – noch nicht veröffentlicht (14.11.2026)
+## Hintergründe, Etappe 1: Seitenformat und Blättern (Spezifikation F1–F4) – veröffentlicht am 14.11.2026
 - **Format der Tafel:** 16:9 (Standard für neue Tafeln), A4 hoch, A4 quer oder Unendlich. Knopf „Format“ in der Kopfzeile (neben der Zoom-Kapsel). Bestehende Tafeln werden zu „Unendlich“ und bleiben, wie sie waren. **Datenmodell Version 5** (`format`): nach dem Veröffentlichen auf jedem Gerät einmal neu laden.
 - **Blatt:** In festen Formaten ist jede Seite ein weißes Blatt (16:9 = 1600 × 900 Tafel-Einheiten) auf der ruhigen Umgebung. Beim Öffnen, Blättern und bei anderer Fenstergröße wird es eingepasst; der Prozent-Knopf heißt dann „Ganzes Blatt zeigen“. Hineinzoomen geht, weiter heraus als das ganze Blatt nicht, und beim Verschieben bleibt das Blatt im Bild. PDF-Seiten behalten ihre Größe.
 - **Rand:** Neben dem Blatt beginnt kein Strich, keine Form, kein Text. Was über den Rand ragt, wird abgeschnitten angezeigt und exportiert (bleibt aber gespeichert).
