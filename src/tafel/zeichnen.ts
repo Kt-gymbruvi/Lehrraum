@@ -2,6 +2,7 @@
 import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, pfeilspitze, rechteckEcken, stiftUmriss, ZEILENHOEHE } from '../kern/geometrie.ts'
 import { MARKER_DECKKRAFT, type Element, type Hintergrund, type Seite, type Strich } from '../kern/modell.ts'
 import { bildquelle } from './bildquellen.ts'
+import { abschnitte, type Spur } from '../kern/laser.ts'
 
 export const SCHRIFT = 'ui-rounded, "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
 
@@ -108,4 +109,52 @@ export function zeichneSeite(ctx: Ctx, s: Seite, ausschnitt: [number, number, nu
   ctx.setTransform(massstab, 0, 0, massstab, -l * massstab, -o * massstab)
   if (s.hintergrund) zeichneHintergrund(ctx, s.hintergrund)
   for (const e of s.elemente) zeichne(ctx, e, true)
+}
+
+// ---------- Laserpointer (nur auf der Zeichenfläche, nie im PDF) ----------
+/**
+ * Schichten des Leuchtens von außen nach innen: weicher roter Schein, kräftiges Rot, fast weißer heißer Kern –
+ * so wirkt die Spur wie ein echter Laserstrahl. Breiten in Bildschirm-Pixeln (unabhängig vom Zoom). Bewusst ohne
+ * shadowBlur: der kostet langsame Geräte wie ein SMART Board zu viel Zeit.
+ */
+const LASER_SCHICHTEN = [
+  { breite: 30, farbe: 'rgba(255, 25, 35, 0.1)' },
+  { breite: 17, farbe: 'rgba(255, 30, 40, 0.22)' },
+  { breite: 9, farbe: 'rgba(255, 40, 50, 0.85)' },
+  { breite: 3, farbe: 'rgba(255, 246, 246, 0.95)' },
+]
+
+/** Zeichnet die Spuren als leuchtenden Schweif (dünner und blasser zum Ende hin) und den Leuchtpunkt an der Spitze */
+export function zeichneLaser(ctx: Ctx, spuren: Spur[], jetzt: number, zoom: number, punkt: { x: number; y: number; hell: number } | null) {
+  const stuecke = spuren.flatMap((s) => abschnitte(s, jetzt))
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineJoin = 'round'
+  for (const schicht of LASER_SCHICHTEN) {
+    ctx.strokeStyle = schicht.farbe
+    for (const st of stuecke) {
+      ctx.globalAlpha = st.leben
+      ctx.lineWidth = (schicht.breite * (0.25 + 0.75 * st.leben)) / zoom
+      ctx.beginPath()
+      st.punkte.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+      ctx.stroke()
+    }
+  }
+  if (punkt && punkt.hell > 0) {
+    const r = 18 / zoom
+    const g = ctx.createRadialGradient(punkt.x, punkt.y, 0, punkt.x, punkt.y, r)
+    if (g) {
+      g.addColorStop(0, 'rgba(255, 255, 255, 1)')
+      g.addColorStop(0.16, 'rgba(255, 236, 236, 1)')
+      g.addColorStop(0.3, 'rgba(255, 45, 55, 0.95)')
+      g.addColorStop(0.55, 'rgba(255, 35, 45, 0.3)')
+      g.addColorStop(1, 'rgba(255, 30, 40, 0)')
+      ctx.globalAlpha = punkt.hell
+      ctx.fillStyle = g
+      ctx.beginPath()
+      ctx.arc(punkt.x, punkt.y, r, 0, Math.PI * 2)
+      ctx.fill()
+    }
+  }
+  ctx.restore()
 }

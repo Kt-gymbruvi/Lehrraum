@@ -2,6 +2,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { EINSTELLUNGEN_SCHEMA, neueEinstellungen, pruefeEinstellungen, STANDARD_EINSTELLUNGEN, startWerkzeug } from '../kern/einstellungen.ts'
+import { abschnitte, kuerze, LASER_LEBEN, LASER_PUNKT_WEG, LASER_VOLL, leben, lebt, punktLeben, type Spur } from '../kern/laser.ts'
 import { neueSeite, neuesTafelbild, type Strich } from '../kern/modell.ts'
 import { ladeEinstellungen, ladeLetzteTafel, merkeEinstellungen, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
@@ -74,6 +75,38 @@ describe('Einstellungen merken – Bedienung', () => {
     await bereit()
     gedrueckt('Stift')
     gedrueckt('Grün')
+  })
+})
+
+describe('Laserpointer – Schweif', () => {
+  it('jeder Punkt ist erst voll zu sehen, verlischt dann und ist nach etwa 1,5 s weg', () => {
+    expect(leben(0)).toBe(1)
+    expect(leben(LASER_VOLL)).toBe(1)
+    expect(leben((LASER_VOLL + LASER_LEBEN) / 2)).toBeCloseTo(0.5)
+    expect(leben(LASER_LEBEN)).toBe(0)
+  })
+
+  it('der Schweif wird zum Ende hin blasser; Verloschenes fällt weg, auch während noch gezeigt wird', () => {
+    const jetzt = 10_000
+    const spur: Spur = { punkte: Array.from({ length: 21 }, (_, i): [number, number, number] => [i * 10, 0, jetzt - 2000 + i * 100]), ende: null }
+    const st = abschnitte(spur, jetzt)
+    expect(st.length).toBeGreaterThan(2)
+    expect(st.map((s) => s.leben)).toEqual([...st.map((s) => s.leben)].sort((a, b) => a - b)) // hinten blass, vorne hell
+    expect(st[st.length - 1].leben).toBe(1)
+    expect(st[0].punkte[0][0]).toBeGreaterThanOrEqual(40) // Punkte älter als 1,5 s sind nicht mehr dabei
+    expect(lebt(spur, jetzt)).toBe(true)
+    kuerze(spur, jetzt)
+    expect(spur.punkte[0][2]).toBeLessThanOrEqual(jetzt - LASER_LEBEN)
+    expect(spur.punkte[1][2]).toBeGreaterThan(jetzt - LASER_LEBEN)
+  })
+
+  it('nach dem Abheben verlischt der Leuchtpunkt schnell, die Spur nach ihrem letzten Punkt', () => {
+    const spur: Spur = { punkte: [[0, 0, 1000], [50, 0, 1100]], ende: 1100 }
+    expect(punktLeben(spur, 1100)).toBe(1)
+    expect(punktLeben(spur, 1100 + LASER_PUNKT_WEG)).toBe(0)
+    expect(lebt(spur, 1100 + LASER_LEBEN - 1)).toBe(true)
+    expect(lebt(spur, 1100 + LASER_LEBEN)).toBe(false)
+    expect(lebt({ punkte: [[0, 0, 0]], ende: null }, 99_999)).toBe(true) // wer noch zeigt, behält den Punkt
   })
 })
 

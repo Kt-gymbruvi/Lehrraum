@@ -18,7 +18,8 @@
 //   Gezeichnet wird höchstens einmal je Bildwechsel, auch wenn der Stift sich öfter meldet.
 //   Kommt nur ein neuer Strich dazu, wird die untere Ebene ergänzt und nicht ganz neu gezeichnet.
 // Laserpointer:
-//   Zeichnet eine rote Spur nur auf der oberen Ebene; sie verblasst nach dem Abheben (1 s stehen, 0,5 s verblassen).
+//   Zeichnet einen leuchtenden roten Schweif nur auf der oberen Ebene: Jeder Punkt ist 0,7 s voll zu sehen und nach
+//   1,5 s verloschen (auch während noch gezeigt wird); an der Spitze ein Leuchtpunkt.
 //   Nichts davon wird gespeichert, nichts kommt in den Verlauf oder ins PDF, der Speicherstand bleibt unberührt.
 // Begradigen durch Halten:
 //   Steht der Stift beim Zeichnen etwa 0,6 s still, wird der Strich – wenn eine Form erkannt wird – noch vor dem
@@ -30,22 +31,15 @@ import { beruehrtRechteck, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skal
 import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
 import type { Werkzeug } from '../kern/einstellungen.ts'
+import { kuerze, lebt, punktLeben, type Spur } from '../kern/laser.ts'
 import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Strich, type Text } from '../kern/modell.ts'
 import { beginneWischzug, neueTeile, RADIERER_RADIUS, RADIERER_STANDARD, wischBefehl, wischeWeiter, type Radierer, type Wischzug } from '../kern/radieren.ts'
 import { beiBildGeladen } from './bildquellen.ts'
 import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
-import { SCHRIFT, zeichne, zeichneHintergrund } from './zeichnen.ts'
+import { SCHRIFT, zeichne, zeichneHintergrund, zeichneLaser } from './zeichnen.ts'
 
 export type { Werkzeug }
 
-/** Laserpointer: rot; nach dem Abheben bleibt die Spur so lange stehen (ms) und verblasst dann so lange */
-const LASER_STEHT = 1000
-const LASER_VERBLASST = 500
-const LASER_FARBE = '#e53935'
-/** Eine Spur des Laserpointers (Tafel-Koordinaten); ende: wann der Stift abgehoben wurde (null: zeigt noch) */
-type Spur = { punkte: [number, number][]; ende: number | null }
-/** Deckkraft einer Spur zum Zeitpunkt jetzt (0: verschwunden) */
-const laserDeckkraft = (s: Spur, jetzt: number) => (s.ende === null ? 1 : Math.max(0, Math.min(1, 1 - (jetzt - s.ende - LASER_STEHT) / LASER_VERBLASST)))
 
 type Props = {
   elemente: Element[]
@@ -226,37 +220,24 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
     if (a?.art === 'zeichnen') zeichne(ctx, a.begradigt ?? a.strich, true)
     if (a?.art === 'form') zeichne(ctx, a.form)
     if (a?.art === 'radieren' && a.wisch) neueTeile(a.wisch).forEach((e) => zeichne(ctx, e))
-    // Laserpointer: Spuren, die nach dem Abheben verblassen, und ein roter Punkt am Zeiger
+    // Laserpointer: leuchtender Schweif, der hinten verlischt, und ein Leuchtpunkt an der Spitze
     const jetzt = Date.now()
-    spuren.current = spuren.current.filter((sp) => laserDeckkraft(sp, jetzt) > 0)
-    ctx.lineCap = 'round'
-    ctx.lineJoin = 'round'
-    for (const sp of spuren.current) {
-      ctx.globalAlpha = laserDeckkraft(sp, jetzt)
-      ctx.beginPath()
-      sp.punkte.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
-      if (sp.punkte.length === 1) ctx.lineTo(sp.punkte[0][0] + 0.01, sp.punkte[0][1])
-      ctx.strokeStyle = 'rgba(229, 57, 53, 0.25)'
-      ctx.lineWidth = 14 / k.zoom
-      ctx.stroke()
-      ctx.strokeStyle = LASER_FARBE
-      ctx.lineWidth = 4 / k.zoom
-      ctx.stroke()
+    spuren.current = spuren.current.filter((sp) => lebt(sp, jetzt))
+    spuren.current.forEach((sp) => kuerze(sp, jetzt))
+    let punkt: { x: number; y: number; hell: number } | null = null
+    const kopf = (sp: Spur) => sp.punkte[sp.punkte.length - 1]
+    if (a?.art === 'zeigen') punkt = { x: kopf(a.spur)[0], y: kopf(a.spur)[1], hell: 1 }
+    else if (!a && s.werkzeug === 'laser' && schwebe.current) {
+      const [x, y] = zuTafel(k, schwebe.current.x, schwebe.current.y)
+      punkt = { x, y, hell: 1 }
+    } else {
+      const letzte = spuren.current[spuren.current.length - 1]
+      if (letzte) punkt = { x: kopf(letzte)[0], y: kopf(letzte)[1], hell: punktLeben(letzte, jetzt) }
     }
-    ctx.globalAlpha = 1
-    const laserPunkt = a?.art === 'zeigen' ? a.spur.punkte[a.spur.punkte.length - 1] : !a && s.werkzeug === 'laser' && schwebe.current ? zuTafel(k, schwebe.current.x, schwebe.current.y) : null
-    if (laserPunkt) {
-      ctx.fillStyle = 'rgba(229, 57, 53, 0.3)'
-      ctx.beginPath()
-      ctx.arc(laserPunkt[0], laserPunkt[1], 11 / k.zoom, 0, Math.PI * 2)
-      ctx.fill()
-      ctx.fillStyle = LASER_FARBE
-      ctx.beginPath()
-      ctx.arc(laserPunkt[0], laserPunkt[1], 5 / k.zoom, 0, Math.PI * 2)
-      ctx.fill()
-    }
-    // Verblassende Spuren: im nächsten Bild weiterzeichnen (ohne Bildwechsel-Takt, z. B. in Tests, etwas später)
-    if (spuren.current.some((sp) => sp.ende !== null)) {
+    if (spuren.current.length || punkt) zeichneLaser(ctx, spuren.current, jetzt, k.zoom, punkt)
+    // Der Schweif altert auch, während noch gezeigt wird: im nächsten Bild weiterzeichnen
+    // (ohne Bildwechsel-Takt, z. B. in Tests, etwas später)
+    if (spuren.current.length) {
       if (typeof requestAnimationFrame === 'function') plane()
       else if (!nachgeplant.current)
         nachgeplant.current = setTimeout(() => {
@@ -570,7 +551,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       else oeffneEditor({ id: null, x: tx, y: ty - schriftgroesse(s.staerke) * 0.6, groesse: schriftgroesse(s.staerke), farbe: s.farbe, text: '', vorher: null })
       return
     } else if (w === 'laser') {
-      const spur: Spur = { punkte: [[tx, ty]], ende: null }
+      const spur: Spur = { punkte: [[tx, ty, Date.now()]], ende: null }
       spuren.current.push(spur)
       aktiv.current = { art: 'zeigen', zeiger: e.pointerId, spur }
     } else if (w === 'stift' || w === 'marker') {
@@ -677,7 +658,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
       a.form.y2 = ty
     } else if (a.art === 'zeigen') {
       const letzter = a.spur.punkte[a.spur.punkte.length - 1]
-      if (Math.hypot(tx - letzter[0], ty - letzter[1]) * k.zoom >= 0.5) a.spur.punkte.push([tx, ty])
+      if (Math.hypot(tx - letzter[0], ty - letzter[1]) * k.zoom >= 0.5) a.spur.punkte.push([tx, ty, Date.now()])
     } else {
       // Zwischenpunkte, die der Browser zusammengefasst hat, mitnehmen (glattere Linien bei schnellem Stift)
       const einzeln = e.nativeEvent.getCoalescedEvents?.() ?? []
