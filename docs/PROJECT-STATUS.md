@@ -1,10 +1,20 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit dem Aussehen im Stil von Apple) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 17 Testdateien, 220 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 18 Testdateien, 234 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Hintergründe, Etappe 2: Muster (Spezifikation M1–M3, E1) – noch nicht veröffentlicht (14.11.2026)
+- **Knopf „Hintergrund“** oben in der rechten Leiste. Das Feld zeigt Vorschaubilder in drei Gruppen: Allgemein (Leer, Liniert, Liniert mit Rand, Kariert klein, Kariert groß, Punkteraster, Schreiblineatur), Mathematik (Millimeterpapier, Koordinaten 1. Quadrant und 4 Quadranten, Isometrisch), Sprachen, Musik, Ordnen (Notenlinien, Cornell-Notizen, Zwei Spalten, Drei Spalten, Wochenplan).
+- **Diese Seite / Alle Seiten;** Abstand (eng, mittel, weit) und Linienfarbe (grau, blau). Jeder Wechsel ist je Seite ein Schritt im Verlauf. „Alle Seiten“ lässt PDF-Seiten aus; auf einer PDF-Seite ist „Diese Seite“ gesperrt.
+- Linienmuster laufen auf der unendlichen Fläche endlos weiter; Koordinaten, Cornell, Spalten und Wochenplan gibt es nur in festen Formaten. Zu feine Linien beim Herauszoomen fallen weg (Millimeterpapier zeigt dann jede fünfte).
+- **Neue Seiten** übernehmen das Muster der Seite, von der aus sie angelegt werden.
+- **Export:** Muster kommen mit ins PDF; im Feld lässt sich „Muster beim PDF-Export weglassen“ ankreuzen (gilt bis zum Neuladen).
+- Datenmodell: Seite bekommt `muster` (noch in Version 5, die bisher nicht veröffentlicht ist). Neu: `src/kern/muster.ts`, `src/tafel/Hintergrundwahl.tsx`, Befehl `muster` in `kern/befehle.ts`, Test `src/test/muster.test.tsx` (14 Tests).
+- **Getestet:** `npm test` (234 grün), `npm run build`; im Browser hell und dunkel: Feld, Kariert klein, Koordinaten (4 Quadranten), Wochenplan, Schreiblineatur auf dem Blatt; PDF-Export mit und ohne Muster (Zeichnung geprüft, PDF entsteht).
+- **Nicht getestet:** am Beamer/SMART Board (Sind die Linien sichtbar, ohne zu stören? Ist die Beschriftung der Achsen groß genug?), Tempo beim Verschieben mit Muster am SMART Board (`#/pruefen`).
 
 ## Hintergründe, Etappe 1: Seitenformat und Blättern (Spezifikation F1–F4) – noch nicht veröffentlicht (14.11.2026)
 - **Format der Tafel:** 16:9 (Standard für neue Tafeln), A4 hoch, A4 quer oder Unendlich. Knopf „Format“ in der Kopfzeile (neben der Zoom-Kapsel). Bestehende Tafeln werden zu „Unendlich“ und bleiben, wie sie waren. **Datenmodell Version 5** (`format`): nach dem Veröffentlichen auf jedem Gerät einmal neu laden.
@@ -206,6 +216,6 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
    - Teil 1 (veröffentlicht am 14.11.2026, am Gerät noch nicht geprüft): mehr Farben, eigene Farbplätze, Regler für die Stärke, Knopf „Mehr“.
    - Teil 2 (veröffentlicht am 14.11.2026): Begradigen durch Halten (S3). Am Gerät zu prüfen: Haltezeit, Erkennung mit echter Handschrift, versehentliches Begradigen beim Schreiben.
 5. **Laserpointer und Einstellungen merken** (L1, E1): veröffentlicht am 14.11.2026, am Gerät noch nicht geprüft. Am Gerät zu prüfen: Sichtbarkeit der Spur am SMART Board, Dauer bis zum Verblassen.
-6. **Seitenformat, Hintergründe, Seitenübersicht:** Spezifikation `docs/SPEC-hintergruende.md` freigegeben am 14.11.2026. Etappe 1 (Format und Blättern) umgesetzt, noch nicht veröffentlicht. Offen: Etappe 2 Muster, Etappe 3 eigenes Bild und Vorlage je Klasse, Etappe 4 Seitenübersicht.
+6. **Seitenformat, Hintergründe, Seitenübersicht:** Spezifikation `docs/SPEC-hintergruende.md` freigegeben am 14.11.2026. Etappe 1 (Format und Blättern) und Etappe 2 (Muster) umgesetzt, noch nicht veröffentlicht. Offen: Etappe 3 eigenes Bild und Vorlage je Klasse, Etappe 4 Seitenübersicht.
 7. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
 8. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.

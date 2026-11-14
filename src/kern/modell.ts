@@ -3,7 +3,7 @@
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
 // Version 4, nur ohne Drehung und PDF-Kennung des Hintergrunds; Version 4 hat dieselbe Gestalt wie Version 5, nur
-// ohne Seitenformat – sie wird zu „unendlich“, so dass alte Tafeln genau so bleiben, wie sie waren).
+// ohne Seitenformat und Muster – sie wird zu „unendlich“ ohne Muster, so dass alte Tafeln genau so bleiben, wie sie waren).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
@@ -95,7 +95,29 @@ export type Hintergrund = { dateiId: string; b: number; h: number; drehung?: 90 
 /** Sichtbare Breite und Höhe eines Hintergrunds (mit Drehung) */
 export const hintergrundMass = (h: Hintergrund): [number, number] => (h.drehung === 90 || h.drehung === 270 ? [h.h, h.b] : [h.b, h.h])
 
-export type Seite = { id: string; elemente: Element[]; hintergrund?: Hintergrund }
+/** Muster einer Seite (liniert, kariert …): wird gezeichnet, nicht gespeichert als Bild; fehlt: leeres Blatt */
+export const MUSTERARTEN = [
+  'liniert',
+  'liniert-rand',
+  'kariert-klein',
+  'kariert-gross',
+  'punkte',
+  'lineatur',
+  'millimeter',
+  'koordinaten-1',
+  'koordinaten-4',
+  'isometrisch',
+  'noten',
+  'cornell',
+  'spalten-2',
+  'spalten-3',
+  'wochenplan',
+] as const
+export type Musterart = (typeof MUSTERARTEN)[number]
+/** abstand fehlt: mittel; farbe fehlt: grau */
+export type Muster = { art: Musterart; abstand?: 'eng' | 'weit'; farbe?: 'blau' }
+
+export type Seite = { id: string; elemente: Element[]; hintergrund?: Hintergrund; muster?: Muster }
 
 export type Kamera = { x: number; y: number; zoom: number }
 
@@ -162,6 +184,18 @@ export const neueSeite = (elemente: Element[] = [], hintergrund?: Hintergrund): 
 /** Kennungen von Dateien – nur solche Zeichen */
 export const istDateiId = (x: unknown): x is string => typeof x === 'string' && /^[0-9a-f]{8,64}$/.test(x)
 const istMass = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x > 0 && x <= 100000
+
+/** Gültiges Muster oder undefined (unbekannte Arten fallen weg, die Seite bleibt dann leer) */
+export function pruefeMuster(x: unknown): Muster | undefined {
+  if (typeof x !== 'object' || x === null) return undefined
+  const m = x as Record<string, unknown>
+  const art = MUSTERARTEN.find((a) => a === m.art)
+  if (!art) return undefined
+  const neu: Muster = { art }
+  if (m.abstand === 'eng' || m.abstand === 'weit') neu.abstand = m.abstand
+  if (m.farbe === 'blau') neu.farbe = 'blau'
+  return neu
+}
 
 function pruefeHintergrund(x: unknown): Hintergrund | undefined {
   if (typeof x !== 'object' || x === null) return undefined
@@ -272,7 +306,8 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
       if (!istObjekt(s) || typeof s.id !== 'string' || !s.id || ids.has(s.id)) return []
       ids.add(s.id)
       const hintergrund = pruefeHintergrund(s.hintergrund)
-      return [{ id: s.id, elemente: pruefeElemente(s.elemente), ...(hintergrund ? { hintergrund } : {}) }]
+      const muster = roh.version === 5 ? pruefeMuster(s.muster) : undefined
+      return [{ id: s.id, elemente: pruefeElemente(s.elemente), ...(hintergrund ? { hintergrund } : {}), ...(muster ? { muster } : {}) }]
     })
     if (!seiten.length) seiten = [neueSeite()]
   } else return null

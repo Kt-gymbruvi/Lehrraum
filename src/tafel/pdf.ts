@@ -59,7 +59,7 @@ export async function importierePdf(datei: Blob, platz: number, fortschritt: (se
 }
 
 /** Zeichnet alle Seiten und baut daraus ein PDF. */
-export async function exportierePdf(seiten: Seite[], titel: string, fortschritt: (seite: number, von: number) => void, format: Format = 'unendlich'): Promise<Blob> {
+export async function exportierePdf(seiten: Seite[], titel: string, fortschritt: (seite: number, von: number) => void, format: Format = 'unendlich', mitMuster = true): Promise<Blob> {
   const { PDFDocument } = await import('pdf-lib')
   await Promise.all([...benutzteDateien(seiten)].map(ladeBildquelle)) // alle Bilder müssen vor dem Zeichnen da sein
   const pdf = await PDFDocument.create()
@@ -68,12 +68,13 @@ export async function exportierePdf(seiten: Seite[], titel: string, fortschritt:
   const canvas = document.createElement('canvas')
   for (const [i, s] of seiten.entries()) {
     fortschritt(i + 1, seiten.length)
-    const ausschnitt = seitenMass(s, blattVon(format, s))
+    const blatt = blattVon(format, s)
+    const ausschnitt = seitenMass(s, blatt)
     const [, , b, h] = ausschnitt
     const massstab = Math.min(2, EXPORT_MAX_KANTE / Math.max(b, h))
     canvas.width = Math.round(b * massstab)
     canvas.height = Math.round(h * massstab)
-    zeichneSeite(canvas.getContext('2d')!, s, ausschnitt, massstab)
+    zeichneSeite(canvas.getContext('2d')!, s, ausschnitt, massstab, blatt, mitMuster)
     const bild = await pdf.embedJpg(await (await alsBlob(canvas, 'image/jpeg', 0.92)).arrayBuffer())
     const seite = pdf.addPage([b / PX_JE_PUNKT, h / PX_JE_PUNKT])
     seite.drawImage(bild, { x: 0, y: 0, width: b / PX_JE_PUNKT, height: h / PX_JE_PUNKT })

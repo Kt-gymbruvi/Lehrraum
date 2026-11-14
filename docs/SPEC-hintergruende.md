@@ -95,7 +95,7 @@ Nicht Teil dieser Spezifikation **[Entschieden]**: Sportfelder als Hintergrund, 
 
 ### E – Export ohne Muster
 
-**E1** Beim Export gibt es die Wahl **„mit Hintergrundmuster“** (Standard) oder **„nur Geschriebenes“**. Eigene Bilder und PDF-Seiten werden immer mit exportiert. **[Lehrkraft: „wie du willst“ – aufgenommen, weil es wenig Aufwand ist]**
+**E1** Beim Export gibt es die Wahl **„mit Hintergrundmuster“** (Standard) oder **„nur Geschriebenes“** (umgesetzt als Kästchen „Muster beim PDF-Export weglassen“ im Feld „Hintergrund“). Eigene Bilder und PDF-Seiten werden immer mit exportiert. **[Lehrkraft: „wie du willst“ – aufgenommen, weil es wenig Aufwand ist]**
 
 ## 4. Datenmodell
 

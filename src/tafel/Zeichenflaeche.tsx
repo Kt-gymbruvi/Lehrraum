@@ -32,12 +32,12 @@ import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
 import type { Werkzeug } from '../kern/einstellungen.ts'
 import { kuerze, lebt, punktLeben, type Spur } from '../kern/laser.ts'
-import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Strich, type Text } from '../kern/modell.ts'
+import { MAX_TEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Muster, type Strich, type Text } from '../kern/modell.ts'
 import { beginneWischzug, neueTeile, RADIERER_RADIUS, RADIERER_STANDARD, wischBefehl, wischeWeiter, type Radierer, type Wischzug } from '../kern/radieren.ts'
 import { beiBildGeladen } from './bildquellen.ts'
 import { messBeginn, obenGezeichnet, untenGezeichnet } from './messung.ts'
 import { aufBlatt, type Blatt } from '../kern/blatt.ts'
-import { schneideAufBlatt, SCHRIFT, zeichne, zeichneBlatt, zeichneHintergrund, zeichneLaser } from './zeichnen.ts'
+import { schneideAufBlatt, SCHRIFT, zeichne, zeichneBlatt, zeichneHintergrund, zeichneLaser, zeichneMuster } from './zeichnen.ts'
 
 export type { Werkzeug }
 
@@ -46,6 +46,8 @@ type Props = {
   elemente: Element[]
   /** z. B. eine importierte PDF-Seite; liegt unter allem und lässt sich nicht verändern */
   hintergrund?: Hintergrund
+  /** Muster der Seite (liniert, kariert …); liegt unter allem */
+  muster?: Muster
   kamera: Kamera
   werkzeug: Werkzeug
   farbe: string
@@ -110,7 +112,7 @@ export const setzeHaltezeit = (ms: number) => {
 
 const keineGrenze = (k: Kamera) => k
 
-export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -195,7 +197,7 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
   const schonFest = useRef(new WeakSet<Element>())
   useEffect(() => {
     const beginn = messBeginn()
-    const rest = [hintergrund, kamera, groesse, versteckt, bildStand, blatt]
+    const rest = [hintergrund, kamera, groesse, versteckt, bildStand, blatt, muster]
     const alt = gezeigt.current
     gezeigt.current = { elemente, rest }
     const nurDazu = alt !== null && alt.rest.every((x, i) => x === rest[i]) && alt.elemente.length <= elemente.length && alt.elemente.every((e, i) => e === elemente[i])
@@ -221,13 +223,18 @@ export function Zeichenflaeche({ elemente, hintergrund, kamera, werkzeug, farbe,
         zeichneBlatt(ctx, blatt[0], blatt[1], kamera.zoom)
         schneideAufBlatt(ctx, blatt[0], blatt[1], kamera.zoom)
       }
+      if (muster && !hintergrund) {
+        // nur den sichtbaren Ausschnitt mustern (auf der unendlichen Fläche läuft das Muster endlos weiter)
+        const z = kamera.zoom
+        zeichneMuster(ctx, muster, [-kamera.x / z, -kamera.y / z, (groesse.b - kamera.x) / z, (groesse.h - kamera.y) / z], blatt, z)
+      }
       if (hintergrund) zeichneHintergrund(ctx, hintergrund)
       for (const e of elemente) if (!versteckt.has(e.id)) zeichne(ctx, e)
       ctx.restore()
     }
     untenGezeichnet(beginn)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [elemente, hintergrund, kamera, groesse, versteckt, bildStand, blatt])
+  }, [elemente, hintergrund, kamera, groesse, versteckt, bildStand, blatt, muster])
 
   function zeichneOben() {
     const beginn = messBeginn()

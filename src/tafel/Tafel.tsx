@@ -4,11 +4,12 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { Fensterebene, Schnellleiste } from '../fenster/Fensterebene.tsx'
 import { einzufuegen, neueAblage, type Ablage } from '../kern/ablage.ts'
 import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl.ts'
-import { ausfuehrenAuf, entfernenBefehl, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
+import { ausfuehrenAuf, entfernenBefehl, inhaltVon, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { aufsBlattBefehl, begrenzt, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
-import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Format, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
+import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tafelbild } from '../kern/modell.ts'
+import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
 import { drehBefehl, gehe, hintergrundWegBefehl, kopiere, pdfSeiten, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, seitenWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
@@ -20,6 +21,7 @@ import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName
 import { Symbol } from '../ui/Symbol.tsx'
 import { Auswahlleiste, type Befehlsknopf } from './Auswahlleiste.tsx'
 import { Formatwahl } from './Formatwahl.tsx'
+import { Hintergrundwahl } from './Hintergrundwahl.tsx'
 
 /** Steht nach dem Kopieren in der Zwischenablage des Systems (eingefügt wird in der Tafel die Kopie selbst) */
 const KOPIE_HINWEIS = 'Aus einer Lehrraum-Tafel kopiert – einfügen lässt es sich nur in einer Lehrraum-Tafel.'
@@ -116,7 +118,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         const b = blattVon(format, s)
         const befehl = b && aufsBlattBefehl(s, b)
         if (!befehl) return s
-        const neu = ausfuehrenAuf(s.hintergrund ? { elemente: s.elemente, hintergrund: s.hintergrund } : { elemente: s.elemente }, alt.verlaeufe[s.id] ?? leererVerlauf(), befehl)
+        const neu = ausfuehrenAuf(inhaltVon(s), alt.verlaeufe[s.id] ?? leererVerlauf(), befehl)
         verlaeufe[s.id] = neu.verlauf
         return { ...s, elemente: neu.inhalt.elemente }
       })
@@ -220,9 +222,9 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     setBuch((alt) => {
       const s = alt.seiten[alt.nr]
       if (!s) return alt
-      const neu = tun(s.hintergrund ? { elemente: s.elemente, hintergrund: s.hintergrund } : { elemente: s.elemente }, alt.verlaeufe[s.id] ?? leererVerlauf())
-      if (neu.inhalt.elemente === s.elemente && neu.inhalt.hintergrund === s.hintergrund) return alt
-      const seite: Seite = { id: s.id, elemente: neu.inhalt.elemente, ...(neu.inhalt.hintergrund ? { hintergrund: neu.inhalt.hintergrund } : {}) }
+      const neu = tun(inhaltVon(s), alt.verlaeufe[s.id] ?? leererVerlauf())
+      if (neu.inhalt.elemente === s.elemente && neu.inhalt.hintergrund === s.hintergrund && neu.inhalt.muster === s.muster) return alt
+      const seite: Seite = { id: s.id, ...inhaltVon(neu.inhalt) }
       return { ...alt, seiten: alt.seiten.map((x) => (x === s ? seite : x)), verlaeufe: { ...alt.verlaeufe, [s.id]: neu.verlauf } }
     })
   }, [])
@@ -351,6 +353,21 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     setAuswahl(seite.elemente.map((e) => e.id))
   }
 
+  // ---------- Muster (Hintergrund) ----------
+  const [ohneMusterExport, setOhneMusterExport] = useState(false)
+  /** Muster für die gezeigte Seite oder alle Seiten (ohne PDF/Bild-Hintergrund) – je Seite ein Schritt im Verlauf */
+  const setzeMuster = (m: Muster | undefined, alleSeiten: boolean) =>
+    setBuch((alt) => {
+      const verlaeufe = { ...alt.verlaeufe }
+      const seiten = alt.seiten.map((s, i) => {
+        if ((!alleSeiten && i !== alt.nr) || s.hintergrund || gleichesMuster(s.muster, m)) return s
+        const neu = ausfuehrenAuf(inhaltVon(s), alt.verlaeufe[s.id] ?? leererVerlauf(), { art: 'muster', vorher: s.muster, nachher: m })
+        verlaeufe[s.id] = neu.verlauf
+        return { id: s.id, ...inhaltVon(neu.inhalt) }
+      })
+      return { ...alt, seiten, verlaeufe }
+    })
+
   // ---------- Seiten ----------
   const blaettern = (tun: (b: Seitenfolge) => Seitenfolge) => {
     setAuswahl([])
@@ -407,7 +424,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     setMeldung({ text: 'PDF wird erstellt …', laeuft: true })
     try {
       const titel = kopf?.titel ?? 'Tafel'
-      const pdf = await exportierePdf(buch.seiten, titel, (nr, von) => setMeldung({ text: `PDF: Seite ${nr} von ${von} …`, laeuft: true }), format)
+      const pdf = await exportierePdf(buch.seiten, titel, (nr, von) => setMeldung({ text: `PDF: Seite ${nr} von ${von} …`, laeuft: true }), format, !ohneMusterExport)
       if (weitergeben) {
         setMeldung(null)
         await teile(pdf, pdfName(titel), titel)
@@ -650,6 +667,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
               key={seite.id}
               elemente={seite.elemente}
               hintergrund={seite.hintergrund}
+              muster={seite.muster}
               kamera={kamera}
               werkzeug={werkzeug}
               farbe={farbe}
@@ -686,7 +704,20 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             beiHintergrundWeg={() => fuehreAus(hintergrundWegBefehl(seite))}
           />
         </div>
-        <Schnellleiste fenster={fenster} beiAendern={setFenster} />
+        <Schnellleiste
+          fenster={fenster}
+          beiAendern={setFenster}
+          vorne={
+            <Hintergrundwahl
+              format={format}
+              muster={seite.muster}
+              mitHintergrund={!!seite.hintergrund}
+              beiMuster={setzeMuster}
+              ohneMusterExport={ohneMusterExport}
+              beiOhneMusterExport={setOhneMusterExport}
+            />
+          }
+        />
       </div>
     </div>
   )

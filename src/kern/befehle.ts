@@ -1,6 +1,6 @@
 // Rückgängig und Wiederholen: Jede Änderung an der Tafel ist ein Befehl, der sich umkehren lässt.
 // Reine Funktionen – die Liste der Elemente wird nie verändert, sondern neu gebildet.
-import type { Element, Hintergrund } from './modell.ts'
+import type { Element, Hintergrund, Muster } from './modell.ts'
 
 export type Befehl =
   | { art: 'hinzufuegen'; elemente: Element[] }
@@ -20,6 +20,8 @@ export type Befehl =
    * (geänderte Fassungen mit derselben Kennung). Fehlt nachher, ist der Hintergrund danach weg.
    */
   | { art: 'hintergrund'; vorher?: Hintergrund; nachher?: Hintergrund; elementeVorher: Element[]; elementeNachher: Element[] }
+  /** Muster der Seite wechseln (liniert, kariert …); fehlt: leeres Blatt. Die Elemente bleiben, wie sie sind. */
+  | { art: 'muster'; vorher?: Muster; nachher?: Muster }
 
 export type Verlauf = { zurueck: Befehl[]; vor: Befehl[] }
 
@@ -65,6 +67,7 @@ export function anwenden(elemente: Element[], b: Befehl): Element[] {
   if (b.art === 'ersetzen') return tausche(elemente, b.nachher)
   if (b.art === 'hintergrund') return b.elementeNachher.length ? tausche(elemente, b.elementeNachher) : elemente
   if (b.art === 'ordnen') return ordne(elemente, b.nachher)
+  if (b.art === 'muster') return elemente
   if (b.art === 'zerlegen') {
     const teile = new Map(b.eintraege.map((e) => [e.vorher.id, e.nachher]))
     return elemente.flatMap((e) => teile.get(e.id) ?? [e])
@@ -90,6 +93,7 @@ export function zuruecknehmen(elemente: Element[], b: Befehl): Element[] {
   if (b.art === 'ersetzen') return tausche(elemente, b.vorher)
   if (b.art === 'hintergrund') return b.elementeVorher.length ? tausche(elemente, b.elementeVorher) : elemente
   if (b.art === 'ordnen') return ordne(elemente, b.vorher)
+  if (b.art === 'muster') return elemente
   if (b.art === 'zerlegen') {
     // Teile weg, dann die ursprünglichen Elemente wieder an ihre Stelle
     const weg = new Set(b.eintraege.flatMap((e) => e.nachher.map((t) => t.id)))
@@ -129,28 +133,35 @@ export function wiederholen(elemente: Element[], verlauf: Verlauf): { elemente: 
 
 // ---------- Für die ganze Seite: Elemente und Hintergrund ----------
 /** Was ein Befehl an einer Seite ändern kann */
-export type Inhalt = { elemente: Element[]; hintergrund?: Hintergrund }
+export type Inhalt = { elemente: Element[]; hintergrund?: Hintergrund; muster?: Muster }
 
 /** Hintergrund nach dem Ausführen (vor = true) oder Zurücknehmen des Befehls; andere Befehle lassen ihn, wie er ist */
 function neuerHintergrund(i: Inhalt, b: Befehl | undefined, vor: boolean): Hintergrund | undefined {
   if (b?.art !== 'hintergrund') return i.hintergrund
   return vor ? b.nachher : b.vorher
 }
-const mit = (elemente: Element[], h: Hintergrund | undefined): Inhalt => (h ? { elemente, hintergrund: h } : { elemente })
+/** Muster nach dem Ausführen (vor = true) oder Zurücknehmen des Befehls */
+function neuesMuster(i: Inhalt, b: Befehl | undefined, vor: boolean): Muster | undefined {
+  if (b?.art !== 'muster') return i.muster
+  return vor ? b.nachher : b.vorher
+}
+const mit = (elemente: Element[], h: Hintergrund | undefined, m: Muster | undefined): Inhalt => ({ elemente, ...(h ? { hintergrund: h } : {}), ...(m ? { muster: m } : {}) })
+/** Inhalt einer Seite (ohne Kennung) – so, wie ihn die Befehle bekommen */
+export const inhaltVon = (s: Inhalt): Inhalt => mit(s.elemente, s.hintergrund, s.muster)
 
 export function ausfuehrenAuf(i: Inhalt, verlauf: Verlauf, b: Befehl): { inhalt: Inhalt; verlauf: Verlauf } {
   const r = ausfuehren(i.elemente, verlauf, b)
-  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, true)), verlauf: r.verlauf }
+  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, true), neuesMuster(i, b, true)), verlauf: r.verlauf }
 }
 export function rueckgaengigAuf(i: Inhalt, verlauf: Verlauf): { inhalt: Inhalt; verlauf: Verlauf } {
   const b = verlauf.zurueck[verlauf.zurueck.length - 1]
   if (!b) return { inhalt: i, verlauf }
   const r = rueckgaengig(i.elemente, verlauf)
-  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, false)), verlauf: r.verlauf }
+  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, false), neuesMuster(i, b, false)), verlauf: r.verlauf }
 }
 export function wiederholenAuf(i: Inhalt, verlauf: Verlauf): { inhalt: Inhalt; verlauf: Verlauf } {
   const b = verlauf.vor[verlauf.vor.length - 1]
   if (!b) return { inhalt: i, verlauf }
   const r = wiederholen(i.elemente, verlauf)
-  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, true)), verlauf: r.verlauf }
+  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, true), neuesMuster(i, b, true)), verlauf: r.verlauf }
 }

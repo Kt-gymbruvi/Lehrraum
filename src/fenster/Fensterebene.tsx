@@ -1,4 +1,5 @@
 // Ebene über der Zeichenfläche mit allen offenen Fenstern – und die rechte Leiste, die sie öffnet.
+import type { ReactNode } from 'react'
 import { aendere, ANWENDUNGEN, FENSTERARTEN, FENSTERNAMEN, MEHRFACH, nachVorn, schalte, schliesse, type FensterZustand } from '../kern/fenster.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 import { Fenster } from './Fenster.tsx'
@@ -35,9 +36,11 @@ export function Fensterebene({ fenster, beiAendern }: Props) {
 }
 
 /** Rechte Schnellzugriffsleiste – bleibt dauerhaft sichtbar. */
-export function Schnellleiste({ fenster, beiAendern }: Props) {
+/** vorne: Knöpfe der Tafel, die oben in der Leiste stehen (z. B. „Hintergrund“) */
+export function Schnellleiste({ fenster, beiAendern, vorne }: Props & { vorne?: ReactNode }) {
   return (
     <aside className="werkzeugleiste rechts" aria-label="Unterrichtswerkzeuge">
+      {vorne && <div className="gruppe">{vorne}</div>}
       {[FENSTERARTEN.filter((a) => !ANWENDUNGEN.has(a)), FENSTERARTEN.filter((a) => ANWENDUNGEN.has(a))].map((arten, i) => (
       <div className="gruppe" key={i}>
         {arten.map((art) => {

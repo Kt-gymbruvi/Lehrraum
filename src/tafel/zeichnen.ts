@@ -1,8 +1,9 @@
 // Zeichnet Elemente der Tafel auf ein Canvas – für die Zeichenfläche und für den PDF-Export.
 import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, pfeilspitze, rechteckEcken, stiftUmriss, ZEILENHOEHE } from '../kern/geometrie.ts'
-import { hintergrundMass, MARKER_DECKKRAFT, type Element, type Hintergrund, type Seite, type Strich } from '../kern/modell.ts'
+import { hintergrundMass, MARKER_DECKKRAFT, type Element, type Hintergrund, type Muster, type Seite, type Strich } from '../kern/modell.ts'
 import { bildquelle } from './bildquellen.ts'
 import { abschnitte, type Spur } from '../kern/laser.ts'
+import { musterTeile, type Bereich, type Musterteil } from '../kern/muster.ts'
 
 export const SCHRIFT = 'ui-rounded, "Nunito", system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif'
 
@@ -139,12 +140,72 @@ export function schneideAufBlatt(ctx: Ctx, b: number, h: number, zoom: number) {
   ctx.clip()
 }
 
-export function zeichneSeite(ctx: Ctx, s: Seite, ausschnitt: [number, number, number, number], massstab: number) {
+// ---------- Muster (liniert, kariert …) ----------
+/**
+ * Zeichnet die Teile eines Musters. Linien gleicher Farbe und Breite kommen in einen gemeinsamen Pfad – so bleibt
+ * auch ein feines Raster schnell. Linien werden nie dünner als ein knappes Bildschirm-Pixel.
+ */
+export function zeichneMusterteile(ctx: Ctx, teile: Musterteil[], zoom: number) {
+  if (!teile.length) return
+  ctx.save()
+  const pfade = new Map<string, Path2D>()
+  for (const t of teile) {
+    if (t.art !== 'linie') continue
+    const schluessel = `${t.farbe}|${Math.max(t.breite, 0.75 / zoom)}`
+    let p = pfade.get(schluessel)
+    if (!p) pfade.set(schluessel, (p = new Path2D()))
+    p.moveTo(t.x1, t.y1)
+    p.lineTo(t.x2, t.y2)
+  }
+  ctx.lineCap = 'butt'
+  for (const [schluessel, p] of pfade) {
+    const [farbe, breite] = schluessel.split('|')
+    ctx.strokeStyle = farbe
+    ctx.lineWidth = Number(breite)
+    ctx.stroke(p)
+  }
+  // Punkte ebenso: alle einer Farbe in einem Pfad, einmal gefüllt
+  const punkte = new Map<string, Path2D>()
+  for (const t of teile) {
+    if (t.art !== 'punkt') continue
+    let p = punkte.get(t.farbe)
+    if (!p) punkte.set(t.farbe, (p = new Path2D()))
+    const r = Math.max(t.r, 1 / zoom)
+    p.moveTo(t.x + r, t.y)
+    p.arc(t.x, t.y, r, 0, Math.PI * 2)
+  }
+  for (const [farbe, p] of punkte) {
+    ctx.fillStyle = farbe
+    ctx.fill(p)
+  }
+  for (const t of teile) {
+    if (t.art === 'text') {
+      ctx.font = `500 ${t.groesse}px ${SCHRIFT}`
+      ctx.textBaseline = 'top'
+      ctx.textAlign = t.ausrichtung === 'mitte' ? 'center' : t.ausrichtung === 'rechts' ? 'right' : 'left'
+      ctx.fillStyle = t.farbe
+      ctx.fillText(t.text, t.x, t.y)
+    }
+  }
+  ctx.restore()
+}
+
+/** Zeichnet das Muster einer Seite im Bereich (Tafel-Koordinaten) */
+export function zeichneMuster(ctx: Ctx, m: Muster, bereich: Bereich, blatt: [number, number] | null, zoom: number) {
+  zeichneMusterteile(ctx, musterTeile(m, bereich, blatt, zoom), zoom)
+}
+
+/**
+ * Zeichnet eine Seite für den Export. blatt: Blatt der Seite (festes Format) – dann richtet sich das Muster daran aus.
+ * mitMuster: false lässt das Muster weg (nur Geschriebenes; PDF- und Bild-Hintergründe bleiben).
+ */
+export function zeichneSeite(ctx: Ctx, s: Seite, ausschnitt: [number, number, number, number], massstab: number, blatt: [number, number] | null = null, mitMuster = true) {
   const [l, o, b, h] = ausschnitt
   ctx.setTransform(1, 0, 0, 1, 0, 0)
   ctx.fillStyle = '#ffffff'
   ctx.fillRect(0, 0, b * massstab, h * massstab)
   ctx.setTransform(massstab, 0, 0, massstab, -l * massstab, -o * massstab)
+  if (s.muster && mitMuster && !s.hintergrund) zeichneMuster(ctx, s.muster, [l, o, l + b, o + h], blatt, massstab)
   if (s.hintergrund) zeichneHintergrund(ctx, s.hintergrund)
   for (const e of s.elemente) zeichne(ctx, e, true)
 }

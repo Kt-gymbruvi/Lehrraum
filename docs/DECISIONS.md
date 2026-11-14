@@ -3,6 +3,12 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Muster: Umsetzung (Etappe 2)
+- **Muster noch in Version 5:** Version 5 (Format) ist noch nicht veröffentlicht; das Muster kommt deshalb ohne eigene Versionsnummer dazu. Ältere Tafeln (bis Version 4) haben kein Muster.
+- **Gezeichnet, nicht gespeichert:** Muster sind eine Angabe an der Seite (`art`, `abstand`, `farbe`) und werden bei jedem Zeichnen berechnet – scharf bei jedem Zoom, kein Speicher, Radierer und Auswahl erfassen sie nie. Linien einer Farbe und Breite in einem Pfad, damit Verschieben flüssig bleibt.
+- **Feld deckend statt Glas:** Das Feld „Hintergrund“ ist groß und voller Text; als Glas schien die Seitenleiste durch.
+- **„Muster beim Export weglassen“ wird nicht gespeichert:** ein seltener Wunsch für einen einzelnen Export; nach dem Neuladen gilt wieder „mit Muster“.
+
 ## 2026-11-14 – Seitenformat: Umsetzung (Etappe 1)
 - **Format nicht im Verlauf:** Der Rückgängig-Verlauf gehört je zu einer Seite, das Format zur ganzen Tafel. Das Format lässt sich stattdessen jederzeit zurückstellen, ohne dass etwas verloren geht; „Inhalt einpassen“ ist je Seite ein Schritt im Verlauf.
 - **Abschneiden statt verbieten:** Elemente dürfen über den Blattrand ragen (z. B. beim Verschieben); gezeigt und exportiert wird nur, was auf dem Blatt liegt. Das Gespeicherte bleibt vollständig.

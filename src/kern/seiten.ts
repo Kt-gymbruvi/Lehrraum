@@ -14,7 +14,9 @@ export const gehe = (b: Buch, nr: number): Buch => ({ ...b, nr: grenze(nr, b.sei
 export function seiteDazu(b: Buch): Buch {
   if (b.seiten.length >= MAX_SEITEN) return b
   const seiten = [...b.seiten]
-  seiten.splice(b.nr + 1, 0, neueSeite())
+  // Die neue Seite übernimmt das Muster der Seite, von der aus sie angelegt wird (nicht ihren PDF- oder Bild-Hintergrund)
+  const muster = b.seiten[b.nr]?.muster
+  seiten.splice(b.nr + 1, 0, muster ? { ...neueSeite(), muster } : neueSeite())
   return { seiten, nr: b.nr + 1 }
 }
 
