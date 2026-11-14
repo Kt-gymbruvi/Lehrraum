@@ -1,12 +1,12 @@
 # Projektstand – Lehrraum
 
-Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit PDF-Seiten drehen und entfernen) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit dem Aussehen im Stil von Apple) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
 Tests: 16 Testdateien, 209 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
-## Aussehen: Tafel im Stil von Apple – noch nicht veröffentlicht (14.11.2026)
+## Aussehen: Tafel im Stil von Apple – veröffentlicht am 14.11.2026
 - **Blatt statt Rahmen:** Die Zeichenfläche ist ein weißes Blatt mit runden Ecken und feinem Schatten auf einem ruhigen, hellen Hintergrund (dunkel: Nachtblau).
 - **Schwebende Leisten aus „Glas“:** Linke und rechte Leiste, die Seitenleiste (jetzt eine Kapsel mittig unter dem Blatt), Auswahlleiste und Aufklappfelder sind halbdurchsichtig mit Unschärfe dahinter, runden Ecken und weichem Schatten. Die Kopfzeile ist kein dunkelblauer Balken mehr: Titel und Speicherstand stehen frei, die Knöpfe sitzen in runden Glasknöpfen und Kapseln (PDF, Zoom).
 - **Ruhigere Hervorhebung:** Nur das gewählte Werkzeug ist kräftig gefüllt (hell Dunkelblau, dunkel Türkis wie in `tokens.css` der Startseite statt des früheren Gelbs). Die gewählte Farbe hat einen Ring mit kleinem Abstand, die gewählte Stärke ist nur leicht hinterlegt. Knöpfe geben beim Drücken etwas nach, Felder blenden weich ein (aus bei „Bewegung reduzieren“).
