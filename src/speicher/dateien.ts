@@ -1,5 +1,6 @@
 // Bilder und importierte PDF-Seiten: liegen als Dateien (Blob) in IndexedDB auf diesem Gerät, getrennt vom
-// Tafelbild, das nur ihre Kennung nennt. Nichts davon wird an einen Server geschickt.
+// Tafelbild, das nur ihre Kennung nennt. Mit dem Tafel-Abgleich (tafelabgleich.ts) gehen sie zusätzlich
+// verschlüsselt auf den Server; fehlt eine Datei hier, wird sie von dort geholt.
 import { neueId } from '../kern/modell.ts'
 import { vorgang } from './datenbank.ts'
 
@@ -11,9 +12,24 @@ export async function speichereDatei(daten: Blob): Promise<string> {
   return datei.id
 }
 
-export async function ladeDatei(id: string): Promise<Blob | null> {
+/** Holt eine fehlende Datei (vom Server) – wird vom Tafel-Abgleich gesetzt */
+let nachladen: ((id: string) => Promise<Datei | null>) | null = null
+export function setzeNachladen(tun: typeof nachladen) {
+  nachladen = tun
+}
+
+export async function ladeDateiEintrag(id: string): Promise<Datei | null> {
   const d = await vorgang<Datei | undefined>('dateien', 'readonly', (s) => s.get(id))
-  return d?.daten instanceof Blob ? d.daten : null
+  return d?.daten instanceof Blob ? d : null
+}
+
+export async function ladeDatei(id: string): Promise<Blob | null> {
+  const d = await ladeDateiEintrag(id)
+  if (d) return d.daten
+  const geholt = await nachladen?.(id).catch(() => null)
+  if (!geholt) return null
+  await vorgang('dateien', 'readwrite', (s) => s.put(geholt))
+  return geholt.daten
 }
 
 /**

@@ -17,9 +17,10 @@ import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, seiteDa
 import { Seitenuebersicht } from './Seitenuebersicht.tsx'
 import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
 import { mitSchrift, spalteDazu, spalteWeg, zeileDazu, zeileWeg } from '../kern/tabelle.ts'
-import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, speichereKlasse, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, ladeTafel, speichereKlasse, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { gleicheAb } from '../speicher/abgleich.ts'
+import { gleicheTafelAb, kennungFuer, raeumeServerAuf } from '../speicher/tafelabgleich.ts'
 import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
 import { Symbol } from '../ui/Symbol.tsx'
@@ -42,8 +43,21 @@ const SPEICHERTEXT: Record<Speicherstand, string> = {
   fehler: 'Speichern fehlgeschlagen',
 }
 
+/** Abgleich mit den anderen Geräten (Etappe C) */
+type Abgleichstand = 'nur-hier' | 'laeuft' | 'ueberall' | 'fehler'
+const ABGLEICHTEXT: Record<Abgleichstand, string> = {
+  'nur-hier': 'Auf diesem Gerät gespeichert',
+  laeuft: 'Wird hochgeladen …',
+  ueberall: 'Gespeichert · auf allen Geräten',
+  fehler: 'Nur auf diesem Gerät gespeichert',
+}
+
 /** So lange nach der letzten Änderung warten, bevor gespeichert wird */
 const SPEICHERN_NACH_MS = 700
+/** So lange nach dem Speichern warten, bevor hochgeladen wird (mehrere Striche in einem Rutsch) */
+const HOCHLADEN_NACH_MS = 2500
+/** So oft nachsehen, ob ein anderes Gerät die Tafel geändert hat */
+const NACHSEHEN_MS = 30_000
 
 /** Seiten, gezeigte Seite und der Rückgängig-Verlauf je Seite (der Verlauf wird nicht gespeichert) */
 type Buch = Seitenfolge & { verlaeufe: Record<string, Verlauf> }
@@ -68,6 +82,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const [eigeneFarben, setEigeneFarben] = useState<string[]>([])
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
+  const [abgleich, setAbgleich] = useState<Abgleichstand>('nur-hier')
+  const [abgleichFehler, setAbgleichFehler] = useState('')
   /** Die Klasse aus der Adresse gibt es auf diesem Gerät nicht */
   const [fehlt, setFehlt] = useState(false)
   /** Hinweis in der Kopfzeile: Fortschritt, Erfolg oder Fehler bei Bildern und PDF */
@@ -168,6 +184,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         if (!gefunden) void merkeFreieTafel(t.id).catch(() => undefined) // neue freie Tafel: gleich festhalten, welche es ist
         setKopf({ schema: t.schema, version: t.version, id: t.id, titel: t.titel })
         setFormat(t.format)
+        inhaltStand.current = { seiten: t.seiten, format: t.format, titel: t.titel, am: t.geaendertAm }
         setBuch({ seiten: t.seiten, nr: t.seiteNr, verlaeufe: {} })
         setKameraRoh(t.kamera) // mit festem Format wird gleich danach eingepasst
         setFenster(t.fenster)
@@ -193,12 +210,23 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const offen = useRef(false) // gibt es Ungespeichertes?
   const geladen = useRef(false)
 
+  /** Zeitpunkt der letzten Änderung am Inhalt (nicht an Ansicht oder Fenstern) – entscheidet bei Änderungen auf zwei Geräten */
+  const inhaltStand = useRef<{ seiten: Seite[]; format: Format; titel: string; am: string } | null>(null)
+  const zuletztGeaendert = useRef(0) // wann hier zuletzt etwas geändert wurde (ms)
+  const hochladenUhr = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const abgleichen = useRef<() => void>(() => undefined)
+
   const jetztSpeichern = useCallback(() => {
     const t = aktuell.current
     if (!t || !offen.current) return
     offen.current = false
-    speichereTafel({ ...t, geaendertAm: new Date().toISOString() }).then(
-      () => setSpeicher(offen.current ? 'ungespeichert' : 'gespeichert'),
+    speichereTafel(t).then(
+      () => {
+        setSpeicher(offen.current ? 'ungespeichert' : 'gespeichert')
+        // nach dem Speichern auch auf die anderen Geräte (gebündelt)
+        if (hochladenUhr.current) clearTimeout(hochladenUhr.current)
+        hochladenUhr.current = setTimeout(() => abgleichen.current(), HOCHLADEN_NACH_MS)
+      },
       () => {
         offen.current = true
         setSpeicher('fehler')
@@ -208,16 +236,85 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
 
   useEffect(() => {
     if (!kopf) return
-    aktuell.current = { ...kopf, format, seiten: buch.seiten, seiteNr: buch.nr, kamera, fenster, geaendertAm: '' }
+    const i = inhaltStand.current
+    if (!i || i.seiten !== buch.seiten || i.format !== format || i.titel !== kopf.titel) inhaltStand.current = { seiten: buch.seiten, format, titel: kopf.titel, am: i ? new Date().toISOString() : '' }
+    aktuell.current = { ...kopf, format, seiten: buch.seiten, seiteNr: buch.nr, kamera, fenster, geaendertAm: inhaltStand.current?.am ?? '' }
     if (!geladen.current) {
       geladen.current = true // der erste Durchlauf ist das Laden selbst, keine Änderung
       return
     }
     offen.current = true
+    zuletztGeaendert.current = Date.now()
     setSpeicher('ungespeichert')
     const warten = setTimeout(jetztSpeichern, SPEICHERN_NACH_MS)
     return () => clearTimeout(warten)
   }, [kopf, format, buch.seiten, buch.nr, kamera, fenster, jetztSpeichern])
+
+  // ---------- Abgleich mit den anderen Geräten (Etappe C) ----------
+  // Nach dem Speichern, beim Öffnen, beim Zurückkehren zur Seite, wieder mit Netz und alle 30 Sekunden.
+  // Abgeglichen wird nur, wenn hier gerade nichts ungespeichert ist; ein neuerer Stand ersetzt die Seiten (ohne Verlauf).
+  const abgleichLaeuft = useRef(false)
+  const aufgeraeumt = useRef(false)
+  abgleichen.current = () => {
+    const id = aktuell.current?.id
+    if (!id || abgleichLaeuft.current || offen.current) return
+    abgleichLaeuft.current = true
+    const vorher = zuletztGeaendert.current
+    void (async () => {
+      try {
+        // zuletzt gespeicherter Stand; eine neue, noch nie gespeicherte Tafel gibt es nur im Arbeitsspeicher
+        const lokal = (await ladeTafel(id)) ?? aktuell.current
+        if (!lokal) return
+        if (hochladenUhr.current) setAbgleich((a) => (a === 'nur-hier' ? a : 'laeuft'))
+        const erg = await gleicheTafelAb(kennungFuer(klasseId), lokal)
+        if (aktuell.current?.id !== id) return // inzwischen andere Tafel
+        if (erg.art === 'neu') {
+          // Inzwischen hier geändert: nichts ersetzen – die nächste Runde entscheidet (die zuletzt geänderte gilt)
+          if (offen.current || zuletztGeaendert.current !== vorher) return
+          inhaltStand.current = { seiten: erg.inhalt.seiten, format: erg.inhalt.format, titel: erg.inhalt.titel, am: erg.inhalt.geaendertAm }
+          setKopf((k) => (k ? { ...k, titel: erg.inhalt.titel } : k))
+          setFormat(erg.inhalt.format)
+          setBuch((alt) => ({ seiten: erg.inhalt.seiten, nr: Math.min(alt.nr, erg.inhalt.seiten.length - 1), verlaeufe: {} }))
+          setAuswahl([])
+          await erg.bestaetige()
+          setMeldung({ text: erg.meldung })
+          setAbgleich('ueberall')
+        } else if (erg.art === 'gleich') setAbgleich('ueberall')
+        else if (erg.art === 'nur-hier') setAbgleich('nur-hier')
+        else {
+          setAbgleich('fehler')
+          setAbgleichFehler(erg.meldung)
+        }
+        if ((erg.art === 'gleich' || erg.art === 'neu') && !aufgeraeumt.current) {
+          aufgeraeumt.current = true
+          void raeumeServerAuf()
+        }
+      } catch (e) {
+        console.warn('Abgleich der Tafel fehlgeschlagen', e)
+        setAbgleich('fehler')
+        setAbgleichFehler('Keine Verbindung – nur auf diesem Gerät gespeichert')
+      } finally {
+        hochladenUhr.current = null
+        abgleichLaeuft.current = false
+      }
+    })()
+  }
+  useEffect(() => {
+    if (!kopf?.id) return
+    abgleichen.current()
+    const nachsehen = () => {
+      // nicht mitten im Schreiben (kurz nach einer Änderung) – dann kommt der Abgleich ohnehin nach dem Speichern
+      if (document.visibilityState === 'visible' && Date.now() - zuletztGeaendert.current > 3000) abgleichen.current()
+    }
+    const uhr = window.setInterval(nachsehen, NACHSEHEN_MS)
+    document.addEventListener('visibilitychange', nachsehen)
+    window.addEventListener('online', nachsehen)
+    return () => {
+      window.clearInterval(uhr)
+      document.removeEventListener('visibilitychange', nachsehen)
+      window.removeEventListener('online', nachsehen)
+    }
+  }, [kopf?.id])
 
   // Beim Verlassen oder Wegschalten sofort speichern (Schutz vor versehentlichem Schließen)
   useEffect(() => {
@@ -673,7 +770,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     return (
       <main className="hinweisseite">
         <h1>Diese Klasse gibt es auf diesem Gerät nicht</h1>
-        <p>Klassen und ihre Tafeln werden nur auf dem Gerät gespeichert, auf dem sie angelegt wurden.</p>
+        <p>Klassen und ihre Tafeln kommen auf dieses Gerät, sobald du angemeldet bist und das Notenbuch-Passwort eingegeben hast (unter „Meine Klassen“).</p>
         <p>
           <a className="f-knopf haupt" href="#/klassen">
             Zu meinen Klassen
@@ -696,8 +793,12 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           <Symbol name="klassen" />
         </a>
         <h1>{kopf?.titel ?? 'Tafel'}</h1>
-        <p className={'speicherstand ' + (meldung ? (meldung.fehler ? 'fehler' : 'hinweis') : speicher)} role="status">
-          {meldung?.text ?? SPEICHERTEXT[speicher]}
+        <p
+          className={'speicherstand ' + (meldung ? (meldung.fehler ? 'fehler' : 'hinweis') : speicher)}
+          role="status"
+          title={!meldung && speicher === 'gespeichert' && abgleich === 'fehler' ? abgleichFehler : undefined}
+        >
+          {meldung?.text ?? (speicher === 'gespeichert' ? ABGLEICHTEXT[abgleich] : SPEICHERTEXT[speicher])}
         </p>
         <div className="zoom" role="group" aria-label="PDF">
           <button type="button" className="kopf-knopf" aria-label="PDF öffnen" title="PDF öffnen – jede Seite wird eine Tafelseite zum Beschriften" disabled={meldung?.laeuft} onClick={() => pdfWahl.current?.click()}>

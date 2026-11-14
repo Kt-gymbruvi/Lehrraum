@@ -26,6 +26,7 @@ import {
 import { FORMATE, istFormat, MUSTERARTEN, STANDARD_FORMAT, type Format, type Musterart } from '../kern/modell.ts'
 import { MUSTER, MUSTERGRUPPEN } from '../kern/muster.ts'
 import { gleicheAb, merkeGeloescht, vergissSchluessel } from '../speicher/abgleich.ts'
+import { belegterSpeicher, SPEICHER_GRENZE } from '../speicher/tafelabgleich.ts'
 import { ladeKlassen, loescheKlasse, speichereKlasse } from '../speicher/datenbank.ts'
 import { beiAnmeldung } from '../speicher/server.ts'
 import { Symbol } from '../ui/Symbol.tsx'
@@ -33,6 +34,8 @@ import { AbgleichHinweis, standText, useAbgleich } from './Abgleich.tsx'
 import './klassen.css'
 
 const LEER: KlassenEingabe = { bezeichnung: '', fach: '', jahrgang: '' }
+/** Bytes als „12 MB“ bzw. „1 GB“ */
+const mb = (n: number) => (n >= 1e9 ? (n / 1e9).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' GB' : Math.max(n > 0 ? 1 : 0, Math.round(n / 1e6)).toLocaleString('de-DE') + ' MB')
 
 /** Vorlage im Formular: Format der Tafel und Art des Musters ('' = leer); Abstand und Farbe bleiben, wie sie waren */
 type VorlageEingabe = { format: Format; art: Musterart | '' }
@@ -80,8 +83,11 @@ export default function Klassen() {
     }
   }, [])
   // Nach jedem Abgleich die Liste neu lesen
+  const [belegt, setBelegt] = useState<number | null>(null)
   useEffect(() => {
-    if (abgleich.stand === 'bereit') void laden()
+    if (abgleich.stand !== 'bereit') return
+    void laden()
+    void belegterSpeicher().then(setBelegt)
   }, [abgleich])
 
   // …/#/klassen?neu=1 (z. B. von der Startseite) öffnet gleich das Formular
@@ -361,8 +367,14 @@ export default function Klassen() {
             )}
             {abgleich.stand === 'bereit' ? (
               <p className="hinweis fuss">
-                Klassen und Namen werden verschlüsselt mit deinen anderen Geräten abgeglichen{abgleich.notenbuch ? ', die Lerngruppen des Notenbuchs kommen automatisch dazu' : ''}. Die Tafeln bleiben auf
-                dem Gerät, auf dem sie entstanden sind. Noten gibt es hier nicht – nur Namen.{' '}
+                Klassen, Namen und Tafeln werden verschlüsselt mit deinen anderen Geräten abgeglichen{abgleich.notenbuch ? ', die Lerngruppen des Notenbuchs kommen automatisch dazu' : ''}. Noten gibt
+                es hier nicht – nur Namen.
+                {belegt !== null && (
+                  <>
+                    {' '}
+                    Bilder und PDF-Seiten belegen {mb(belegt)} von {mb(SPEICHER_GRENZE)} auf dem Server.
+                  </>
+                )}{' '}
                 <button type="button" className="text-knopf" onClick={() => void vergissSchluessel()}>
                   Auf diesem Gerät sperren
                 </button>

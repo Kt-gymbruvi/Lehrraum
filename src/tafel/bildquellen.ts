@@ -31,6 +31,8 @@ export function ladeBildquelle(id: string): Promise<Quelle | null> {
       .catch(() => null)
       .then((q) => {
         fertig.set(id, q)
+        // Fehlt die Datei, kommt sie vielleicht gleich von einem anderen Gerät: später noch einmal versuchen
+        if (!q) setTimeout(() => fertig.get(id) === null && fertig.delete(id), 20_000)
         unterwegs.delete(id)
         hoerer.forEach((h) => h())
         return q

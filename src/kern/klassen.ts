@@ -262,7 +262,10 @@ export function gleicheMitNotenbuchAb(lokal: Klasse[], notenbuch: NotenbuchKlass
 
 // ---------- Abgleich der Klassen zwischen den Geräten ----------
 /** Inhalt des verschlüsselten Tresors „klassen“ (alle Klassen; Namen nur von selbst angelegten, Tafeln nie) */
-export type KlassenTresor = { schema: 'lehrraum/klassen'; version: 1; klassen: Klasse[]; geloescht: Geloescht[] }
+/** `tafelSchluessel`: zufälliger AES-256-Schlüssel (Base64) für die Tafeln auf allen Geräten (seit Etappe C) */
+export type KlassenTresor = { schema: 'lehrraum/klassen'; version: 1; klassen: Klasse[]; geloescht: Geloescht[]; tafelSchluessel?: string }
+/** 32 Byte als Base64 */
+export const istTafelSchluessel = (x: unknown): x is string => typeof x === 'string' && /^[A-Za-z0-9+/]{43}=$/.test(x)
 /** Gelöschte Klasse: Kennung und Zeitpunkt – damit sie auf anderen Geräten nicht wieder auftaucht */
 export type Geloescht = { id: string; am: string }
 
@@ -281,12 +284,24 @@ export function pruefeKlassenTresor(roh: unknown): KlassenTresor | null {
   if (typeof roh !== 'object' || roh === null) return null
   const t = roh as Record<string, unknown>
   if (t.schema !== 'lehrraum/klassen' || t.version !== 1 || !Array.isArray(t.klassen)) return null
-  return { schema: 'lehrraum/klassen', version: 1, klassen: t.klassen.map(pruefeKlasse).filter((k): k is Klasse => k !== null), geloescht: pruefeGeloescht(t.geloescht) }
+  return {
+    schema: 'lehrraum/klassen',
+    version: 1,
+    klassen: t.klassen.map(pruefeKlasse).filter((k): k is Klasse => k !== null),
+    geloescht: pruefeGeloescht(t.geloescht),
+    ...(istTafelSchluessel(t.tafelSchluessel) ? { tafelSchluessel: t.tafelSchluessel } : {}),
+  }
 }
 
-export function klassenTresor(klassen: Klasse[], geloescht: Geloescht[]): KlassenTresor {
+export function klassenTresor(klassen: Klasse[], geloescht: Geloescht[], tafelSchluessel?: string): KlassenTresor {
   const nachId = (a: { id: string }, b: { id: string }) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0)
-  return { schema: 'lehrraum/klassen', version: 1, klassen: klassen.map(fuerDenTresor).sort(nachId), geloescht: [...geloescht].sort(nachId) }
+  return {
+    schema: 'lehrraum/klassen',
+    version: 1,
+    klassen: klassen.map(fuerDenTresor).sort(nachId),
+    geloescht: [...geloescht].sort(nachId),
+    ...(tafelSchluessel ? { tafelSchluessel } : {}),
+  }
 }
 
 /**

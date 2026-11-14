@@ -123,3 +123,92 @@ export function fehlerText(fehler: unknown): string {
   if (/noch nicht eingerichtet/.test(msg)) return msg
   return 'Etwas ist schiefgelaufen: ' + msg
 }
+
+// ---------- Tafeln (lr_tafeln) und ihre Dateien (Speicherbereich lr-dateien) ----------
+// Alles nur verschlüsselt (siehe tafelabgleich.ts). Kennung der Tafel: „frei“ oder „k-<Kennung der Klasse>“.
+export type TafelZeile = { rev: number; iv: string; daten: string }
+const BEREICH = 'lr-dateien'
+
+/** Nur die Fassung (klein) – um zu sehen, ob sich etwas geändert hat; 0 = es gibt sie noch nicht */
+export async function ladeTafelRev(tafel: string): Promise<number> {
+  const { data, error } = await db().from('lr_tafeln').select('rev').eq('tafel', tafel).maybeSingle()
+  if (error) throw error
+  return (data as { rev: number } | null)?.rev ?? 0
+}
+
+export async function ladeTafelZeile(tafel: string): Promise<TafelZeile | null> {
+  const { data, error } = await db().from('lr_tafeln').select('rev, iv, daten').eq('tafel', tafel).maybeSingle()
+  if (error) throw error
+  return (data as TafelZeile | null) ?? null
+}
+
+/** Alle Tafeln der Lehrkraft (für das Aufräumen der Dateien) */
+export async function ladeAlleTafelZeilen(): Promise<(TafelZeile & { tafel: string })[]> {
+  const { data, error } = await db().from('lr_tafeln').select('tafel, rev, iv, daten')
+  if (error) throw error
+  return (data ?? []) as (TafelZeile & { tafel: string })[]
+}
+
+/** Speichert nur, wenn auf dem Server noch die Fassung `revErwartet` liegt (0 = noch keine); sonst TresorKonflikt. */
+export async function speichereTafelZeile(tafel: string, revErwartet: number, iv: string, daten: string): Promise<number> {
+  const { data, error } = await db().rpc('lr_tafel_speichern', { p_tafel: tafel, p_rev_erwartet: revErwartet, p_iv: iv, p_daten: daten })
+  if (error) {
+    if (/konflikt/.test(error.message ?? '')) throw new TresorKonflikt()
+    throw error
+  }
+  return data as number
+}
+
+export async function loescheTafelZeile(tafel: string): Promise<void> {
+  const { error } = await db().from('lr_tafeln').delete().eq('tafel', tafel)
+  if (error) throw error
+}
+
+async function ordner(): Promise<string> {
+  const { data } = await db().auth.getSession()
+  const id = data.session?.user.id
+  if (!id) throw new Error('nicht angemeldet')
+  return id
+}
+
+/** Lädt eine (verschlüsselte) Datei hoch. Gibt es sie schon, ist das auch recht. */
+export async function ladeDateiHoch(name: string, daten: Blob): Promise<void> {
+  const { error } = await db().storage.from(BEREICH).upload(`${await ordner()}/${name}`, daten, { upsert: false, contentType: 'application/octet-stream' })
+  if (error && !/exist|duplicate|409/i.test(`${error.message} ${(error as { statusCode?: string }).statusCode ?? ''}`)) throw error
+}
+
+/** Holt eine (verschlüsselte) Datei; null, wenn es sie nicht gibt */
+export async function holeDatei(name: string): Promise<Blob | null> {
+  const { data, error } = await db().storage.from(BEREICH).download(`${await ordner()}/${name}`)
+  if (error) {
+    if (/not found|404|400/i.test(`${error.message} ${(error as { statusCode?: string }).statusCode ?? ''}`)) return null
+    throw error
+  }
+  return data
+}
+
+export type ServerDatei = { name: string; groesse: number; erstellt: string }
+
+export async function listeDateien(): Promise<ServerDatei[]> {
+  const pfad = await ordner()
+  const alle: ServerDatei[] = []
+  for (let ab = 0; ab < 100_000; ab += 1000) {
+    const { data, error } = await db().storage.from(BEREICH).list(pfad, { limit: 1000, offset: ab })
+    if (error) throw error
+    for (const d of data ?? []) {
+      const m = (d.metadata ?? {}) as { size?: number }
+      alle.push({ name: d.name, groesse: typeof m.size === 'number' ? m.size : 0, erstellt: d.created_at ?? '' })
+    }
+    if ((data ?? []).length < 1000) break
+  }
+  return alle
+}
+
+export async function loescheDateien(namen: string[]): Promise<void> {
+  if (!namen.length) return
+  const pfad = await ordner()
+  for (let i = 0; i < namen.length; i += 100) {
+    const { error } = await db().storage.from(BEREICH).remove(namen.slice(i, i + 100).map((n) => `${pfad}/${n}`))
+    if (error) throw error
+  }
+}

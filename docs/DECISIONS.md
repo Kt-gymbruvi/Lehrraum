@@ -4,6 +4,12 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-14 – Tafeln auf allen Geräten (Etappe C)
+- **Nur der Inhalt wird abgeglichen** (Titel, Format, Seiten), nicht Ansicht, gezeigte Seite und offene Fenster: Sonst löste schon Verschieben oder Zoomen auf dem anderen Gerät „neuer Stand geladen“ aus. Ob sich etwas geändert hat, entscheidet eine Prüfsumme des Inhalts; der Änderungszeitpunkt der Tafel zählt nur noch Inhaltsänderungen.
+- **Die zuletzt geänderte gilt, ohne Zusammenführen** (SPEC). Ausnahme nur beim allerersten Abgleich, wenn beide Seiten schon eine eigene Tafel haben: Die ältere wird angehängt statt verworfen. Das Anhängen wird erst hochgeladen, wenn die Tafel es zeigt (sonst könnte eine gleichzeitige Änderung es doppelt anhängen).
+- **Ein Tafel-Schlüssel für alle Tafeln** im Klassen-Tresor plus Kopie auf dem Gerät: Eine Passwortänderung verschlüsselt nur den Klassen-Tresor neu. Ohne Kopie und mit unlesbarem Klassen-Tresor wird kein neuer Schlüssel erzeugt (sonst würden die Tafeln anderer Geräte unlesbar und überschrieben).
+- **Dateien vor der Tafel hochladen, auf dem Server erst nach einem Tag löschen:** So zeigt keine Tafel auf eine fehlende Datei, und ein Gerät räumt nie eine Datei weg, deren Tafel gerade erst unterwegs ist. Fehlt beim Zeichnen ein Bild, versucht es die Tafel nach 20 Sekunden erneut.
+
 ## 2026-11-14 – Ein Passwort, ein Schlüsselbund (Etappe B)
 - **Grundschlüssel statt abgeleiteter Schlüssel im Bund:** Gespeichert wird das Passwort als nicht exportierbarer PBKDF2-Schlüssel (`importKey(..., false, ['deriveKey'])`). Daraus entstehen für jedes Salz dieselben Schlüssel wie bisher aus dem Passwort – die Formate von Notenbuch, Namensliste und Klassen bleiben unverändert, und neue Salze (z. B. Klassen-Tresor nach Passwortänderung, später Tafel-Schlüssel) brauchen keine erneute Eingabe. Auslesen lässt sich das Passwort nicht; wer das Gerät entsperrt in der Hand hat, kann ohnehin alles öffnen – wie mit den bisher gespeicherten Schlüsseln.
 - **Abmelden erkennt jede Anwendung selbst** am Fehlen der gemeinsamen Anmeldung im `localStorage` – Quizzo und Klassenfunk müssen dafür nicht geändert werden. Nur das Fehlen zählt, nicht eine ohne Netz abgelaufene Sitzung.

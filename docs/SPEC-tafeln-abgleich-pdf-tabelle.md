@@ -40,6 +40,7 @@ Entscheidungen der Lehrkraft (14.11.2026):
 - Anzeige in der Kopfzeile: „Gespeichert · auf allen Geräten“ bzw. „Nur auf diesem Gerät“ / „Wird hochgeladen …“.
 - **Grenzen:** Der Speicher des kostenlosen Supabase-Tarifs ist begrenzt (1 GB für Dateien). Große PDFs (viele Seiten) belegen viel davon; die Tafel zeigt den belegten Platz unter „Meine Klassen“ an.
 - Offline: Schreiben geht immer; hochgeladen wird, sobald wieder Verbindung besteht.
+- **Umsetzung (veröffentlicht 14.11.2026):** siehe `docs/PROJECT-STATUS.md` und `docs/DECISIONS.md` (Etappe C). Abweichung: Abgeglichen wird nur der Inhalt (Titel, Format, Seiten); Ansicht, gezeigte Seite und Fenster bleiben je Gerät.
 
 ## Etappe D – Tabelle
 - Werkzeug **„Tabelle“** in der linken Leiste: Antippen auf der Tafel öffnet die Wahl von Zeilen und Spalten (Vorgabe 3 × 3, bis 20 × 10), dann liegt die Tabelle dort.
