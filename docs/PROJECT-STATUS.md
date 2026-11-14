@@ -2,20 +2,20 @@
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
 Tests: 22 Testdateien, 276 Tests grün (`npm test`); Build grün (`npm run build`).
-**Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind gebaut, noch nicht veröffentlicht.
+**Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden.
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
-## PDF als Bild (SPEC-tafeln-abgleich-pdf-tabelle, Etappe A) – gebaut 14.11.2026, nicht veröffentlicht
+## PDF als Bild (SPEC-tafeln-abgleich-pdf-tabelle, Etappe A) – veröffentlicht 14.11.2026
 - **„PDF öffnen“** legt je PDF-Seite eine Tafelseite an; darauf liegt die PDF-Seite als **Bild-Element**, das das Blatt ausfüllt. Die Seite behält das Maß der PDF-Seite (in festen Formaten; Hochformat-PDF in einer 16:9-Tafel bleibt hoch).
 - Das Bild verhält sich wie jedes Bild: auswählen, verschieben, Größe ändern, drehen, löschen, rückgängig, „Als Hintergrund“. Darauf schreiben geht wie bisher.
 - **Ältere PDF-Seiten** (PDF als fester Hintergrund) werden beim Öffnen der Tafel einmalig zu einem solchen Bild – sie sehen gleich aus, auch gedreht. **Datenmodell Version 6** (`Seite.blatt`, Hintergrund ohne `pdf`): nach dem Veröffentlichen auf jedem Gerät einmal neu laden.
 - Entfallen: Drehen/Entfernen-Knöpfe für PDF-Seiten in der Seitenleiste und „Alle N PDF-Seiten“ löschen. Für ein **eigenes Hintergrundbild** bleiben Drehen und „Hintergrundbild entfernen“. „Bild wählen …“ für alle Seiten lässt PDF-Seiten aus; Muster für alle Seiten liegt bei PDF-Seiten unter dem Bild.
 - Getestet: `npm test` (276 grün; Umwandlung aus Version 5 mit allen vier Drehungen, Blattmaß, Bedienung), Build; im Browser (1200 px) zweiseitiges PDF (A4 hoch und quer) geöffnet, Bild ausgewählt, gelöscht, rückgängig, keine Konsolenfehler. **Am iPad nicht geprüft**; Drehen per Griff im Browser nicht von Hand geprüft (gleiches Verhalten wie bei Bildern, durch Tests abgedeckt).
 
-## Handballen-Schutz verbessert – gebaut 14.11.2026, nicht veröffentlicht
+## Handballen-Schutz verbessert – veröffentlicht 14.11.2026
 - Rückmeldung der Lehrkraft (iPad): Mit aufgelegter Hand klappte das Schreiben manchmal nicht.
 - Ursache: Lag die Hand zuerst auf, begann sie eine Geste (oder vor dem ersten Stiftstrich einen Fingerstrich); der Stift wurde dann übergangen. Kam die Hand während des Schreibens dazu, wurde der Strich verworfen und die Ansicht verschoben.
 - Jetzt: Der Stift hat immer Vorrang (Geste/Fingerstrich der Hand wird verworfen). Berührungen während des Schreibens und bis 1 s danach gelten als Handballen und tun nichts. Finger verschieben weiterhin, wenn der Stift länger weg ist.
