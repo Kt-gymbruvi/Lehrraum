@@ -1,12 +1,11 @@
 # Projektstand – Lehrraum
 
-Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Etappe 4 „Stift“, Teil 1 und 2) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Etappe 5 „Laserpointer und Einstellungen merken“) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
 Tests: 15 Testdateien, 197 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
-Etappe 4 „Stift“ (Teil 1 und 2) ist veröffentlicht, am Gerät aber noch nicht geprüft.
-Lokal fertig, **noch nicht veröffentlicht:** Etappe 5 – Laserpointer und Einstellungen merken (siehe unten).
+Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 
-## Laserpointer und Einstellungen merken (Spezifikation L1, E1) – lokal, nicht veröffentlicht
+## Laserpointer und Einstellungen merken (Spezifikation L1, E1) – veröffentlicht am 14.11.2026
 - **Laserpointer** als zwölftes Werkzeug (unterste Reihe links, neben „Bild“; Taste Z): zeichnet eine rote, leicht leuchtende Spur. Nach dem Abheben bleibt sie 1 Sekunde stehen und verblasst in 0,5 Sekunden. Mit Maus oder schwebendem Stift zeigt ein roter Punkt, wohin gezeigt wird (der Mauszeiger verschwindet dafür).
 - Die Spur liegt nur auf der oberen Zeichenebene: nicht gespeichert, nicht im Verlauf, nicht im PDF; der Speicherstand bleibt „Auf diesem Gerät gespeichert“. Eine Farbe antippen wechselt (wie beim Radierer) zum Stift.
 - **Einstellungen merken:** Werkzeug, Farbe, Stärke sowie Art und Größe des Radierers sind nach dem Neuladen wie zuletzt – je Gerät und Browser, für alle Tafeln gemeinsam (die eigenen Farbplätze wurden schon in Etappe 4 gemerkt). War zuletzt Radierer, Laserpointer oder Hand gewählt, beginnt die Tafel mit dem Stift.
@@ -162,7 +161,7 @@ Lokal fertig, **noch nicht veröffentlicht:** Etappe 5 – Laserpointer und Eins
 - **Am SMART Board kommt die Schrift sehr verzögert und abgehakt**; am iPad läuft es besser. Ursache noch nicht gemessen. Vermutung im Code: Bei jeder Stiftbewegung wird der ganze entstehende Strich neu berechnet und die obere Zeichenebene ganz neu gezeichnet, ohne Bündelung je Bildwechsel.
 
 ## Nächste Schritte
-Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC-zeichenwerkzeuge-und-auswahl.md` (12.11.2026). Umgesetzt und veröffentlicht sind davon der erste Teil von Etappe 1, Etappe 2 (Auswahl, alle drei Teile), Teil 1 von Etappe 3 (Radierer) und Etappe 4 (Stift, beide Teile).
+Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC-zeichenwerkzeuge-und-auswahl.md` (12.11.2026). Umgesetzt und veröffentlicht sind davon der erste Teil von Etappe 1, Etappe 2 (Auswahl, alle drei Teile), Teil 1 von Etappe 3 (Radierer), Etappe 4 (Stift, beide Teile) und Etappe 5 (Laserpointer, Einstellungen merken). Offen ist nur noch R4 (Etappe 3, Teil 2) nach der Messung am SMART Board.
 1. **Schreiben am SMART Board** (Spezifikation P1, P2): Erster Teil veröffentlicht und am Board gemessen (siehe oben). Die überarbeitete Prüfansicht ist veröffentlicht. Als Nächstes am Board:
    - **SMART Ink prüfen:** mit dem Stift schreiben, dann in der Tafel auf „Neue Seite“ tippen. Bleibt die Stiftschrift stehen, liegt sie in der Schicht von SMART Ink, nicht in der Tafel.
    - **SMART Ink für den Browser ausschalten** (über das SMART-Ink-Bedienelement oben rechts im Fenster, „SMART Ink ausschalten“ → „In dieser Anwendung“; ggf. die Schul-IT fragen), dann in `#/pruefen` nacheinander mit Finger, Stift und Faust je einen Strich, ein Foto. Dasselbe in Microsoft Edge (meldet vermutlich die Größe der Berührung, Firefox nicht).
@@ -177,6 +176,6 @@ Für Zeichenwerkzeuge und Auswahl gilt die freigegebene Spezifikation `docs/SPEC
 4. **Stift** (S1–S3, W1) in zwei Teilen:
    - Teil 1 (veröffentlicht am 14.11.2026, am Gerät noch nicht geprüft): mehr Farben, eigene Farbplätze, Regler für die Stärke, Knopf „Mehr“.
    - Teil 2 (veröffentlicht am 14.11.2026): Begradigen durch Halten (S3). Am Gerät zu prüfen: Haltezeit, Erkennung mit echter Handschrift, versehentliches Begradigen beim Schreiben.
-5. **Laserpointer und Einstellungen merken** (L1, E1): lokal fertig, nicht veröffentlicht. Am Gerät zu prüfen: Sichtbarkeit der Spur am SMART Board, Dauer bis zum Verblassen.
+5. **Laserpointer und Einstellungen merken** (L1, E1): veröffentlicht am 14.11.2026, am Gerät noch nicht geprüft. Am Gerät zu prüfen: Sichtbarkeit der Spur am SMART Board, Dauer bis zum Verblassen.
 6. Weiter offen: Erprobung am iPad (Handballen, Zwei-Finger-Zoom, Text mit Bildschirmtastatur, PDF, Teilen an Goodnotes), Quizzo und Klassenfunk mit echter Anmeldung (Lehrkraft).
 7. Phase 4 weiter: Schülerliste, Zufall und Gruppen, Sitzordnung, Goodnotes-Link. Danach 2d und 3b.
