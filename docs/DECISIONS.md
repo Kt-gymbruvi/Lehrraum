@@ -3,6 +3,13 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+
+## 2026-11-14 – Ein Passwort, ein Schlüsselbund (Etappe B)
+- **Grundschlüssel statt abgeleiteter Schlüssel im Bund:** Gespeichert wird das Passwort als nicht exportierbarer PBKDF2-Schlüssel (`importKey(..., false, ['deriveKey'])`). Daraus entstehen für jedes Salz dieselben Schlüssel wie bisher aus dem Passwort – die Formate von Notenbuch, Namensliste und Klassen bleiben unverändert, und neue Salze (z. B. Klassen-Tresor nach Passwortänderung, später Tafel-Schlüssel) brauchen keine erneute Eingabe. Auslesen lässt sich das Passwort nicht; wer das Gerät entsperrt in der Hand hat, kann ohnehin alles öffnen – wie mit den bisher gespeicherten Schlüsseln.
+- **Abmelden erkennt jede Anwendung selbst** am Fehlen der gemeinsamen Anmeldung im `localStorage` – Quizzo und Klassenfunk müssen dafür nicht geändert werden. Nur das Fehlen zählt, nicht eine ohne Netz abgelaufene Sitzung.
+- **Die Namensliste ist der Maßstab:** Passt sie nicht zum Bund, ist der Bund veraltet (Passwort geändert) und wird gelöscht. Das Notenbuch verschlüsselt deshalb beim Passwortwechsel zuerst die Namensliste neu und ersetzt erst dann den Bund.
+- **Keine Zeitsperre mehr im Notenbuch** (Wunsch der Lehrkraft): Schutz bieten Gerätesperre, „Auf diesem Gerät sperren“ und Abmelden. Ohne Anmeldung wird kein Bund angelegt; dann fragt das Notenbuch bei jedem Öffnen.
+
 ## 2026-11-14 – Tabelle (SPEC Etappe D)
 - **Eigenes Element `tabelle`** mit gespeicherten Spaltenbreiten und Zelltexten; die Zeilenhöhe wird aus dem Text berechnet (Zeilenumbrüche), nicht gespeichert. So bleibt das Modell klein und es gibt keine Höhe, die nicht zum Text passt. Verworfen: Tabelle aus einzelnen Linien und Textfeldern (nicht als Ganzes zu ändern).
 - **Kein automatischer Umbruch** langer Zellen: Text, der nicht passt, wird abgeschnitten; breiter ziehen oder Umschalt + Enter. Ein Umbruch nach Breite bräuchte eine Textmessung, die sich im Datenmodell (ohne Browser) nicht genau machen lässt.

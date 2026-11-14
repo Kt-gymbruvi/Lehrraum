@@ -364,7 +364,7 @@ export default function Klassen() {
                 Klassen und Namen werden verschlüsselt mit deinen anderen Geräten abgeglichen{abgleich.notenbuch ? ', die Lerngruppen des Notenbuchs kommen automatisch dazu' : ''}. Die Tafeln bleiben auf
                 dem Gerät, auf dem sie entstanden sind. Noten gibt es hier nicht – nur Namen.{' '}
                 <button type="button" className="text-knopf" onClick={() => void vergissSchluessel()}>
-                  Passwort auf diesem Gerät vergessen
+                  Auf diesem Gerät sperren
                 </button>
               </p>
             ) : (

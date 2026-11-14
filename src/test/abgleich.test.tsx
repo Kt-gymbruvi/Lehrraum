@@ -18,18 +18,20 @@ import {
   type NotenbuchKlasse,
 } from '../kern/klassen.ts'
 import { entschluessele, leiteSchluesselAb, neuesSalz, verschluessele } from '../kern/tresor.ts'
-import { abgleichInfo, entsperre, gleicheAb, merkeGeloescht } from '../speicher/abgleich.ts'
+import { abgleichInfo, entsperre, gleicheAb, merkeGeloescht, vergissSchluessel } from '../speicher/abgleich.ts'
+import { ladeBund, schluesselAus } from '../speicher/schluesselbund.ts'
 import { ladeKlassen, loescheKlasse, speichereKlasse } from '../speicher/datenbank.ts'
 
 // ---------- nachgebauter Server ----------
 type Zeile = { rev: number; salt: string; iv: string; daten: string }
-const server = vi.hoisted(() => ({ angemeldet: true, tresore: new Map<string, Zeile>(), aufrufe: 0 }))
+const server = vi.hoisted(() => ({ angemeldet: true, sitzung: true, tresore: new Map<string, Zeile>(), aufrufe: 0 }))
 vi.mock('../speicher/server.ts', async (original) => {
   const echt = await original<typeof import('../speicher/server.ts')>()
   return {
     ...echt,
     serverVorhanden: () => true,
     istAngemeldet: async () => server.angemeldet,
+    sitzungGespeichert: () => server.sitzung,
     beiAnmeldung: () => () => undefined,
     ladeTresor: async (art: string) => server.tresore.get(art) ?? null,
     speichereTresor: async (art: string, rev: number, salt: string, iv: string, daten: string) => {
@@ -66,6 +68,7 @@ const nb = (id: string, name: string, schueler: [string, string, string][] = [],
 
 beforeEach(() => {
   server.angemeldet = true
+  server.sitzung = true
   server.tresore.clear()
   server.aufrufe = 0
 })
@@ -201,9 +204,11 @@ describe('Abgleich mit nachgebautem Server', () => {
   }, 20_000)
 
   it('zweites Gerät bekommt die Klassen, Löschungen kommen an, nichts wird doppelt hochgeladen', async () => {
-    // Gerät 1
+    // Gerät 1 – noch kein Notenbuch: Das Passwort wird hier festgelegt
     await speichereKlasse(neueKlasse({ bezeichnung: '9a', fach: 'Biologie', jahrgang: '9' }))
-    expect(await entsperre(PW)).toBeNull()
+    expect(await entsperre(PW)).toBe('neu')
+    expect(await entsperre('kurz', { neu: true })).toBe('Mindestens 8 Zeichen.')
+    expect(await entsperre(PW, { neu: true })).toBeNull()
     const hochgeladen = server.aufrufe
     await gleicheAb()
     expect(server.aufrufe).toBe(hochgeladen) // unverändert: kein neues Speichern
@@ -228,12 +233,15 @@ describe('Abgleich mit nachgebautem Server', () => {
     await notenbuchSchreibt([nb('abc123', '7b')])
     expect(await entsperre(PW)).toBeNull()
     await notenbuchSchreibt([nb('abc123', '7b')], 'neues-pw')
+    const altesSalz = server.tresore.get('klassen')!.salt
     await gleicheAb()
     expect(abgleichInfo().stand).toBe('gesperrt')
+    expect(await ladeBund()).toBeNull() // veralteter Schlüsselbund ist weg – auch das Notenbuch fragt neu
     expect(await entsperre(PW)).toBe('Das Passwort passt nicht zum Notenbuch.')
     expect(await entsperre('neues-pw')).toBeNull()
     expect(abgleichInfo().stand).toBe('bereit')
     expect(await ladeKlassen()).toHaveLength(1)
+    expect(server.tresore.get('klassen')!.salt).not.toBe(altesSalz) // mit dem neuen Passwort neu verschlüsselt
   }, 30_000)
 })
 
@@ -278,4 +286,69 @@ describe('Seite „Meine Klassen“ mit Namen', () => {
     expect(await screen.findByText('2 Namen')).toBeInTheDocument()
     await waitFor(async () => expect((await ladeKlassen())[0].schueler.map((s) => s.vorname)).toEqual(['Anna', 'Ben']))
   })
+})
+
+describe('Schlüsselbund – ein Passwort für Tafel, Notenbuch und Startseite', () => {
+  it('legt nur einen nicht auslesbaren Grundschlüssel ab – daraus ergeben sich dieselben Schlüssel wie aus dem Passwort', async () => {
+    await notenbuchSchreibt([nb('abc123', '7b')])
+    expect(await entsperre(PW)).toBeNull()
+    const bund = await ladeBund()
+    expect(bund?.basis.extractable).toBe(false)
+    expect(bund?.basis.algorithm.name).toBe('PBKDF2')
+    expect(JSON.stringify(bund)).not.toContain(PW)
+    // So öffnet das Notenbuch seine Namensliste mit dem Bund – ohne Passwort
+    const zeile = server.tresore.get('namen')!
+    const inhalt = await entschluessele(await schluesselAus(bund!, zeile.salt), zeile)
+    expect(inhalt).toMatchObject({ schema: 'notenbuch/namen' })
+  }, 20_000)
+
+  it('prüft das Passwort am Notenbuch, wenn es weder Namensliste noch Klassen gibt', async () => {
+    const salt = neuesSalz()
+    const box = await verschluessele(await leiteSchluesselAb(PW, salt), { v: 1, classes: [] })
+    server.tresore.set('notenbuch', { rev: 1, salt, ...box })
+    expect(await entsperre('falsch')).toBe('Das Passwort passt nicht zum Notenbuch.')
+    expect(await ladeBund()).toBeNull()
+    expect(await entsperre(PW)).toBeNull()
+    expect(await ladeBund()).not.toBeNull()
+  }, 20_000)
+
+  it('Abmelden (auch in einer anderen Anwendung) und „Auf diesem Gerät sperren“ löschen den Bund', async () => {
+    await notenbuchSchreibt([nb('abc123', '7b')])
+    expect(await entsperre(PW)).toBeNull()
+    // ohne Netz nicht erneuerbar, aber noch angemeldet: Bund bleibt
+    server.angemeldet = false
+    await gleicheAb()
+    expect(await ladeBund()).not.toBeNull()
+    // wirklich abgemeldet: Bund weg
+    server.sitzung = false
+    await gleicheAb()
+    expect(abgleichInfo().stand).toBe('abgemeldet')
+    expect(await ladeBund()).toBeNull()
+    // wieder angemeldet: einmal Passwort, dann sperren
+    server.angemeldet = server.sitzung = true
+    expect(await entsperre(PW)).toBeNull()
+    await vergissSchluessel()
+    expect(await ladeBund()).toBeNull()
+    expect(abgleichInfo().stand).toBe('gesperrt')
+  }, 20_000)
+
+  it('Seite „Meine Klassen“: ohne Notenbuch wird das Passwort festgelegt (zweimal eingegeben)', async () => {
+    const nutzer = userEvent.setup()
+    render(
+      <MemoryRouter initialEntries={['/klassen']}>
+        <App />
+      </MemoryRouter>,
+    )
+    await nutzer.type(await screen.findByLabelText('Passwort des Notenbuchs'), PW)
+    await nutzer.click(screen.getByRole('button', { name: 'Entsperren' }))
+    expect(await screen.findByRole('heading', { name: 'Passwort festlegen' })).toBeInTheDocument()
+    await nutzer.type(screen.getByLabelText('Passwort wiederholen'), 'anders-123')
+    await nutzer.click(screen.getByRole('button', { name: 'Passwort festlegen' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('stimmen nicht überein')
+    await nutzer.clear(screen.getByLabelText('Passwort wiederholen'))
+    await nutzer.type(screen.getByLabelText('Passwort wiederholen'), PW)
+    await nutzer.click(screen.getByRole('button', { name: 'Passwort festlegen' }))
+    expect(await screen.findByText(/Klassen synchronisiert/, {}, { timeout: 10_000 })).toBeInTheDocument()
+    expect(await ladeBund()).not.toBeNull()
+  }, 30_000)
 })

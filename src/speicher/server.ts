@@ -13,6 +13,18 @@ export async function istAngemeldet(): Promise<boolean> {
 }
 
 /** Meldet Änderungen der Anmeldung (auch aus einem anderen Tab). Liefert die Funktion zum Abbestellen. */
+/** Liegt auf diesem Gerät eine Anmeldung? Ohne Server-Anfrage: Abmelden (hier, auf der Startseite, in Quizzo,
+ * Klassenfunk oder im Notenbuch) entfernt diesen Eintrag – dann gehört auch der Schlüsselbund weg. */
+export function sitzungGespeichert(): boolean {
+  if (!supabase) return false
+  try {
+    const ref = new URL(import.meta.env.VITE_SUPABASE_URL as string).hostname.split('.')[0]
+    return window.localStorage.getItem(`sb-${ref}-auth-token`) !== null
+  } catch {
+    return true // im Zweifel nichts löschen
+  }
+}
+
 export function beiAnmeldung(tun: (angemeldet: boolean) => void): () => void {
   if (!supabase) return () => undefined
   const { data } = supabase.auth.onAuthStateChange((_ereignis, sitzung) => tun(sitzung !== null))
@@ -83,7 +95,8 @@ export class TresorKonflikt extends Error {
   }
 }
 
-export async function ladeTresor(art: TresorArt): Promise<TresorZeile | null> {
+/** Liest einen Tresor; „notenbuch“ nur, um beim ersten Passwort zu prüfen, ob es passt (geschrieben wird er nur vom Notenbuch). */
+export async function ladeTresor(art: TresorArt | 'notenbuch'): Promise<TresorZeile | null> {
   const { data, error } = await db().from('lr_tresore').select('rev, salt, iv, daten').eq('art', art).maybeSingle()
   if (error) throw error
   return (data as TresorZeile | null) ?? null

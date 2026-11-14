@@ -28,6 +28,7 @@ Entscheidungen der Lehrkraft (14.11.2026):
 - **Abmelden** (Startseite, Tafel, Quizzo, Klassenfunk, Notenbuch) löscht den Schlüsselbund auf diesem Gerät. Wer abgemeldet ist, hat keinen Zugriff aufs Notenbuch über den Server; die verschlüsselte Kopie auf dem Gerät bleibt (wie bisher).
 - **Passwort im Notenbuch geändert:** Die anderen Geräte merken es beim nächsten Abgleich und fragen einmal neu.
 - Ohne Notenbuch (noch nie angelegt): Die Tafel legt das Passwort fest; das Notenbuch übernimmt es beim ersten Anlegen.
+- **Umsetzung (gebaut 14.11.2026):** IndexedDB `lehrraum-schluessel`, Version 1, Lager `bund`, Eintrag `bund` = `{ version: 1, basis: CryptoKey, am: ISO-Zeit }`. `basis` = `importKey('raw', Passwort, 'PBKDF2', false, ['deriveKey'])`; Schlüssel je Tresor = PBKDF2-SHA-256, 250 000 Runden, mit dessen Salz → AES-256-GCM (wie bisher). Angelegt nur mit Anmeldung; gelöscht, wenn `sb-ifdqfndsvgiyvxvxtoga-auth-token` im `localStorage` fehlt, bei „Auf diesem Gerät sperren“ und wenn die Namensliste nicht mehr passt.
 
 ## Etappe C – Tafeln auf allen Geräten
 - **Jede Tafel** (Klassentafeln und die freie Tafel) wird nach dem Speichern verschlüsselt hochgeladen und auf den anderen Geräten beim Öffnen, beim Zurückkehren zur Seite und alle 30 Sekunden (wenn gerade nicht geschrieben wird) geholt.

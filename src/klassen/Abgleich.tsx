@@ -61,32 +61,51 @@ export function AbgleichHinweis({ info }: { info: AbgleichInfo }) {
 
 function Passwort({ meldung }: { meldung: string }) {
   const [pw, setPw] = useState('')
+  const [pw2, setPw2] = useState('')
+  const [neu, setNeu] = useState(false) // noch kein Notenbuch: Passwort hier festlegen
   const [fehler, setFehler] = useState('')
   const [laeuft, setLaeuft] = useState(false)
   async function absenden(e: FormEvent) {
     e.preventDefault()
+    if (neu && pw !== pw2) return setFehler('Die Passwörter stimmen nicht überein.')
     setLaeuft(true)
     setFehler('')
-    const f = await entsperre(pw)
+    const f = await entsperre(pw, { neu })
     setLaeuft(false)
-    if (f) setFehler(f)
-    else setPw('')
+    if (f === 'neu') setNeu(true)
+    else if (f) setFehler(f)
+    else {
+      setPw('')
+      setPw2('')
+    }
   }
   return (
     <section className="abgleich-hinweis" aria-label="Klassen entsperren">
-      <h2>Klassen und Namen entsperren</h2>
-      <p>
-        Klassen und Schülernamen werden verschlüsselt abgeglichen – mit dem <b>Passwort deines Notenbuchs</b>. Auf diesem Gerät fragt Lehrraum einmal danach; gespeichert wird nur ein daraus abgeleiteter
-        Schlüssel, nie das Passwort.
-      </p>
+      <h2>{neu ? 'Passwort festlegen' : 'Klassen und Namen entsperren'}</h2>
+      {neu ? (
+        <p>
+          Es gibt noch kein Notenbuch. Lege hier das Passwort fest, mit dem Klassen und Namen verschlüsselt werden – das Notenbuch übernimmt es später. Es gibt keine Passwort-Zurücksetzung.
+        </p>
+      ) : (
+        <p>
+          Klassen und Schülernamen werden verschlüsselt abgeglichen – mit dem <b>Passwort deines Notenbuchs</b>. Einmal je Gerät eingegeben, öffnen sich danach auch Notenbuch und Startseite ohne
+          Rückfrage. Gespeichert wird nur ein nicht auslesbarer Schlüssel, nie das Passwort; Abmelden löscht ihn.
+        </p>
+      )}
       {meldung && <p className="fehler">{meldung}</p>}
       <form className="anmeldung" onSubmit={absenden} noValidate>
         <label>
-          Passwort des Notenbuchs
-          <input type="password" autoComplete="off" value={pw} onChange={(e) => setPw(e.target.value)} />
+          {neu ? 'Neues Passwort (mind. 8 Zeichen)' : 'Passwort des Notenbuchs'}
+          <input type="password" autoComplete={neu ? 'new-password' : 'off'} value={pw} onChange={(e) => setPw(e.target.value)} />
         </label>
-        <button type="submit" className="f-knopf haupt" disabled={laeuft || !pw}>
-          {laeuft ? 'Wird geprüft …' : 'Entsperren'}
+        {neu && (
+          <label>
+            Passwort wiederholen
+            <input type="password" autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+          </label>
+        )}
+        <button type="submit" className="f-knopf haupt" disabled={laeuft || !pw || (neu && !pw2)}>
+          {laeuft ? 'Wird geprüft …' : neu ? 'Passwort festlegen' : 'Entsperren'}
         </button>
         {fehler && (
           <p className="fehler" role="alert">
