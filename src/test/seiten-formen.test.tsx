@@ -24,7 +24,7 @@ describe('Datenmodell', () => {
   it('wandelt Tafeln der Version 1 (ohne Seiten) in eine Seite um', () => {
     const alt = { schema: 'lehrraum/tafel', version: 1, id: 'alt', titel: 'Alt', elemente: [strich('a'), strich('b')], kamera: { x: 1, y: 2, zoom: 1.5 }, geaendertAm: '2026-11-11T10:00:00.000Z' }
     const t = pruefeTafel(alt)!
-    expect(t.version).toBe(3)
+    expect(t.version).toBe(4)
     expect(t.seiten).toHaveLength(1)
     expect(t.seiten[0].elemente.map((e) => e.id)).toEqual(['a', 'b'])
     expect(t).toMatchObject({ id: 'alt', titel: 'Alt', seiteNr: 0, kamera: { x: 1, y: 2, zoom: 1.5 }, fenster: [] })

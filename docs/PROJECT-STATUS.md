@@ -1,9 +1,18 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit dem überarbeiteten Laserpointer) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 15 Testdateien, 200 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 16 Testdateien, 209 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
+**PDF-Seiten drehen und entfernen** ist fertig, aber noch nicht veröffentlicht. Es bringt **Datenmodell Version 4**: Nach dem Veröffentlichen auf jedem Gerät die Seite einmal neu laden.
+
+## PDF-Seiten drehen, Hintergrund entfernen, alle Seiten eines PDFs löschen – fertig, noch nicht veröffentlicht
+- **Drehen:** Auf einer Seite mit PDF-Hintergrund stehen in der unteren Leiste zwei Knöpfe: „nach links drehen“ und „nach rechts drehen“, je 90°. Das Geschriebene dreht sich mit. Die Seite liegt danach wieder oben links, gedrehte Seiten erscheinen auch im PDF-Export gedreht. Ein Schritt im Verlauf.
+- **Nur den PDF-Hintergrund entfernen:** Ein dritter Knopf nimmt die PDF-Seite weg. Was darauf geschrieben wurde, bleibt. Ein Schritt im Verlauf, Rückgängig holt die PDF-Seite zurück. Die Bilddatei bleibt bis zum nächsten Öffnen der Tafel erhalten und wird erst dann aufgeräumt.
+- **Alle Seiten eines PDFs löschen:** Beim Löschen einer Seite aus einem mehrseitigen PDF fragt die Leiste: „Nur diese Seite“, „Alle N PDF-Seiten“ oder „Nein“. Das gilt nur für PDFs, die ab jetzt geöffnet werden. Ältere PDF-Seiten tragen keine Kennung ihres PDFs, dort gibt es weiter nur das Löschen einer Seite. Wie bisher lässt sich Seitenlöschen nicht rückgängig machen.
+- **Platz:** Mit den PDF-Knöpfen zeigt die Leiste unter 1280 px Breite nur Symbole, während der Rückfrage blendet sie die Seitenknöpfe aus. So passt sie bei 1024 × 700 ohne Rollen (im Browser gemessen).
+- **Datenmodell Version 4:** Der Hintergrund bekommt `drehung` (90/180/270) und `pdf` (Kennung des Imports). Version 3 wird unverändert übernommen. Neuer Befehl `hintergrund` in `src/kern/befehle.ts` (mit `ausfuehrenAuf`/`rueckgaengigAuf`/`wiederholenAuf` für Elemente und Hintergrund). Logik in `src/kern/seiten.ts` (`drehBefehl`, `hintergrundWegBefehl`, `pdfSeiten`, `seitenWeg`).
+- **Geprüft:** im Browser mit einer echten dreiseitigen PDF (Import, Drehen nach rechts und links mit Strich, Entfernen, Rückgängig, Löschen aller PDF-Seiten, Rückfrage und „Nein“). **Nicht geprüft:** den PDF-Export einer gedrehten Seite mit einer echten Datei (derselbe Zeichencode wie die Tafel), Bedienung am Gerät.
 
 ## Laserpointer und Einstellungen merken (Spezifikation L1, E1) – veröffentlicht am 14.11.2026
 - **Laserpointer** als zwölftes Werkzeug (unterste Reihe links, neben „Bild“; Taste Z). **Aussehen überarbeitet (veröffentlicht am 14.11.2026, nach Rückmeldung „sieht nicht cool aus“):** leuchtender Laserstrahl mit rotem Schein und fast weißem, heißem Kern; dahinter ein Schweif, der zum Ende dünner und blasser wird. Jeder Punkt ist 0,7 s voll zu sehen und nach 1,5 s verloschen – auch während noch gezeigt wird; hält man still, bleibt nur der Leuchtpunkt wie bei einem echten Laserpointer. Mit Maus oder schwebendem Stift zeigt der Leuchtpunkt, wohin gezeigt wird (der Mauszeiger verschwindet dafür); nach dem Abheben verlischt er in 0,3 s.

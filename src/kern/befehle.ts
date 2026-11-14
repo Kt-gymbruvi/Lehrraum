@@ -1,6 +1,6 @@
 // Rückgängig und Wiederholen: Jede Änderung an der Tafel ist ein Befehl, der sich umkehren lässt.
 // Reine Funktionen – die Liste der Elemente wird nie verändert, sondern neu gebildet.
-import type { Element } from './modell.ts'
+import type { Element, Hintergrund } from './modell.ts'
 
 export type Befehl =
   | { art: 'hinzufuegen'; elemente: Element[] }
@@ -15,6 +15,11 @@ export type Befehl =
    * stelle: wo das Element vorher lag – zum Wiederherstellen, auch wenn kein Teil übrig blieb.
    */
   | { art: 'zerlegen'; eintraege: { stelle: number; vorher: Element; nachher: Element[] }[] }
+  /**
+   * Hintergrund der Seite ändern (PDF-Seite drehen oder entfernen); beim Drehen drehen sich die Elemente mit
+   * (geänderte Fassungen mit derselben Kennung). Fehlt nachher, ist der Hintergrund danach weg.
+   */
+  | { art: 'hintergrund'; vorher?: Hintergrund; nachher?: Hintergrund; elementeVorher: Element[]; elementeNachher: Element[] }
 
 export type Verlauf = { zurueck: Befehl[]; vor: Befehl[] }
 
@@ -58,6 +63,7 @@ function ordne(elemente: Element[], reihenfolge: string[]): Element[] {
 export function anwenden(elemente: Element[], b: Befehl): Element[] {
   if (b.art === 'hinzufuegen') return [...elemente, ...b.elemente]
   if (b.art === 'ersetzen') return tausche(elemente, b.nachher)
+  if (b.art === 'hintergrund') return b.elementeNachher.length ? tausche(elemente, b.elementeNachher) : elemente
   if (b.art === 'ordnen') return ordne(elemente, b.nachher)
   if (b.art === 'zerlegen') {
     const teile = new Map(b.eintraege.map((e) => [e.vorher.id, e.nachher]))
@@ -82,6 +88,7 @@ export function zuruecknehmen(elemente: Element[], b: Befehl): Element[] {
     return elemente.filter((e) => !weg.has(e.id))
   }
   if (b.art === 'ersetzen') return tausche(elemente, b.vorher)
+  if (b.art === 'hintergrund') return b.elementeVorher.length ? tausche(elemente, b.elementeVorher) : elemente
   if (b.art === 'ordnen') return ordne(elemente, b.vorher)
   if (b.art === 'zerlegen') {
     // Teile weg, dann die ursprünglichen Elemente wieder an ihre Stelle
@@ -118,4 +125,32 @@ export function wiederholen(elemente: Element[], verlauf: Verlauf): { elemente: 
     elemente: anwenden(elemente, b),
     verlauf: { zurueck: [...verlauf.zurueck, b], vor: verlauf.vor.slice(0, -1) },
   }
+}
+
+// ---------- Für die ganze Seite: Elemente und Hintergrund ----------
+/** Was ein Befehl an einer Seite ändern kann */
+export type Inhalt = { elemente: Element[]; hintergrund?: Hintergrund }
+
+/** Hintergrund nach dem Ausführen (vor = true) oder Zurücknehmen des Befehls; andere Befehle lassen ihn, wie er ist */
+function neuerHintergrund(i: Inhalt, b: Befehl | undefined, vor: boolean): Hintergrund | undefined {
+  if (b?.art !== 'hintergrund') return i.hintergrund
+  return vor ? b.nachher : b.vorher
+}
+const mit = (elemente: Element[], h: Hintergrund | undefined): Inhalt => (h ? { elemente, hintergrund: h } : { elemente })
+
+export function ausfuehrenAuf(i: Inhalt, verlauf: Verlauf, b: Befehl): { inhalt: Inhalt; verlauf: Verlauf } {
+  const r = ausfuehren(i.elemente, verlauf, b)
+  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, true)), verlauf: r.verlauf }
+}
+export function rueckgaengigAuf(i: Inhalt, verlauf: Verlauf): { inhalt: Inhalt; verlauf: Verlauf } {
+  const b = verlauf.zurueck[verlauf.zurueck.length - 1]
+  if (!b) return { inhalt: i, verlauf }
+  const r = rueckgaengig(i.elemente, verlauf)
+  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, false)), verlauf: r.verlauf }
+}
+export function wiederholenAuf(i: Inhalt, verlauf: Verlauf): { inhalt: Inhalt; verlauf: Verlauf } {
+  const b = verlauf.vor[verlauf.vor.length - 1]
+  if (!b) return { inhalt: i, verlauf }
+  const r = wiederholen(i.elemente, verlauf)
+  return { inhalt: mit(r.elemente, neuerHintergrund(i, b, true)), verlauf: r.verlauf }
 }

@@ -1,6 +1,6 @@
 // Zeichnet Elemente der Tafel auf ein Canvas – für die Zeichenfläche und für den PDF-Export.
 import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, pfeilspitze, rechteckEcken, stiftUmriss, ZEILENHOEHE } from '../kern/geometrie.ts'
-import { MARKER_DECKKRAFT, type Element, type Hintergrund, type Seite, type Strich } from '../kern/modell.ts'
+import { hintergrundMass, MARKER_DECKKRAFT, type Element, type Hintergrund, type Seite, type Strich } from '../kern/modell.ts'
 import { bildquelle } from './bildquellen.ts'
 import { abschnitte, type Spur } from '../kern/laser.ts'
 
@@ -31,7 +31,16 @@ function zeichneBild(ctx: Ctx, dateiId: string, x: number, y: number, b: number,
   }
 }
 
-export const zeichneHintergrund = (ctx: Ctx, h: Hintergrund) => zeichneBild(ctx, h.dateiId, 0, 0, h.b, h.h)
+/** Hintergrund bei (0, 0); gedreht um seine Mitte, sodass auch die gedrehte Seite bei (0, 0) beginnt */
+export function zeichneHintergrund(ctx: Ctx, h: Hintergrund) {
+  if (!h.drehung) return zeichneBild(ctx, h.dateiId, 0, 0, h.b, h.h)
+  const [b, hoehe] = hintergrundMass(h)
+  ctx.save()
+  ctx.translate(b / 2, hoehe / 2)
+  ctx.rotate((h.drehung * Math.PI) / 180)
+  zeichneBild(ctx, h.dateiId, -h.b / 2, -h.h / 2, h.b, h.h)
+  ctx.restore()
+}
 
 /** Zeichnet etwas, das um (x, y) gedreht ist, so als stünde es gerade bei (0, 0) */
 function gedrehtBei(ctx: Ctx, x: number, y: number, grad: number, tun: () => void) {

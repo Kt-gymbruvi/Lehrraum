@@ -1,6 +1,6 @@
 // Geometrie der Tafel: Kamera (Verschieben, Zoomen), Treffer des Radierers, Umriss eines Strichs als Pfad.
 import { getStroke } from 'perfect-freehand'
-import { DREHBARE_FORMEN, MARKER_FAKTOR, normiereWinkel, ZOOM_MAX, ZOOM_MIN, type Bild, type Element, type Form, type Kamera, type Seite, type Strich, type Text } from './modell.ts'
+import { DREHBARE_FORMEN, hintergrundMass, MARKER_FAKTOR, normiereWinkel, ZOOM_MAX, ZOOM_MIN, type Bild, type Element, type Form, type Kamera, type Seite, type Strich, type Text } from './modell.ts'
 
 /** Bildschirmpunkt (Pixel in der Zeichenfläche) → Tafel-Koordinaten */
 export function zuTafel(k: Kamera, sx: number, sy: number): [number, number] {
@@ -373,7 +373,7 @@ const SEITENRAND = 24
  */
 export function seitenMass(s: Seite): [number, number, number, number] {
   const inhalt = gesamtRahmen(s.elemente)
-  const basis: [number, number, number, number] = s.hintergrund ? [0, 0, s.hintergrund.b, s.hintergrund.h] : [0, 0, A4_QUER[0], A4_QUER[1]]
+  const basis: [number, number, number, number] = s.hintergrund ? [0, 0, ...hintergrundMass(s.hintergrund)] : [0, 0, A4_QUER[0], A4_QUER[1]]
   if (!inhalt) return [basis[0], basis[1], basis[2] - basis[0], basis[3] - basis[1]]
   const l = Math.min(basis[0], inhalt[0] - SEITENRAND)
   const o = Math.min(basis[1], inhalt[1] - SEITENRAND)

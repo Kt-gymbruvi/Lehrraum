@@ -4,13 +4,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Fensterebene, Schnellleiste } from '../fenster/Fensterebene.tsx'
 import { einzufuegen, neueAblage, type Ablage } from '../kern/ablage.ts'
 import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl.ts'
-import { ausfuehren, entfernenBefehl, leererVerlauf, ordnenBefehl, rueckgaengig, wiederholen, type Befehl, type Verlauf } from '../kern/befehle.ts'
+import { ausfuehrenAuf, entfernenBefehl, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Kamera, type Seite, type Tafelbild } from '../kern/modell.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
-import { gehe, kopiere, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
+import { drehBefehl, gehe, hintergrundWegBefehl, kopiere, pdfSeiten, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, seitenWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
 import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
 import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
@@ -163,17 +163,18 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   }, [jetztSpeichern])
 
   // ---------- Änderungen an der gezeigten Seite ----------
-  /** Wendet eine Änderung (Elemente + Verlauf) auf die gezeigte Seite an. */
-  const aendereSeite = useCallback((tun: (elemente: Element[], verlauf: Verlauf) => { elemente: Element[]; verlauf: Verlauf }) => {
+  /** Wendet eine Änderung (Elemente, Hintergrund und Verlauf) auf die gezeigte Seite an. */
+  const aendereSeite = useCallback((tun: (inhalt: Inhalt, verlauf: Verlauf) => { inhalt: Inhalt; verlauf: Verlauf }) => {
     setBuch((alt) => {
       const s = alt.seiten[alt.nr]
       if (!s) return alt
-      const neu = tun(s.elemente, alt.verlaeufe[s.id] ?? leererVerlauf())
-      if (neu.elemente === s.elemente) return alt
-      return { ...alt, seiten: alt.seiten.map((x) => (x === s ? { ...s, elemente: neu.elemente } : x)), verlaeufe: { ...alt.verlaeufe, [s.id]: neu.verlauf } }
+      const neu = tun(s.hintergrund ? { elemente: s.elemente, hintergrund: s.hintergrund } : { elemente: s.elemente }, alt.verlaeufe[s.id] ?? leererVerlauf())
+      if (neu.inhalt.elemente === s.elemente && neu.inhalt.hintergrund === s.hintergrund) return alt
+      const seite: Seite = { id: s.id, elemente: neu.inhalt.elemente, ...(neu.inhalt.hintergrund ? { hintergrund: neu.inhalt.hintergrund } : {}) }
+      return { ...alt, seiten: alt.seiten.map((x) => (x === s ? seite : x)), verlaeufe: { ...alt.verlaeufe, [s.id]: neu.verlauf } }
     })
   }, [])
-  const fuehreAus = useCallback((b: Befehl | null) => b && aendereSeite((e, v) => ausfuehren(e, v, b)), [aendereSeite])
+  const fuehreAus = useCallback((b: Befehl | null) => b && aendereSeite((i, v) => ausfuehrenAuf(i, v, b)), [aendereSeite])
 
   const dauerhaftGefragt = useRef(false)
   const beiHinzu = useCallback(
@@ -188,15 +189,15 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   )
   const entferne = useCallback(
     (ids: string[]) =>
-      aendereSeite((e, v) => {
-        const b = entfernenBefehl(e, ids)
-        return b ? ausfuehren(e, v, b) : { elemente: e, verlauf: v }
+      aendereSeite((i, v) => {
+        const b = entfernenBefehl(i.elemente, ids)
+        return b ? ausfuehrenAuf(i, v, b) : { inhalt: i, verlauf: v }
       }),
     [aendereSeite],
   )
   const beiErsetzen = useCallback((vorher: Element[], nachher: Element[]) => fuehreAus({ art: 'ersetzen', vorher, nachher }), [fuehreAus])
-  const zurueck = useCallback(() => aendereSeite(rueckgaengig), [aendereSeite])
-  const vor = useCallback(() => aendereSeite(wiederholen), [aendereSeite])
+  const zurueck = useCallback(() => aendereSeite(rueckgaengigAuf), [aendereSeite])
+  const vor = useCallback(() => aendereSeite(wiederholenAuf), [aendereSeite])
 
   const loescheAuswahl = () => {
     entferne(auswahl)
@@ -622,6 +623,11 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             beiDoppelt={() => blaettern(seiteDoppelt)}
             beiSchieben={(r) => blaettern((b) => seiteSchieben(b, r))}
             beiLoeschen={() => blaettern(seiteWeg)}
+            pdf={!!seite.hintergrund}
+            pdfAnzahl={pdfSeiten(buch).length}
+            beiPdfLoeschen={() => blaettern((b) => seitenWeg(b, pdfSeiten(b)))}
+            beiDrehen={(r) => fuehreAus(drehBefehl(seite, r))}
+            beiHintergrundWeg={() => fuehreAus(hintergrundWegBefehl(seite))}
           />
         </div>
         <Schnellleiste fenster={fenster} beiAendern={setFenster} />

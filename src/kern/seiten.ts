@@ -1,5 +1,8 @@
-// Seiten eines Tafelbilds: hinzufügen, duplizieren, löschen, umsortieren, blättern. Reine Funktionen.
-import { MAX_SEITEN, neueId, neueSeite, type Element, type Seite } from './modell.ts'
+// Seiten eines Tafelbilds: hinzufügen, duplizieren, löschen, umsortieren, blättern; PDF-Seiten drehen und ihren
+// Hintergrund entfernen. Reine Funktionen.
+import type { Befehl } from './befehle.ts'
+import { gedreht, verschoben } from './geometrie.ts'
+import { hintergrundMass, MAX_SEITEN, neueId, neueSeite, type Element, type Hintergrund, type Seite } from './modell.ts'
 
 export type Buch = { seiten: Seite[]; nr: number }
 
@@ -72,4 +75,46 @@ export function seitenDazu(b: Buch, neue: Seite[]): Buch {
   const seiten = [...b.seiten]
   seiten.splice(b.nr + 1, 0, ...dazu)
   return { seiten, nr: b.nr + 1 }
+}
+
+/** Löscht mehrere Seiten (Stellen in der Folge). Bleibt keine übrig, gibt es eine leere. Gezeigt wird die Seite an derselben Stelle. */
+export function seitenWeg(b: Buch, nrs: number[]): Buch {
+  const weg = new Set(nrs)
+  const seiten = b.seiten.filter((_, i) => !weg.has(i))
+  if (!seiten.length) return { seiten: [neueSeite()], nr: 0 }
+  const davor = nrs.filter((n) => n < b.nr).length // gelöschte Seiten vor der gezeigten
+  return { seiten, nr: grenze(b.nr - davor, seiten.length) }
+}
+
+/** Stellen aller Seiten, die aus demselben PDF stammen wie die gezeigte (leer, wenn sie keines hat) */
+export function pdfSeiten(b: Buch): number[] {
+  const pdf = b.seiten[b.nr]?.hintergrund?.pdf
+  if (!pdf) return []
+  return b.seiten.flatMap((s, i) => (s.hintergrund?.pdf === pdf ? [i] : []))
+}
+
+/**
+ * Dreht eine Seite mit Hintergrund um 90° im Uhrzeigersinn (richtung 1) oder dagegen (−1). Alles darauf Geschriebene
+ * dreht sich mit, die Seite liegt danach wieder bei (0, 0). Ein Schritt im Verlauf. Ohne Hintergrund: null.
+ */
+export function drehBefehl(s: Seite, richtung: 1 | -1): Befehl | null {
+  const h = s.hintergrund
+  if (!h) return null
+  const [b, hoehe] = hintergrundMass(h)
+  const grad = 90 * richtung
+  // um die Mitte drehen, dann so verschieben, dass die gedrehte Seite wieder bei (0, 0) beginnt
+  const dx = (hoehe - b) / 2
+  const dy = (b - hoehe) / 2
+  const neu = s.elemente.map((e) => verschoben(gedreht(e, b / 2, hoehe / 2, grad), dx, dy))
+  const drehung = ((((h.drehung ?? 0) + grad) % 360) + 360) % 360
+  const nachher: Hintergrund = { ...h }
+  if (drehung) nachher.drehung = drehung as 90 | 180 | 270
+  else delete nachher.drehung
+  return { art: 'hintergrund', vorher: h, nachher, elementeVorher: s.elemente, elementeNachher: neu }
+}
+
+/** Entfernt den Hintergrund (die PDF-Seite); was darauf geschrieben wurde, bleibt. Ein Schritt im Verlauf. */
+export function hintergrundWegBefehl(s: Seite): Befehl | null {
+  if (!s.hintergrund) return null
+  return { art: 'hintergrund', vorher: s.hintergrund, elementeVorher: [], elementeNachher: [] }
 }

@@ -1,11 +1,12 @@
-// Datenmodell der Tafel (Version 3). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 4). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
-// dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck – sie wird unverändert übernommen).
+// dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
+// Version 4, nur ohne Drehung und PDF-Kennung des Hintergrunds – beide werden unverändert übernommen).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 3
+export const TAFEL_VERSION = 4
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -82,8 +83,16 @@ export type Bild = Gemeinsam & {
 
 export type Element = Strich | Text | Form | Bild
 
-/** Hintergrund einer Seite, z. B. eine importierte PDF-Seite: liegt bei (0, 0), lässt sich nicht auswählen oder radieren */
-export type Hintergrund = { dateiId: string; b: number; h: number }
+/**
+ * Hintergrund einer Seite, z. B. eine importierte PDF-Seite: liegt bei (0, 0), lässt sich nicht auswählen oder radieren.
+ * b, h: Größe des Bildes (ungedreht). drehung: in 90°-Schritten im Uhrzeigersinn (fehlt: 0) – gedreht liegt die
+ * Seite weiter bei (0, 0), mit vertauschter Breite und Höhe bei 90° und 270°. pdf: Kennung des PDF-Imports,
+ * aus dem die Seite stammt (für „alle Seiten dieses PDFs löschen“; fehlt bei älteren Seiten).
+ */
+export type Hintergrund = { dateiId: string; b: number; h: number; drehung?: 90 | 180 | 270; pdf?: string }
+
+/** Sichtbare Breite und Höhe eines Hintergrunds (mit Drehung) */
+export const hintergrundMass = (h: Hintergrund): [number, number] => (h.drehung === 90 || h.drehung === 270 ? [h.h, h.b] : [h.b, h.h])
 
 export type Seite = { id: string; elemente: Element[]; hintergrund?: Hintergrund }
 
@@ -147,7 +156,11 @@ const istMass = (x: unknown): x is number => typeof x === 'number' && Number.isF
 function pruefeHintergrund(x: unknown): Hintergrund | undefined {
   if (typeof x !== 'object' || x === null) return undefined
   const h = x as Record<string, unknown>
-  return istDateiId(h.dateiId) && istMass(h.b) && istMass(h.h) ? { dateiId: h.dateiId, b: h.b, h: h.h } : undefined
+  if (!istDateiId(h.dateiId) || !istMass(h.b) || !istMass(h.h)) return undefined
+  const g: Hintergrund = { dateiId: h.dateiId, b: h.b, h: h.h }
+  if (h.drehung === 90 || h.drehung === 180 || h.drehung === 270) g.drehung = h.drehung
+  if (typeof h.pdf === 'string' && /^[0-9a-f]{8,64}$/.test(h.pdf)) g.pdf = h.pdf
+  return g
 }
 
 /** Alle Dateien, die ein Tafelbild braucht (Bilder und Hintergründe) */
@@ -233,7 +246,7 @@ export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x :
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 und 3.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2, 3 und 4.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -242,7 +255,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4) {
     const ids = new Set<string>()
     seiten = (Array.isArray(roh.seiten) ? roh.seiten : []).slice(0, MAX_SEITEN).flatMap((s): Seite[] => {
       if (!istObjekt(s) || typeof s.id !== 'string' || !s.id || ids.has(s.id)) return []
