@@ -70,18 +70,18 @@ Nicht Teil dieser Spezifikation **[Entschieden]**: Sportfelder als Hintergrund, 
 
 ### B – Eigenes Bild als Hintergrund
 
-**B1 Bild wählen.** Im Feld „Hintergrund“ gibt es **„Eigenes Bild …“**: Man wählt ein Bild (PNG, JPEG, WebP, SVG – SVG wird wie heute zu einem Pixelbild). **[Entschieden]**
-- In einem festen Format wird das Bild ganz ins Blatt eingepasst und mittig gesetzt; bei „Unendlich“ liegt es bei (0, 0) in seiner Größe, höchstens so groß wie eine PDF-Seite. **[Vorschlag]**
-- Das Bild liegt fest: nicht auswählbar, nicht radierbar – wie heute eine PDF-Seite. Entfernen geht wie bei PDF-Seiten über „Hintergrund entfernen“.
-- Auch „nur diese Seite“ oder „alle Seiten“ wählbar; das Bild wird dabei nur einmal gespeichert.
+**B1 Bild wählen.** Im Feld „Hintergrund“ gibt es unter „Eigenes Bild“ **„Bild wählen …“**: Man wählt ein Bild (PNG, JPEG, WebP, SVG – SVG wird wie heute zu einem Pixelbild). **[Entschieden]**
+- In einem festen Format wird das Bild so groß, dass es das Blatt des Formats ausfüllt, ohne darüber hinauszugehen; **die Seite bekommt das Seitenverhältnis des Bildes** (wie eine PDF-Seite, ohne weißen Rand). Bei „Unendlich“ liegt es bei (0, 0) in seiner Größe, höchstens 1600 lang. *(Umgesetzt so statt „mittig mit Rand“: Bild und Blatt sind dann dasselbe, Drehen geht wie bei PDF-Seiten.)*
+- Das Bild liegt fest: nicht auswählbar, nicht radierbar – wie heute eine PDF-Seite. Drehen und Entfernen gehen wie bei PDF-Seiten in der Seitenleiste („Hintergrundbild entfernen“). Auf einer Seite mit Bild gibt es kein Muster.
+- Auch „nur diese Seite“ oder „alle Seiten“ wählbar (PDF-Seiten bleiben, wie sie sind); das Bild wird dabei nur einmal gespeichert. Je Seite ein Schritt im Verlauf.
 
-**B2 Bild der Tafel zum Hintergrund machen.** Ist genau ein Bild ausgewählt, bietet die Auswahlleiste **„Als Hintergrund“** an: Das Bild wird zum festen Hintergrund dieser Seite. **[Vorschlag]**
+**B2 Bild der Tafel zum Hintergrund machen.** Ist genau ein Bild ausgewählt, bietet die Auswahlleiste **„Als Hintergrund“** an: Das Bild wird zum festen Hintergrund dieser Seite (es verschwindet als Element; ein Schritt im Verlauf, Zurücknehmen legt es an seine Stelle zurück). Nicht auf PDF-Seiten. **[Umgesetzt]**
 
 ### V – Vorlage je Klasse
 
 **V1 Vorlage merken.** Jede Klasse kann sich **Format und Muster** merken („Sport 9a: 16:9, leer“, „Mathe 7b: A4 hoch, kariert klein“). **[Entschieden]**
 - Einstellen lässt sich das auf der Karte der Klasse unter „Meine Klassen“ und im Feld „Hintergrund“ mit **„Für 7b merken“**, wenn die Tafel zu einer Klasse gehört. **[Vorschlag]**
-- Die Vorlage gilt, wenn die Tafel der Klasse zum ersten Mal angelegt wird, und für jede neue Seite, die man mit „+“ anlegt. Bestehende Seiten ändert sie nicht. **[Vorschlag]**
+- Die Vorlage gilt, wenn die Tafel der Klasse zum ersten Mal angelegt wird (Format und Muster der ersten Seite), und für jede neue Seite, die man mit „+“ anlegt. Bestehende Seiten und das Format einer bestehenden Tafel ändert sie nicht. Ohne Vorlage übernimmt eine neue Seite das Muster der gezeigten Seite. **[Umgesetzt]**
 - Eigene Bilder gehören nicht zur Vorlage (sie liegen in der Tafel, nicht bei der Klasse). **[Vorschlag]**
 
 ### Ü – Seitenübersicht

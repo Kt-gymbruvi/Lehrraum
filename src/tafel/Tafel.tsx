@@ -7,14 +7,15 @@ import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl
 import { ausfuehrenAuf, entfernenBefehl, inhaltVon, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
-import { aufsBlattBefehl, begrenzt, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
+import { alsHintergrundBefehl, aufsBlattBefehl, begrenzt, bildHintergrund, bildHintergrundBefehl, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
+import { geaendert, vorlageAus, type Klasse } from '../kern/klassen.ts'
 import { benutzteDateien, MAX_SEITEN, neueId, neuesTafelbild, schriftgroesse, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tafelbild } from '../kern/modell.ts'
 import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
 import { drehBefehl, gehe, hintergrundWegBefehl, kopiere, pdfSeiten, seiteDazu, seiteDoppelt, seitenDazu, seiteSchieben, seiteWeg, seitenWeg, type Buch as Seitenfolge } from '../kern/seiten.ts'
 import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
-import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, speichereKlasse, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { istBilddatei, nimmBild } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
@@ -70,6 +71,10 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const bildWahl = useRef<HTMLInputElement>(null)
   const pdfWahl = useRef<HTMLInputElement>(null)
   const [teilbar] = useState(kannTeilen)
+  /** Die Klasse dieser Tafel (für ihre Vorlage); null bei der freien Tafel */
+  const [klasse, setKlasse] = useState<Klasse | null>(null)
+  const hintergrundBildWahl = useRef<HTMLInputElement>(null)
+  const hintergrundFuerAlle = useRef(false)
 
   const seite = buch.seiten[buch.nr] ?? LEER
   const verlauf = buch.verlaeufe[seite.id] ?? leererVerlauf()
@@ -143,6 +148,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           setFehlt(true)
           return
         }
+        if (klasseId) void ladeKlasse(klasseId).then((k) => !abgebrochen && setKlasse(k), () => undefined)
         setWerkzeug(e.werkzeug)
         setFarbe(e.farbe)
         setStaerke(e.staerke)
@@ -368,6 +374,40 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
       return { ...alt, seiten, verlaeufe }
     })
 
+  /** Ein eigenes Bild wird Hintergrund dieser Seite oder aller Seiten (PDF-Seiten bleiben) – je Seite ein Schritt */
+  async function setzeBildHintergrund(datei: Blob, alleSeiten: boolean) {
+    setMeldung({ text: 'Bild wird eingesetzt …', laeuft: true })
+    try {
+      const h = bildHintergrund(await nimmBild(datei), format)
+      setBuch((alt) => {
+        const verlaeufe = { ...alt.verlaeufe }
+        const seiten = alt.seiten.map((s, i) => {
+          const befehl = (alleSeiten || i === alt.nr) && bildHintergrundBefehl(s, h)
+          if (!befehl) return s
+          const neu = ausfuehrenAuf(inhaltVon(s), alt.verlaeufe[s.id] ?? leererVerlauf(), befehl)
+          verlaeufe[s.id] = neu.verlauf
+          return { id: s.id, ...inhaltVon(neu.inhalt) }
+        })
+        return { ...alt, seiten, verlaeufe }
+      })
+      setMeldung(null)
+    } catch (e) {
+      fehlerMeldung(e)
+    }
+  }
+  /** Format der Tafel und Muster dieser Seite als Vorlage der Klasse merken */
+  const merkeVorlage = () => {
+    if (!klasse) return
+    const neu = geaendert(klasse, { vorlage: vorlageAus(format, seite.muster) })
+    speichereKlasse(neu).then(
+      () => setKlasse(neu),
+      () => setMeldung({ text: 'Die Vorlage ließ sich auf diesem Gerät nicht speichern.', fehler: true }),
+    )
+  }
+  const vorlageGemerkt = !!klasse && JSON.stringify(klasse.vorlage ?? null) === JSON.stringify(vorlageAus(format, seite.muster) ?? null)
+  /** Neue Seite: mit Vorlage der Klasse deren Muster, sonst das Muster der gezeigten Seite */
+  const neueSeiteAnlegen = () => blaettern((b) => seiteDazu(b, klasse?.vorlage ? { muster: klasse.vorlage.muster } : undefined))
+
   // ---------- Seiten ----------
   const blaettern = (tun: (b: Seitenfolge) => Seitenfolge) => {
     setAuswahl([])
@@ -561,6 +601,19 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
       : []),
     { name: 'Ganz nach vorne', symbol: 'ganzVorne', titel: 'Ganz nach vorne – liegt über allem anderen', tun: () => ordne('vorne') },
     { name: 'Ganz nach hinten', symbol: 'ganzHinten', titel: 'Ganz nach hinten – liegt unter allem anderen', tun: () => ordne('hinten') },
+    ...(gewaehlte.length === 1 && gewaehlte[0].art === 'bild' && !seite.hintergrund?.pdf
+      ? [
+          {
+            name: 'Als Hintergrund',
+            symbol: 'hintergrund' as const,
+            titel: 'Als Hintergrund festlegen – liegt dann fest unter allem (lässt sich rückgängig machen)',
+            tun: () => {
+              fuehreAus(alsHintergrundBefehl(seite, gewaehlte[0] as Bild, format))
+              setAuswahl([])
+            },
+          },
+        ]
+      : []),
     { name: 'Löschen', symbol: 'leeren', titel: 'Löschen (Entf)', tun: loescheAuswahl },
   ]
 
@@ -611,6 +664,18 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
           )}
         </div>
         <input ref={pdfWahl} type="file" accept="application/pdf,.pdf" hidden aria-label="PDF-Datei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
+        <input
+          ref={hintergrundBildWahl}
+          type="file"
+          accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+          hidden
+          aria-label="Bild für den Hintergrund wählen"
+          onChange={(e) => {
+            const datei = e.target.files?.[0]
+            if (datei) void setzeBildHintergrund(datei, hintergrundFuerAlle.current)
+            e.target.value = ''
+          }}
+        />
         <input ref={bildWahl} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden aria-label="Bilddatei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
         <Formatwahl format={format} ueberstand={ueberstand} beiFormat={setFormat} beiEinpassen={inhaltEinpassen} />
         <div className="zoom" role="group" aria-label="Ansicht">
@@ -693,11 +758,12 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             beschrieben={seite.elemente.length > 0 || seite.hintergrund !== undefined}
             beiGehe={(nr) => blaettern((b) => gehe(b, nr))}
             weiterMitNeu={format !== 'unendlich'}
-            beiNeu={() => blaettern(seiteDazu)}
+            beiNeu={neueSeiteAnlegen}
             beiDoppelt={() => blaettern(seiteDoppelt)}
             beiSchieben={(r) => blaettern((b) => seiteSchieben(b, r))}
             beiLoeschen={() => blaettern(seiteWeg)}
             pdf={!!seite.hintergrund}
+            bild={!!seite.hintergrund && !seite.hintergrund.pdf}
             pdfAnzahl={pdfSeiten(buch).length}
             beiPdfLoeschen={() => blaettern((b) => seitenWeg(b, pdfSeiten(b)))}
             beiDrehen={(r) => fuehreAus(drehBefehl(seite, r))}
@@ -711,8 +777,14 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             <Hintergrundwahl
               format={format}
               muster={seite.muster}
-              mitHintergrund={!!seite.hintergrund}
+              hintergrund={seite.hintergrund ? (seite.hintergrund.pdf ? 'pdf' : 'bild') : null}
               beiMuster={setzeMuster}
+              beiBild={(alleSeiten) => {
+                hintergrundFuerAlle.current = alleSeiten
+                hintergrundBildWahl.current?.click()
+              }}
+              klasse={klasse ? { name: klasse.bezeichnung, gemerkt: vorlageGemerkt } : undefined}
+              beiVorlage={merkeVorlage}
               ohneMusterExport={ohneMusterExport}
               beiOhneMusterExport={setOhneMusterExport}
             />

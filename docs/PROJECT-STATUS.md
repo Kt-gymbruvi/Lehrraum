@@ -1,10 +1,19 @@
 # Projektstand – Lehrraum
 
 Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit dem Aussehen im Stil von Apple) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 18 Testdateien, 234 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 19 Testdateien, 244 Tests grün (`npm test`); Build grün (`npm run build`).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Hintergründe, Etappe 3: Eigenes Bild und Vorlage je Klasse (Spezifikation B1, B2, V1) – noch nicht veröffentlicht (14.11.2026)
+- **Eigenes Bild als Hintergrund:** Im Feld „Hintergrund“ unter „Eigenes Bild“ → „Bild wählen …“, für diese Seite oder alle Seiten (PDF-Seiten bleiben). In einem festen Format füllt das Bild das Blatt aus, die Seite bekommt das Seitenverhältnis des Bildes (wie eine PDF-Seite). Drehen und „Hintergrundbild entfernen“ in der Seitenleiste; auf einer Seite mit Bild gibt es kein Muster.
+- **Bild der Tafel zum Hintergrund:** Ist genau ein Bild ausgewählt, zeigt die Auswahlleiste „Als Hintergrund“. Ein Schritt im Verlauf; Zurücknehmen legt das Bild an seine Stelle zurück.
+- **Vorlage je Klasse:** Unter „Meine Klassen“ im Formular der Klasse „Vorlage für die Tafel“ (Format, Hintergrund neuer Seiten); die Karte zeigt sie an. An der Tafel einer Klasse im Feld „Hintergrund“: „Für 7b merken“ (Format der Tafel und Muster der gezeigten Seite). Die Vorlage gilt beim ersten Anlegen der Klassentafel und für jede neue Seite; die Kopie einer Klasse behält sie.
+- **Klasse Version 2** (`vorlage`); Version 1 wird ohne Vorlage übernommen. Die Startseite liest die Klassen ohne Versionsprüfung – dort ändert sich nichts.
+- Neu: `bildHintergrund`, `bildHintergrundBefehl`, `alsHintergrundBefehl` in `kern/blatt.ts`; Befehl `hintergrund` kann Elemente mitnehmen (`entfernt`); `seiteDazu(b, vorlage)`; `vorlageAus` in `kern/klassen.ts`. Test `src/test/hintergrund-bild.test.tsx` (10 Tests).
+- **Getestet:** `npm test` (244 grün), `npm run build`; im Browser: Klasse mit Vorlage A4 quer, liniert angelegt → Klassentafel startet so; Feld „Hintergrund“ mit „Bild wählen …“ und „Vorlage von …“; ein 4:3-Bild als Hintergrund (Seite im Seitenverhältnis des Bildes, Knöpfe „Hintergrundbild …“).
+- **Nicht getestet:** „Als Hintergrund“ nur in den automatischen Tests, nicht im Browser; echte Fotos (groß, hochkant) und SVG als Hintergrund; am iPad und SMART Board.
 
 ## Hintergründe, Etappe 2: Muster (Spezifikation M1–M3, E1) – noch nicht veröffentlicht (14.11.2026)
 - **Knopf „Hintergrund“** oben in der rechten Leiste. Das Feld zeigt Vorschaubilder in drei Gruppen: Allgemein (Leer, Liniert, Liniert mit Rand, Kariert klein, Kariert groß, Punkteraster, Schreiblineatur), Mathematik (Millimeterpapier, Koordinaten 1. Quadrant und 4 Quadranten, Isometrisch), Sprachen, Musik, Ordnen (Notenlinien, Cornell-Notizen, Zwei Spalten, Drei Spalten, Wochenplan).

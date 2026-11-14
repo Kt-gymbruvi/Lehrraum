@@ -132,6 +132,24 @@ a.f-knopf {
   font-weight: 400;
   color: var(--text-2);
 }
+.klassen-formular fieldset.vorlage {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.6rem 0.8rem 0.8rem;
+  border: 1px solid var(--linie);
+  border-radius: 0.75rem;
+}
+.klassen-formular legend {
+  padding: 0 0.3rem;
+  font-weight: 700;
+}
+.klassen-kopf p.klassen-vorlage {
+  font-weight: 400;
+  font-size: 0.95rem;
+}
+.klassen-formular select,
 .klassen-formular input {
   min-height: 3rem;
   padding: 0.25rem 0.75rem;

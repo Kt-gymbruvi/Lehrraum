@@ -11,9 +11,14 @@ type Props = {
   format: Format
   /** Muster der gezeigten Seite (fehlt: leer) */
   muster?: Muster
-  /** Hat die gezeigte Seite ein PDF oder Bild als Hintergrund? */
-  mitHintergrund: boolean
+  /** Hintergrund der gezeigten Seite: PDF-Seite, eigenes Bild oder keiner */
+  hintergrund: 'pdf' | 'bild' | null
   beiMuster: (m: Muster | undefined, alleSeiten: boolean) => void
+  /** Eigenes Bild wählen – für diese Seite oder alle Seiten */
+  beiBild: (alleSeiten: boolean) => void
+  /** Gehört die Tafel zu einer Klasse: ihr Name, und ob Format und Muster schon ihre Vorlage sind */
+  klasse?: { name: string; gemerkt: boolean }
+  beiVorlage?: () => void
   ohneMusterExport: boolean
   beiOhneMusterExport: (ja: boolean) => void
 }
@@ -45,7 +50,7 @@ function Vorschau({ muster }: { muster?: Muster }) {
   return <canvas ref={leinwand} className="muster-vorschau" width={Math.round(VORSCHAU_B * dpr)} height={Math.round(VORSCHAU_H * dpr)} aria-hidden="true" />
 }
 
-export function Hintergrundwahl({ format, muster, mitHintergrund, beiMuster, ohneMusterExport, beiOhneMusterExport }: Props) {
+export function Hintergrundwahl({ format, muster, hintergrund, beiMuster, beiBild, klasse, beiVorlage, ohneMusterExport, beiOhneMusterExport }: Props) {
   const [lage, setLage] = useState<{ rechts: number; oben: number } | null>(null)
   const [alle, setAlle] = useState(false)
   const knopf = useRef<HTMLButtonElement>(null)
@@ -77,7 +82,7 @@ export function Hintergrundwahl({ format, muster, mitHintergrund, beiMuster, ohn
   }
 
   const unendlich = format === 'unendlich'
-  const gesperrt = !alle && mitHintergrund
+  const gesperrt = !alle && hintergrund !== null
   const angaben = muster ? MUSTER[muster.art] : null
   const waehle = (art: Musterart | null) => beiMuster(art ? { art, ...(muster?.abstand ? { abstand: muster.abstand } : {}), ...(muster?.farbe ? { farbe: muster.farbe } : {}) } : undefined, alle)
   const aendere = (neu: Partial<Muster>) => {
@@ -106,7 +111,13 @@ export function Hintergrundwahl({ format, muster, mitHintergrund, beiMuster, ohn
               Alle Seiten
             </button>
           </div>
-          {gesperrt && <p className="feld-hinweis">Diese Seite hat ein PDF oder Bild als Hintergrund – dort gibt es kein Muster.</p>}
+          {gesperrt && (
+            <p className="feld-hinweis">
+              {hintergrund === 'pdf'
+                ? 'Diese Seite ist eine PDF-Seite – dort gibt es kein Muster.'
+                : 'Diese Seite hat ein Bild als Hintergrund. „Hintergrundbild entfernen“ in der Seitenleiste macht sie wieder frei.'}
+            </p>
+          )}
           {alle && <p className="feld-hinweis">Seiten mit PDF oder Bild als Hintergrund bleiben, wie sie sind.</p>}
           <div className="muster-liste">
             {MUSTERGRUPPEN.map((gruppe, i) => (
@@ -139,6 +150,13 @@ export function Hintergrundwahl({ format, muster, mitHintergrund, beiMuster, ohn
                 </div>
               </section>
             ))}
+            <section aria-label="Eigenes Bild">
+              <p className="feld-titel">Eigenes Bild</p>
+              <button type="button" className="f-knopf breit" disabled={!alle && hintergrund === 'pdf'} onClick={() => beiBild(alle)}>
+                <Symbol name="bild" />
+                {hintergrund === 'bild' && !alle ? 'Anderes Bild wählen …' : 'Bild wählen …'}
+              </button>
+            </section>
           </div>
           {angaben?.abstand && !gesperrt && (
             <div className="segmente" role="group" aria-label="Abstand">
@@ -158,6 +176,11 @@ export function Hintergrundwahl({ format, muster, mitHintergrund, beiMuster, ohn
                 Blau
               </button>
             </div>
+          )}
+          {klasse && beiVorlage && (
+            <button type="button" className="f-knopf" disabled={klasse.gemerkt} title="Format und Muster gelten dann für neue Seiten dieser Klasse (und für ihre Kopie im nächsten Schuljahr)" onClick={beiVorlage}>
+              {klasse.gemerkt ? `Vorlage von ${klasse.name}` : `Für ${klasse.name} merken`}
+            </button>
           )}
           <label className="feld-schalter">
             <input type="checkbox" checked={ohneMusterExport} onChange={(e) => beiOhneMusterExport(e.target.checked)} />

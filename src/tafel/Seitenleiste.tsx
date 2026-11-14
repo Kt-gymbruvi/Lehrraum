@@ -14,6 +14,8 @@ type Props = {
   beschrieben: boolean
   /** Hat die aktuelle Seite eine PDF-Seite (oder ein anderes Bild) als Hintergrund? */
   pdf: boolean
+  /** Ist der Hintergrund ein eigenes Bild (kein PDF)? Dann heißen die Knöpfe „Hintergrundbild …“ */
+  bild?: boolean
   /** Wie viele Seiten der Tafel stammen aus demselben PDF wie die aktuelle (0: unbekannt) */
   pdfAnzahl: number
   beiGehe: (nr: number) => void
@@ -33,6 +35,7 @@ export function Seitenleiste(p: Props) {
   useEffect(() => setFrage(false), [p.nr, p.anzahl]) // Rückfrage gilt nur für die Seite, auf der sie gestellt wurde
   const voll = p.anzahl >= MAX_SEITEN
   const allePdf = p.pdfAnzahl > 1
+  const was = p.bild ? 'Hintergrundbild' : 'PDF-Seite'
   return (
     <nav className={p.pdf ? 'seitenleiste mit-pdf' : 'seitenleiste'} aria-label="Seiten">
       <button type="button" className="s-knopf" disabled={p.nr === 0} aria-label="Vorige Seite" onClick={() => p.beiGehe(p.nr - 1)}>
@@ -72,17 +75,17 @@ export function Seitenleiste(p: Props) {
       {p.pdf && !frage && ( // während der Rückfrage nicht – sonst wird die Leiste zu breit
         <>
           <span className="trenner" />
-          <button type="button" className="s-knopf" aria-label="PDF-Seite nach links drehen" title="PDF-Seite nach links drehen – das Geschriebene dreht sich mit" onClick={() => p.beiDrehen(-1)}>
+          <button type="button" className="s-knopf" aria-label={`${was} nach links drehen`} title={`${was} nach links drehen – das Geschriebene dreht sich mit`} onClick={() => p.beiDrehen(-1)}>
             <Symbol name="drehenLinks" />
           </button>
-          <button type="button" className="s-knopf" aria-label="PDF-Seite nach rechts drehen" title="PDF-Seite nach rechts drehen – das Geschriebene dreht sich mit" onClick={() => p.beiDrehen(1)}>
+          <button type="button" className="s-knopf" aria-label={`${was} nach rechts drehen`} title={`${was} nach rechts drehen – das Geschriebene dreht sich mit`} onClick={() => p.beiDrehen(1)}>
             <Symbol name="drehenRechts" />
           </button>
           <button
             type="button"
             className="s-knopf"
-            aria-label="PDF-Hintergrund entfernen"
-            title="Nur die PDF-Seite entfernen – das Geschriebene bleibt (lässt sich rückgängig machen)"
+            aria-label={p.bild ? 'Hintergrundbild entfernen' : 'PDF-Hintergrund entfernen'}
+            title={`Nur ${p.bild ? 'das Hintergrundbild' : 'die PDF-Seite'} entfernen – das Geschriebene bleibt (lässt sich rückgängig machen)`}
             onClick={p.beiHintergrundWeg}
           >
             <Symbol name="hintergrundWeg" />

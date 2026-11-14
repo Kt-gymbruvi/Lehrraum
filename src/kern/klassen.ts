@@ -1,10 +1,14 @@
-// Klassen der Lehrkraft (Version 1): Bezeichnung, Fach, Jahrgang und die Tafel der Klasse.
+// Klassen der Lehrkraft (Version 2): Bezeichnung, Fach, Jahrgang, die Tafel der Klasse und ihre Vorlage
+// (Format und Muster). Version 1 hatte noch keine Vorlage und wird ohne übernommen.
 // Reine Daten und Funktionen. Klassen liegen nur auf dem Gerät (IndexedDB) – nie auf einem Server.
 // Schülerlisten, Sitzordnung und Gruppen kommen als eigene Etappe dazu.
-import { neueId } from './modell.ts'
+import { istFormat, neueId, pruefeMuster, STANDARD_FORMAT, type Format, type Muster } from './modell.ts'
 
 export const KLASSE_SCHEMA = 'lehrraum/klasse'
-export const KLASSE_VERSION = 1
+export const KLASSE_VERSION = 2
+
+/** Vorlage einer Klasse: Format ihrer Tafel (beim Anlegen) und Muster neuer Seiten (fehlt: leer) */
+export type Vorlage = { format: Format; muster?: Muster }
 
 export type Klasse = {
   schema: typeof KLASSE_SCHEMA
@@ -19,6 +23,8 @@ export type Klasse = {
   archiviert: boolean
   /** Kennung des Tafelbilds dieser Klasse; null, solange die Tafel noch nie geöffnet wurde */
   tafelId: string | null
+  /** fehlt: 16:9, leere Seiten */
+  vorlage?: Vorlage
   geaendertAm: string
 }
 
@@ -63,7 +69,23 @@ export const geaendert = (k: Klasse, neu: Partial<Omit<Klasse, 'schema' | 'versi
 })
 
 /** Kopie einer Klasse (z. B. fürs neue Schuljahr): gleiche Angaben, eigene Kennung, eigene leere Tafel. */
-export const kopierteKlasse = (k: Klasse): Klasse => ({ ...neueKlasse({ bezeichnung: (k.bezeichnung + ' (Kopie)').slice(0, GRENZEN.bezeichnung), fach: k.fach, jahrgang: k.jahrgang }) })
+export const kopierteKlasse = (k: Klasse): Klasse => ({
+  ...neueKlasse({ bezeichnung: (k.bezeichnung + ' (Kopie)').slice(0, GRENZEN.bezeichnung), fach: k.fach, jahrgang: k.jahrgang }),
+  ...(k.vorlage ? { vorlage: k.vorlage } : {}),
+})
+
+/** Vorlage, wenn sie etwas anderes sagt als der Standard (16:9, leer) – sonst undefined */
+export function vorlageAus(format: Format, muster?: Muster): Vorlage | undefined {
+  if (format === STANDARD_FORMAT && !muster) return undefined
+  return muster ? { format, muster } : { format }
+}
+
+function pruefeVorlage(x: unknown): Vorlage | undefined {
+  if (typeof x !== 'object' || x === null) return undefined
+  const v = x as Record<string, unknown>
+  if (!istFormat(v.format)) return undefined
+  return vorlageAus(v.format, pruefeMuster(v.muster))
+}
 
 /** Anzeigename, auch als Titel der Tafel: „7b Biologie“ */
 export const klassenName = (k: Pick<Klasse, 'bezeichnung' | 'fach'>): string => [k.bezeichnung, k.fach].filter(Boolean).join(' ')
@@ -77,7 +99,7 @@ export const sortiert = (klassen: Klasse[]): Klasse[] =>
 export function pruefeKlasse(roh: unknown): Klasse | null {
   if (typeof roh !== 'object' || roh === null) return null
   const k = roh as Record<string, unknown>
-  if (k.schema !== KLASSE_SCHEMA || k.version !== KLASSE_VERSION) return null
+  if (k.schema !== KLASSE_SCHEMA || (k.version !== 1 && k.version !== KLASSE_VERSION)) return null
   if (typeof k.id !== 'string' || !/^[0-9a-f]{8,64}$/.test(k.id)) return null
   const bezeichnung = sauber(k.bezeichnung, GRENZEN.bezeichnung)
   if (!bezeichnung) return null
@@ -90,6 +112,7 @@ export function pruefeKlasse(roh: unknown): Klasse | null {
     jahrgang: sauber(k.jahrgang, GRENZEN.jahrgang),
     archiviert: k.archiviert === true,
     tafelId: typeof k.tafelId === 'string' && /^[0-9a-f]{8,64}$/.test(k.tafelId) ? k.tafelId : null,
+    ...(k.version === KLASSE_VERSION && pruefeVorlage(k.vorlage) ? { vorlage: pruefeVorlage(k.vorlage) } : {}),
     geaendertAm: typeof k.geaendertAm === 'string' ? k.geaendertAm : new Date().toISOString(),
   }
 }

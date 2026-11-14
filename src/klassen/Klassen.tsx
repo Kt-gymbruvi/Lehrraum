@@ -2,12 +2,25 @@
 // Alles liegt nur auf diesem Gerät. Schülerlisten kommen als eigene Etappe dazu.
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { geaendert, GRENZEN, klassenName, kopierteKlasse, MAX_KLASSEN, neueKlasse, pruefeEingabe, sortiert, type Klasse, type KlassenEingabe } from '../kern/klassen.ts'
+import { FORMAT_NAME } from '../kern/blatt.ts'
+import { geaendert, GRENZEN, klassenName, kopierteKlasse, MAX_KLASSEN, neueKlasse, pruefeEingabe, sortiert, vorlageAus, type Klasse, type KlassenEingabe, type Vorlage } from '../kern/klassen.ts'
+import { FORMATE, istFormat, MUSTERARTEN, STANDARD_FORMAT, type Format, type Musterart } from '../kern/modell.ts'
+import { MUSTER, MUSTERGRUPPEN } from '../kern/muster.ts'
 import { ladeKlassen, loescheKlasse, speichereKlasse } from '../speicher/datenbank.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 import './klassen.css'
 
 const LEER: KlassenEingabe = { bezeichnung: '', fach: '', jahrgang: '' }
+
+/** Vorlage im Formular: Format der Tafel und Art des Musters ('' = leer); Abstand und Farbe bleiben, wie sie waren */
+type VorlageEingabe = { format: Format; art: Musterart | '' }
+const vorlageEingabe = (v?: Vorlage): VorlageEingabe => ({ format: v?.format ?? STANDARD_FORMAT, art: v?.muster?.art ?? '' })
+function vorlageVon(e: VorlageEingabe, alt?: Vorlage): Vorlage | undefined {
+  if (!e.art || (MUSTER[e.art].nurBlatt && e.format === 'unendlich')) return vorlageAus(e.format)
+  return vorlageAus(e.format, { ...alt?.muster, art: e.art })
+}
+/** Kurzbeschreibung der Vorlage auf der Karte (leer: Standard) */
+const vorlageText = (v?: Vorlage) => (v ? [FORMAT_NAME[v.format], v.muster && MUSTER[v.muster.art].name].filter(Boolean).join(' · ') : '')
 
 export default function Klassen() {
   const [klassen, setKlassen] = useState<Klasse[] | null>(null)
@@ -15,6 +28,7 @@ export default function Klassen() {
   /** null = Formular zu; 'neu' = neue Klasse; sonst die Kennung der Klasse, die bearbeitet wird */
   const [offen, setOffen] = useState<string | null>(null)
   const [eingabe, setEingabe] = useState<KlassenEingabe>(LEER)
+  const [vorlage, setVorlage] = useState<VorlageEingabe>(vorlageEingabe())
   const [eingabeFehler, setEingabeFehler] = useState<string[]>([])
   const [loeschFrage, setLoeschFrage] = useState<string | null>(null)
   const [suche, setSuche] = useSearchParams()
@@ -42,9 +56,10 @@ export default function Klassen() {
     if (offen) erstesFeld.current?.focus()
   }, [offen])
 
-  function oeffne(was: string, werte: KlassenEingabe) {
+  function oeffne(was: string, werte: KlassenEingabe, v?: Vorlage) {
     setOffen(was)
     setEingabe(werte)
+    setVorlage(vorlageEingabe(v))
     setEingabeFehler([])
     setLoeschFrage(null)
   }
@@ -67,7 +82,8 @@ export default function Klassen() {
     setEingabeFehler(probleme)
     if (probleme.length) return
     const alt = klassen?.find((k) => k.id === offen)
-    void tue(() => speichereKlasse(alt ? geaendert(alt, eingabe) : neueKlasse(eingabe)))
+    const v = vorlageVon(vorlage, alt?.vorlage)
+    void tue(() => speichereKlasse(alt ? geaendert(alt, { ...eingabe, vorlage: v }) : { ...neueKlasse(eingabe), ...(v ? { vorlage: v } : {}) }))
     setOffen(null)
   }
 
@@ -88,6 +104,35 @@ export default function Klassen() {
         Jahrgang <small>(freiwillig)</small>
         <input value={eingabe.jahrgang} maxLength={GRENZEN.jahrgang} placeholder="7" onChange={(e) => setEingabe({ ...eingabe, jahrgang: e.target.value })} />
       </label>
+      <fieldset className="vorlage">
+        <legend>Vorlage für die Tafel</legend>
+        <label>
+          Format
+          <select value={vorlage.format} onChange={(e) => istFormat(e.target.value) && setVorlage({ ...vorlage, format: e.target.value })}>
+            {FORMATE.map((f) => (
+              <option key={f} value={f}>
+                {FORMAT_NAME[f]}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label>
+          Hintergrund neuer Seiten
+          <select value={vorlage.art} onChange={(e) => setVorlage({ ...vorlage, art: (MUSTERARTEN as readonly string[]).includes(e.target.value) ? (e.target.value as Musterart) : '' })}>
+            <option value="">Leer</option>
+            {MUSTERGRUPPEN.map((g) => (
+              <optgroup key={g} label={g}>
+                {MUSTERARTEN.filter((a) => MUSTER[a].gruppe === g).map((a) => (
+                  <option key={a} value={a} disabled={!!MUSTER[a].nurBlatt && vorlage.format === 'unendlich'}>
+                    {MUSTER[a].name}
+                  </option>
+                ))}
+              </optgroup>
+            ))}
+          </select>
+        </label>
+        <small>Das Format gilt, wenn die Tafel der Klasse angelegt wird; der Hintergrund für jede neue Seite.</small>
+      </fieldset>
       <datalist id="faecher">
         <option value="Biologie" />
         <option value="Sport" />
@@ -117,6 +162,7 @@ export default function Klassen() {
           <div className="klassen-kopf">
             <h3>{k.bezeichnung}</h3>
             <p>{[k.fach, k.jahrgang && 'Jahrgang ' + k.jahrgang].filter(Boolean).join(' · ') || 'ohne Fach'}</p>
+            {k.vorlage && <p className="klassen-vorlage">Vorlage: {vorlageText(k.vorlage)}</p>}
           </div>
           {!k.archiviert && (
             <a className="f-knopf haupt breit" href={`#/tafel?klasse=${k.id}`} aria-label={`Zur Tafel von ${klassenName(k)}`}>
@@ -136,7 +182,7 @@ export default function Klassen() {
             </div>
           ) : (
             <div className="reihe klein" role="group" aria-label={`Aktionen für ${klassenName(k)}`}>
-              <button type="button" className="f-knopf" onClick={() => oeffne(k.id, { bezeichnung: k.bezeichnung, fach: k.fach, jahrgang: k.jahrgang })}>
+              <button type="button" className="f-knopf" onClick={() => oeffne(k.id, { bezeichnung: k.bezeichnung, fach: k.fach, jahrgang: k.jahrgang }, k.vorlage)}>
                 Bearbeiten
               </button>
               <button type="button" className="f-knopf" disabled={(klassen?.length ?? 0) >= MAX_KLASSEN} onClick={() => void tue(() => speichereKlasse(kopierteKlasse(k)))}>

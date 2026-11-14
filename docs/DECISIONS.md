@@ -3,6 +3,13 @@
 Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Alternativen.
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
+## 2026-11-14 – Eigenes Bild und Vorlage je Klasse: Umsetzung (Etappe 3)
+- **Bild-Hintergrund wie eine PDF-Seite:** Die Seite bekommt das Seitenverhältnis des Bildes und füllt das Format aus, statt das Bild mittig mit weißem Rand zu setzen. So gibt es keinen Unterschied zwischen Bild und Blatt, und Drehen, Entfernen, Export funktionieren wie bei PDF-Seiten. Verworfen: Bild mittig im 16:9-Blatt (weißer Rand, zweite Größe zu verwalten).
+- **Kein Muster auf Bildseiten:** Muster unter einem Bild wären unsichtbar, darüber störend.
+- **„Als Hintergrund“ als ein Befehl:** Der Befehl `hintergrund` nimmt das Bild-Element mit (`entfernt`), damit Zurücknehmen beides in einem Schritt herstellt.
+- **Vorlage bei der Klasse, nicht in der Tafel:** Klasse Version 2 mit `vorlage` (Format, Muster). Sie gilt beim ersten Anlegen der Klassentafel und für neue Seiten; das Format einer bestehenden Tafel ändert sie nicht (das ginge nur mit Rückfrage, siehe Format nicht im Verlauf). Eigene Bilder gehören nicht dazu.
+- **Neue Seiten mit Vorlage bekommen deren Muster**, auch wenn die gezeigte Seite ein anderes hat: Die Vorlage ist der ausdrückliche Wunsch für diese Klasse.
+
 ## 2026-11-14 – Muster: Umsetzung (Etappe 2)
 - **Muster noch in Version 5:** Version 5 (Format) ist noch nicht veröffentlicht; das Muster kommt deshalb ohne eigene Versionsnummer dazu. Ältere Tafeln (bis Version 4) haben kein Muster.
 - **Gezeichnet, nicht gespeichert:** Muster sind eine Angabe an der Seite (`art`, `abstand`, `farbe`) und werden bei jedem Zeichnen berechnet – scharf bei jedem Zoom, kein Speicher, Radierer und Auswahl erfassen sie nie. Linien einer Farbe und Breite in einem Pfad, damit Verschieben flüssig bleibt.

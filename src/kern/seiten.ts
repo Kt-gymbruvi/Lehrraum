@@ -2,7 +2,7 @@
 // Hintergrund entfernen. Reine Funktionen.
 import type { Befehl } from './befehle.ts'
 import { gedreht, verschoben } from './geometrie.ts'
-import { hintergrundMass, MAX_SEITEN, neueId, neueSeite, type Element, type Hintergrund, type Seite } from './modell.ts'
+import { hintergrundMass, MAX_SEITEN, neueId, neueSeite, type Element, type Hintergrund, type Muster, type Seite } from './modell.ts'
 
 export type Buch = { seiten: Seite[]; nr: number }
 
@@ -11,11 +11,12 @@ const grenze = (nr: number, anzahl: number) => Math.min(anzahl - 1, Math.max(0, 
 export const gehe = (b: Buch, nr: number): Buch => ({ ...b, nr: grenze(nr, b.seiten.length) })
 
 /** Neue leere Seite hinter der aktuellen; sie wird gleich gezeigt. */
-export function seiteDazu(b: Buch): Buch {
+export function seiteDazu(b: Buch, vorlage?: { muster?: Muster }): Buch {
   if (b.seiten.length >= MAX_SEITEN) return b
   const seiten = [...b.seiten]
-  // Die neue Seite übernimmt das Muster der Seite, von der aus sie angelegt wird (nicht ihren PDF- oder Bild-Hintergrund)
-  const muster = b.seiten[b.nr]?.muster
+  // Die neue Seite bekommt das Muster der Vorlage (Klasse) oder – ohne Vorlage – das Muster der Seite, von der aus
+  // sie angelegt wird (nicht deren PDF- oder Bild-Hintergrund)
+  const muster = vorlage ? vorlage.muster : b.seiten[b.nr]?.muster
   seiten.splice(b.nr + 1, 0, muster ? { ...neueSeite(), muster } : neueSeite())
   return { seiten, nr: b.nr + 1 }
 }

@@ -166,7 +166,8 @@ export function oeffneKlassenTafel(klasseId: string): Promise<Tafelbild | null> 
       await ladeFreieTafel().catch(() => null)
       const vorhanden = klasse.tafelId ? await ladeTafel(klasse.tafelId) : null
       if (vorhanden) return vorhanden
-      const neu = neuesTafelbild(klassenName(klasse))
+      const neu = neuesTafelbild(klassenName(klasse), klasse.vorlage?.format)
+      if (klasse.vorlage?.muster) neu.seiten[0] = { ...neu.seiten[0], muster: klasse.vorlage.muster }
       await speichereTafel(neu)
       await speichereKlasse(geaendert(klasse, { tafelId: neu.id }))
       return neu

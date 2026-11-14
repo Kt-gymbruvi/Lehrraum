@@ -19,7 +19,15 @@ export type Befehl =
    * Hintergrund der Seite ändern (PDF-Seite drehen oder entfernen); beim Drehen drehen sich die Elemente mit
    * (geänderte Fassungen mit derselben Kennung). Fehlt nachher, ist der Hintergrund danach weg.
    */
-  | { art: 'hintergrund'; vorher?: Hintergrund; nachher?: Hintergrund; elementeVorher: Element[]; elementeNachher: Element[] }
+  | {
+      art: 'hintergrund'
+      vorher?: Hintergrund
+      nachher?: Hintergrund
+      elementeVorher: Element[]
+      elementeNachher: Element[]
+      /** Elemente, die dabei von der Seite verschwinden (ein Bild wird zum Hintergrund) – mit ihrer Stelle */
+      entfernt?: { stelle: number; element: Element }[]
+    }
   /** Muster der Seite wechseln (liniert, kariert …); fehlt: leeres Blatt. Die Elemente bleiben, wie sie sind. */
   | { art: 'muster'; vorher?: Muster; nachher?: Muster }
 
@@ -65,7 +73,11 @@ function ordne(elemente: Element[], reihenfolge: string[]): Element[] {
 export function anwenden(elemente: Element[], b: Befehl): Element[] {
   if (b.art === 'hinzufuegen') return [...elemente, ...b.elemente]
   if (b.art === 'ersetzen') return tausche(elemente, b.nachher)
-  if (b.art === 'hintergrund') return b.elementeNachher.length ? tausche(elemente, b.elementeNachher) : elemente
+  if (b.art === 'hintergrund') {
+    const weg = new Set((b.entfernt ?? []).map((e) => e.element.id))
+    const rest = weg.size ? elemente.filter((e) => !weg.has(e.id)) : elemente
+    return b.elementeNachher.length ? tausche(rest, b.elementeNachher) : rest
+  }
   if (b.art === 'ordnen') return ordne(elemente, b.nachher)
   if (b.art === 'muster') return elemente
   if (b.art === 'zerlegen') {
@@ -91,7 +103,10 @@ export function zuruecknehmen(elemente: Element[], b: Befehl): Element[] {
     return elemente.filter((e) => !weg.has(e.id))
   }
   if (b.art === 'ersetzen') return tausche(elemente, b.vorher)
-  if (b.art === 'hintergrund') return b.elementeVorher.length ? tausche(elemente, b.elementeVorher) : elemente
+  if (b.art === 'hintergrund') {
+    const zurueck = b.elementeVorher.length ? tausche(elemente, b.elementeVorher) : elemente
+    return b.entfernt?.length ? einsetzen(zurueck, b.entfernt) : zurueck
+  }
   if (b.art === 'ordnen') return ordne(elemente, b.vorher)
   if (b.art === 'muster') return elemente
   if (b.art === 'zerlegen') {

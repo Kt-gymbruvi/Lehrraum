@@ -1,8 +1,8 @@
 // Seiten mit fester Größe („Blätter“ wie in einem Heft): Maße der Formate, Ansicht einpassen und begrenzen,
 // Inhalt außerhalb des Blatts finden und aufs Blatt holen. Reine Funktionen, ohne React und ohne Browser.
-import type { Befehl } from './befehle.ts'
+import { entfernenBefehl, type Befehl } from './befehle.ts'
 import { gesamtRahmen, skaliert, verschoben } from './geometrie.ts'
-import { hintergrundMass, ZOOM_MAX, type Format, type Kamera, type Seite } from './modell.ts'
+import { hintergrundMass, ZOOM_MAX, type Bild, type Format, type Hintergrund, type Kamera, type Seite } from './modell.ts'
 
 /** Maße der Blätter in Tafel-Einheiten (bei Zoom 1 = Pixel); A4 bei 96 Punkten je Zoll */
 export const FORMAT_MASS: Record<Exclude<Format, 'unendlich'>, [number, number]> = {
@@ -106,4 +106,35 @@ export function aufsBlattBefehl(seite: Seite, blatt: Blatt): Befehl | null {
   const dx = lage(neu[0], neu[2], blatt[0])
   const dy = lage(neu[1], neu[3], blatt[1])
   return { art: 'ersetzen', vorher: seite.elemente, nachher: klein.map((e) => verschoben(e, dx, dy)) }
+}
+
+// ---------- Eigenes Bild als Hintergrund ----------
+/** Längste Kante eines Bild-Hintergrunds auf der unendlichen Fläche (so groß wie ein Blatt in 16:9) */
+const MAX_BILD_KANTE = 1600
+
+/**
+ * Hintergrund aus einem Bild: in einem festen Format so groß, dass es das Blatt des Formats ausfüllt, ohne
+ * darüber hinauszugehen (die Seite bekommt dann das Seitenverhältnis des Bildes, wie eine PDF-Seite);
+ * auf der unendlichen Fläche in seiner Größe, höchstens MAX_BILD_KANTE lang.
+ */
+export function bildHintergrund(bild: { dateiId: string; b: number; h: number }, format: Format): Hintergrund {
+  const f =
+    format === 'unendlich'
+      ? Math.min(1, MAX_BILD_KANTE / Math.max(bild.b, bild.h))
+      : Math.min(FORMAT_MASS[format][0] / bild.b, FORMAT_MASS[format][1] / bild.h)
+  return { dateiId: bild.dateiId, b: Math.max(1, Math.round(bild.b * f)), h: Math.max(1, Math.round(bild.h * f)) }
+}
+
+/** Setzt ein Bild als Hintergrund einer Seite (ein Schritt im Verlauf); eine PDF-Seite bleibt, wie sie ist (null) */
+export function bildHintergrundBefehl(seite: Seite, hintergrund: Hintergrund): Befehl | null {
+  if (seite.hintergrund?.pdf) return null
+  return { art: 'hintergrund', vorher: seite.hintergrund, nachher: hintergrund, elementeVorher: [], elementeNachher: [] }
+}
+
+/** Ein Bild der Seite wird zu ihrem Hintergrund: es verschwindet als Element (ein Schritt im Verlauf) */
+export function alsHintergrundBefehl(seite: Seite, bild: Bild, format: Format): Befehl | null {
+  if (seite.hintergrund?.pdf) return null
+  const weg = entfernenBefehl(seite.elemente, [bild.id])
+  if (!weg || weg.art !== 'entfernen') return null
+  return { art: 'hintergrund', vorher: seite.hintergrund, nachher: bildHintergrund(bild, format), elementeVorher: [], elementeNachher: [], entfernt: weg.eintraege }
 }
