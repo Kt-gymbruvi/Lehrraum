@@ -171,7 +171,7 @@ describe('Verschlüsselung', () => {
     const box = await verschluessele(key, { hallo: 'Welt' })
     expect(await entschluessele(await leiteSchluesselAb(PW, salt, WENIGE), box)).toEqual({ hallo: 'Welt' })
     await expect(entschluessele(await leiteSchluesselAb('falsch', salt, WENIGE), box)).rejects.toThrow()
-    expect(box.daten).not.toContain('Welt')
+    expect(atob(box.daten)).not.toContain('Welt')
   })
 })
 
@@ -195,7 +195,8 @@ describe('Abgleich mit nachgebautem Server', () => {
     expect(klassen.map((k) => k.bezeichnung).sort()).toEqual(['7b', 'AG'])
     expect(klassen.find((k) => k.herkunft)?.schueler[0].vorname).toBe('Anna')
     const zeile = server.tresore.get('klassen')!
-    expect(zeile.daten).not.toMatch(/AG|Sport|Anna/)
+    // Klartext darf nicht vorkommen – geprüft an den entschlüsselten Bytes, nicht am Base64 (dort kann „AG“ zufällig stehen)
+    expect(atob(zeile.daten)).not.toMatch(/Sport|Anna|Muster/)
     expect(zeile.salt).not.toBe(server.tresore.get('namen')!.salt) // eigener Schlüssel
   }, 20_000)
 
