@@ -23,6 +23,10 @@ Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/D
 - **Datenmodell Version 7** statt mit Etappe A in Version 6, weil Etappe A schon veröffentlicht war.
 - **Würfel entfernt** auf Wunsch der Lehrkraft (Platz für das Werkzeug; Zufall & Gruppen deckt das Auslosen ab).
 
+## 2026-11-15 – Keine Textauswahl auf der Tafel
+- **Die ganze Tafel sperrt die Textauswahl** (CSS `user-select: none` und `selectstart` verhindert), nur Eingabefelder erlauben sie. Verworfen: nur die Zeichenfläche sperren (so war es; der Handrücken trifft oft die Leisten oder den Rand).
+- **Der Stift hebt eine bestehende Auswahl auf**, der Finger nicht – sonst würde jeder Handballen auch eine gewollte Auswahl in einem Feld löschen.
+
 ## 2026-11-14 – PDF-Seiten als Bild (SPEC Etappe A)
 - **PDF-Seite = Bild-Element plus Blattmaß der Seite** (`Seite.blatt`) statt Hintergrund: So gilt alles, was Bilder können (drehen, verschieben, löschen, rückgängig), ohne eigene PDF-Knöpfe. Das Blatt behält das Maß der PDF-Seite, auch wenn das Bild gelöscht oder verschoben wird. Verworfen: PDF weiter als Hintergrund mit mehr Knöpfen (doppelte Bedienung).
 - **Ältere PDF-Seiten werden beim Laden umgewandelt** (Version 5 → 6), so dass sie gleich aussehen; das Bild liegt zuunterst, das Geschriebene darüber bleibt unverändert. Die PDF-Kennung und „alle Seiten dieses PDFs löschen“ entfallen.

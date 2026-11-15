@@ -134,6 +134,25 @@ describe('Tafel', () => {
     expect(e[1].punkte[0][2]).toBeCloseTo(0.8)
   })
 
+  it('langes Drücken markiert keinen Text der Seite; der Stift hebt eine Auswahl auf', async () => {
+    render(<Tafel />)
+    await bereit()
+    // Textauswahl beginnen: auf Leisten verhindert, in Eingabefeldern erlaubt
+    const knopf = screen.getByRole('button', { name: 'Stift' })
+    expect(fireEvent(knopf, new Event('selectstart', { bubbles: true, cancelable: true }))).toBe(false)
+    const feld = document.createElement('textarea')
+    document.querySelector('.tafel')!.appendChild(feld)
+    expect(fireEvent(feld, new Event('selectstart', { bubbles: true, cancelable: true }))).toBe(true)
+    feld.remove()
+    // eine schon bestehende Auswahl verschwindet, sobald der Stift aufsetzt – der Finger (Handballen) lässt sie
+    const auswahl = window.getSelection()!
+    auswahl.selectAllChildren(document.body)
+    ziehe([10, 10], [100, 10], { pointerType: 'touch', pointerId: 30 })
+    expect(auswahl.isCollapsed).toBe(false)
+    ziehe([10, 50], [100, 50], { pointerType: 'pen', pointerId: 31 })
+    expect(auswahl.isCollapsed).toBe(true)
+  })
+
   it('aufgelegte Hand: der Stift schreibt trotzdem, die Ansicht bleibt (Handballen-Schutz)', async () => {
     render(<Tafel />)
     await bereit()

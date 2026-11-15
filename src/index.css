@@ -174,6 +174,18 @@ body {
   display: flex;
   flex-direction: column;
   height: 100dvh;
+  /* Langes Drücken (Handrücken, Handballen) soll nie den Text der Seite markieren – sonst legt
+     Safari eine blaue Auswahl über alles und der Stift schreibt nicht mehr. */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.tafel input,
+.tafel textarea,
+.tafel [contenteditable="true"] {
+  user-select: text;
+  -webkit-user-select: text;
+  -webkit-touch-callout: default;
 }
 .tafel-kopf {
   display: flex;

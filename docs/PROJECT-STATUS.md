@@ -1,12 +1,18 @@
 # Projektstand – Lehrraum
 
-Stand: 14.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 23 Testdateien, 285 Tests grün (`npm test`); Build grün (`npm run build`).
+Stand: 15.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Tests: 24 Testdateien, 298 Tests grün (`npm test`); Build grün (`npm run build`).
 **Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden. **Ein Passwort, ein Schlüsselbund (Etappe B)** ist veröffentlicht (14.11.2026, auch Notenbuch und Startseite). **Tafeln auf allen Geräten (Etappe C)** ist veröffentlicht (14.11.2026, Migration `012_tafeln.sql` ausgeführt).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Keine Textauswahl durch den Handrücken – noch nicht veröffentlicht (15.11.2026)
+- Rückmeldung der Lehrkraft (iPad, Bildschirmfoto): Manchmal liegt plötzlich eine blaue Markierung über der ganzen Tafel, danach schreibt der Stift nicht mehr.
+- Ursache: Das ist die Textauswahl von Safari. Langes Drücken (Handrücken) neben dem Blatt – auf Leisten, Kopfzeile oder dem Rand – markierte den Text der Seite; gesperrt war nur die Zeichenfläche selbst.
+- Jetzt: Die ganze Tafel lässt keine Textauswahl zu (nur Eingabefelder), `selectstart` wird außerhalb von Feldern verhindert, und setzt der Stift (oder die Maus) auf, verschwindet eine trotzdem bestehende Auswahl. Finger (Handballen) heben sie nicht auf.
+- Getestet: `npm test` (298 grün, neuer Test „langes Drücken markiert keinen Text“), Build. **Am iPad nicht geprüft** – nur dort beurteilbar.
 
 ## Tafeln auf allen Geräten (SPEC-tafeln-abgleich-pdf-tabelle, Etappe C) – veröffentlicht 14.11.2026
 - **Server:** Migration `../Quizzo/supabase/migrations/012_tafeln.sql` – Tabelle `lr_tafeln` (je Tafel eine Zeile, `frei` oder `k-<Klasse>`, nur verschlüsselt, nur eigene Zeilen, Speichern nur über `lr_tafel_speichern` mit erwarteter Fassung) und privater Speicherbereich `lr-dateien` (nur eigener Ordner, bis 30 MB je Datei). Ausgeführt am 14.11.2026. Ohne sie zeigt die Tafel angemeldet „Nur auf diesem Gerät gespeichert“ – sonst ändert sich nichts.

@@ -618,6 +618,28 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
     if (ersatzGeplant.current) clearTimeout(ersatzGeplant.current)
     ersatzGeplant.current = null
   }
+  // Textauswahl der Seite: nur in Eingabefeldern. Eine trotzdem entstandene Auswahl (langes Drücken mit dem
+  // Handrücken) verschwindet, sobald der Stift aufsetzt – sonst blockiert sie das Schreiben am iPad.
+  useEffect(() => {
+    const imFeld = (ziel: EventTarget | null) => {
+      const el = ziel instanceof Node ? (ziel instanceof HTMLElement ? ziel : ziel.parentElement) : null
+      return !!el?.closest('input, textarea, [contenteditable="true"]')
+    }
+    const beginnt = (e: Event) => {
+      if (!imFeld(e.target)) e.preventDefault()
+    }
+    const setztAuf = (e: PointerEvent) => {
+      if (e.pointerType === 'touch' || imFeld(e.target)) return
+      const sel = window.getSelection()
+      if (sel && !sel.isCollapsed) sel.removeAllRanges()
+    }
+    document.addEventListener('selectstart', beginnt)
+    window.addEventListener('pointerdown', setztAuf, true)
+    return () => {
+      document.removeEventListener('selectstart', beginnt)
+      window.removeEventListener('pointerdown', setztAuf, true)
+    }
+  }, [])
   // Strg + C / Strg + X: über die Ereignisse des Browsers, damit der Hinweis in die Zwischenablage des Systems kommt
   useEffect(() => {
     const kopieren = (e: ClipboardEvent) => {
