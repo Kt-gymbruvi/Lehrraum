@@ -6,7 +6,8 @@ import { ausfuehrenAuf, leererVerlauf, rueckgaengigAuf, wiederholenAuf, type Inh
 import { blattVon } from '../kern/blatt.ts'
 import { seitenMass } from '../kern/geometrie.ts'
 import { benutzteDateien, hintergrundMass, neueSeite, neuesTafelbild, pdfAlsBild, pruefeTafel, type Bild, type Hintergrund, type Seite, type Strich, type Text } from '../kern/modell.ts'
-import { drehBefehl, hintergrundWegBefehl, seitenWeg } from '../kern/seiten.ts'
+import { einzufuegen, neueAblage } from '../kern/ablage.ts'
+import { drehBefehl, hintergrundWegBefehl, pdfSeiten, pdfVon, pdfWeg, seiteDoppelt, seitenWeg } from '../kern/seiten.ts'
 import { ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
 import { vergissStift } from '../tafel/Zeichenflaeche.tsx'
@@ -47,7 +48,7 @@ describe('PDF-Seiten – Logik', () => {
         { id: 'e', elemente: [], hintergrund: hg() }, // eigenes Bild bleibt Hintergrund
       ],
     })!
-    expect(t.version).toBe(7)
+    expect(t.version).toBe(8)
     const [a, b, c, d, e] = t.seiten
     expect(a.hintergrund).toBeUndefined()
     expect(a.blatt).toEqual({ b: 794, h: 1123 })
@@ -60,6 +61,9 @@ describe('PDF-Seiten – Logik', () => {
     expect(d.elemente[0]).toMatchObject({ x: 0, y: 794, drehung: -90 })
     expect(e).toMatchObject({ hintergrund: hg() })
     expect(e.blatt).toBeUndefined()
+    // die PDF-Kennung des alten Hintergrunds geht ans Bild – die Seiten gehören weiter zusammen (Version 8)
+    expect([a, b, c, d].map(pdfVon)).toEqual(['abcdef12', 'abcdef12', 'abcdef12', 'abcdef12'])
+    expect(pdfVon(e)).toBeUndefined()
     expect(benutzteDateien(t.seiten).has('ffee0011')).toBe(true)
     // gespeichert und wieder geladen bleibt es so
     expect(pruefeTafel(JSON.parse(JSON.stringify(t)))).toEqual(t)
@@ -125,6 +129,29 @@ describe('PDF-Seiten – Logik', () => {
     expect(rueckgaengigAuf(dazu.inhalt, dazu.verlauf).inhalt.hintergrund).toBe(start.hintergrund)
   })
 
+  it('alle Seiten eines PDFs: erkennen und auf einmal löschen; Kopien über die Ablage gehören nicht dazu', () => {
+    const pdfSeite = (id: string, pdf: string | undefined, mehr: Seite['elemente'] = []): Seite => ({ id, ...pdfAlsBild(hg(), mehr, pdf) })
+    const seiten = [seite('x'), pdfSeite('p1', 'pdf-a', [strich('s', [[1, 2]])]), seite('q'), pdfSeite('p2', 'pdf-a'), pdfSeite('b1', 'pdf-b'), pdfSeite('alt', undefined)]
+    expect(pdfSeiten({ seiten, nr: 3 })).toEqual([1, 3])
+    expect(pdfSeiten({ seiten, nr: 4 })).toEqual([4])
+    expect(pdfSeiten({ seiten, nr: 5 })).toEqual([]) // ältere PDF-Bilder ohne Kennung werden nicht erraten
+    expect(pdfSeiten({ seiten, nr: 0 })).toEqual([])
+    const weg = pdfWeg({ seiten, nr: 3 })
+    expect(weg.seiten.map((s) => s.id)).toEqual(['x', 'q', 'b1', 'alt'])
+    expect(weg.nr).toBe(2) // gezeigt wird die Seite an derselben Stelle
+    expect(pdfWeg({ seiten, nr: 0 })).toEqual({ seiten, nr: 0 })
+    // gespeichert und geladen bleibt die Kennung, Unsinn fällt weg
+    const t = { ...neuesTafelbild(), seiten }
+    expect(pruefeTafel(JSON.parse(JSON.stringify(t)))).toEqual(t)
+    const kaputt = { ...t, seiten: [{ ...seiten[1], elemente: [{ ...seiten[1].elemente[0], pdf: '<b>' }] }] }
+    expect(pdfVon(pruefeTafel(kaputt)!.seiten[0])).toBeUndefined()
+    // eine duplizierte Seite gehört zum PDF, ein eingefügtes Bild nicht
+    expect(pdfSeiten(seiteDoppelt({ seiten, nr: 1 }))).toEqual([1, 2, 4])
+    const eingefuegt = einzufuegen(neueAblage([seiten[1].elemente[0]]), 0, 0)[0] as Bild
+    expect(eingefuegt.art).toBe('bild')
+    expect(eingefuegt.pdf).toBeUndefined()
+  })
+
   it('löscht mehrere Seiten auf einmal', () => {
     const seiten = [seite('x'), seite('p1', hg()), seite('q'), seite('p2'), seite('alt', hg())]
     expect(seitenWeg({ seiten, nr: 3 }, [1, 3])).toEqual({ seiten: [seiten[0], seiten[2], seiten[4]], nr: 2 })
@@ -176,8 +203,24 @@ describe('Hintergrundbild und PDF-Seiten – Bedienung', () => {
       expect((s0.elemente[0] as Bild).dateiId).toBe('ffee0011')
     })
     await nutzer.click(leiste().getByRole('button', { name: 'Seite löschen' }))
-    expect(leiste().queryByRole('button', { name: /PDF-Seiten/ })).toBeNull()
+    expect(leiste().queryByRole('button', { name: /Ganzes PDF/ })).toBeNull() // nur eine Seite aus diesem PDF
     await nutzer.click(leiste().getByRole('button', { name: 'Ja, löschen' }))
     await waitFor(async () => expect((await ladeLetzteTafel())!.seiten).toHaveLength(1))
+  })
+
+  it('Seite löschen fragt bei mehrseitigen PDFs: nur diese Seite oder das ganze PDF', async () => {
+    const nutzer = userEvent.setup()
+    const pdfSeite = (id: string): Seite => ({ id, ...pdfAlsBild(hg(), [], 'pdf-a') })
+    await speichereTafel({ ...neuesTafelbild('PDF', '16:9'), seiten: [pdfSeite('p1'), pdfSeite('p2'), pdfSeite('p3'), seite('eigen', undefined, [strich('s', [[1, 2]])])] })
+    render(<Tafel />)
+    await bereit()
+    await nutzer.click(leiste().getByRole('button', { name: 'Seite löschen' }))
+    expect(leiste().getByRole('button', { name: 'Nur diese Seite' })).toBeTruthy()
+    expect(leiste().queryByRole('button', { name: 'Neue Seite' })).toBeNull() // Leiste bleibt schmal
+    await nutzer.click(leiste().getByRole('button', { name: 'Nein' }))
+    await nutzer.click(leiste().getByRole('button', { name: 'Seite löschen' }))
+    await nutzer.click(leiste().getByRole('button', { name: 'Ganzes PDF (3 Seiten)' }))
+    await waitFor(async () => expect((await ladeLetzteTafel())!.seiten.map((s) => s.id)).toEqual(['eigen']))
+    expect(leiste().getByText('Seite 1 von 1')).toBeTruthy()
   })
 })

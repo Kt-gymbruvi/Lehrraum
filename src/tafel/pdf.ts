@@ -6,7 +6,7 @@
 // (Braucht einen echten Browser; in Tests wird dieses Modul ersetzt.)
 import { blattVon } from '../kern/blatt.ts'
 import { seitenMass } from '../kern/geometrie.ts'
-import { benutzteDateien, MAX_SEITEN, neueSeite, pdfAlsBild, type Format, type Seite } from '../kern/modell.ts'
+import { benutzteDateien, MAX_SEITEN, neueId, neueSeite, pdfAlsBild, type Format, type Seite } from '../kern/modell.ts'
 import { alsBlob, speichereCanvas } from './bilder.ts'
 import { ladeBildquelle } from './bildquellen.ts'
 import { zeichneSeite } from './zeichnen.ts'
@@ -40,6 +40,7 @@ export async function importierePdf(datei: Blob, platz: number, fortschritt: (se
   try {
     const anzahl = Math.min(dokument.numPages, platz, MAX_SEITEN)
     const seiten: Seite[] = []
+    const pdf = neueId() // alle Seiten dieses Imports gehören zusammen (zum gemeinsamen Löschen)
     for (let nr = 1; nr <= anzahl; nr++) {
       fortschritt(nr, anzahl)
       const pdfSeite = await dokument.getPage(nr)
@@ -49,7 +50,7 @@ export async function importierePdf(datei: Blob, platz: number, fortschritt: (se
       canvas.height = Math.ceil(ansicht.height)
       await pdfSeite.render({ canvas, viewport: ansicht }).promise
       const dateiId = await speichereCanvas(canvas, 'image/jpeg')
-      const { elemente, blatt } = pdfAlsBild({ dateiId, b: Math.round(canvas.width / IMPORT_SCHAERFE), h: Math.round(canvas.height / IMPORT_SCHAERFE) })
+      const { elemente, blatt } = pdfAlsBild({ dateiId, b: Math.round(canvas.width / IMPORT_SCHAERFE), h: Math.round(canvas.height / IMPORT_SCHAERFE) }, [], pdf)
       seiten.push({ ...neueSeite(elemente), blatt })
       pdfSeite.cleanup()
     }

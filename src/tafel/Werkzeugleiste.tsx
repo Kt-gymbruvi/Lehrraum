@@ -7,6 +7,7 @@ import { useEffect, useRef, useState } from 'react'
 import { begrenzeStaerke, inLeiste, PALETTE, STAERKE_MAX, STAERKE_MIN, staerkeInLeiste } from '../kern/farben.ts'
 import { FARBEN, STAERKEN } from '../kern/modell.ts'
 import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_RADIUS, type Radierer } from '../kern/radieren.ts'
+import { useSchliessenDraussen } from './handballen.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 import type { Werkzeug } from './Zeichenflaeche.tsx'
 
@@ -139,22 +140,7 @@ export function Werkzeugleiste(p: Props) {
   const offen = feld && (feld.art !== 'radierer' || p.werkzeug === 'radierer') ? feld : null
   const offeneArt = offen?.art ?? null
 
-  useEffect(() => {
-    if (!offeneArt) return
-    const draussen = (e: PointerEvent) => {
-      const ziel = e.target as Node
-      if (feldRef.current?.contains(ziel) || ausloeser[offeneArt].current?.contains(ziel)) return
-      setFeld(null)
-    }
-    const taste = (e: KeyboardEvent) => e.key === 'Escape' && setFeld(null)
-    document.addEventListener('pointerdown', draussen, true)
-    window.addEventListener('keydown', taste)
-    return () => {
-      document.removeEventListener('pointerdown', draussen, true)
-      window.removeEventListener('keydown', taste)
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [offeneArt])
+  useSchliessenDraussen(!!offeneArt, () => [feldRef.current, offeneArt && ausloeser[offeneArt].current], () => setFeld(null))
 
   /** Öffnet das Feld rechts neben der ganzen Leiste, auf Höhe seines Knopfes – oder schließt es wieder */
   const umschalten = (art: Feldart, hoehe: number) => {

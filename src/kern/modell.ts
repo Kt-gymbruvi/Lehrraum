@@ -1,15 +1,16 @@
-// Datenmodell der Tafel (Version 7). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 8). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
 // Version 4, nur ohne Drehung und PDF-Kennung des Hintergrunds; Version 4 hat dieselbe Gestalt wie Version 5, nur
 // ohne Seitenformat und Muster – sie wird zu „unendlich“ ohne Muster, so dass alte Tafeln genau so bleiben, wie sie waren;
 // bis Version 5 konnte eine PDF-Seite Hintergrund sein – sie wird zu einem Bild-Element auf einer Seite mit eigenem Blattmaß;
-// Version 7 bringt das Element Tabelle, sonst gleich wie Version 6).
+// Version 7 bringt das Element Tabelle, sonst gleich wie Version 6; Version 8 bringt die PDF-Kennung am Bild einer
+// PDF-Seite, sonst gleich wie Version 7 – ältere PDF-Bilder haben keine und werden nicht erraten).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 7
+export const TAFEL_VERSION = 8
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -82,6 +83,8 @@ export type Bild = Gemeinsam & {
   dateiId: string
   /** Drehung in Grad im Uhrzeigersinn um die linke obere Ecke (fehlt: 0) */
   drehung?: number
+  /** Nur PDF-Seiten: Kennung des PDF-Imports – alle Seiten eines PDFs tragen dieselbe (seit Version 8) */
+  pdf?: string
 }
 
 /** Grenzen einer Tabelle */
@@ -210,6 +213,8 @@ export const neueSeite = (elemente: Element[] = [], hintergrund?: Hintergrund): 
 
 /** Kennungen von Dateien – nur solche Zeichen */
 export const istDateiId = (x: unknown): x is string => typeof x === 'string' && /^[0-9a-f]{8,64}$/.test(x)
+/** Kennung wie von neueId() (oder älter): kurz und unbedenklich */
+const istKennung = (x: unknown): x is string => typeof x === 'string' && /^[0-9A-Za-z_-]{1,64}$/.test(x)
 const istMass = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x) && x > 0 && x <= 100000
 
 /** Gültiges Muster oder undefined (unbekannte Arten fallen weg, die Seite bleibt dann leer) */
@@ -243,10 +248,10 @@ function pruefeBlatt(x: unknown): { b: number; h: number } | undefined {
  * Eine PDF-Seite als Bild, das das Blatt genau ausfüllt (auch gedreht: Bilder drehen um ihre linke obere Ecke).
  * Liefert Elemente (Bild zuunterst) und das Blattmaß der Seite.
  */
-export function pdfAlsBild(h: Hintergrund, elemente: Element[] = []): { elemente: Element[]; blatt: { b: number; h: number } } {
+export function pdfAlsBild(h: Hintergrund, elemente: Element[] = [], pdf?: string): { elemente: Element[]; blatt: { b: number; h: number } } {
   const [b, hoehe] = hintergrundMass(h)
   const [x, y] = h.drehung === 90 ? [b, 0] : h.drehung === 180 ? [b, hoehe] : h.drehung === 270 ? [0, hoehe] : [0, 0]
-  const bild: Bild = { art: 'bild', id: neueId(), x, y, b: h.b, h: h.h, dateiId: h.dateiId, ...(h.drehung ? { drehung: h.drehung === 270 ? -90 : h.drehung } : {}) } // Bilder: −180° bis 180°
+  const bild: Bild = { art: 'bild', id: neueId(), x, y, b: h.b, h: h.h, dateiId: h.dateiId, ...(h.drehung ? { drehung: h.drehung === 270 ? -90 : h.drehung } : {}), ...(pdf ? { pdf } : {}) } // Bilder: −180° bis 180°
   return { elemente: [bild, ...elemente], blatt: { b, h: hoehe } }
 }
 
@@ -301,7 +306,7 @@ function pruefeElement(x: unknown): Element | null {
   if (!istObjekt(x) || typeof x.id !== 'string' || !x.id) return null
   if (x.art === 'bild') {
     if (!istZahl(x.x) || !istZahl(x.y) || !istMass(x.b) || !istMass(x.h) || !istDateiId(x.dateiId)) return null
-    return { art: 'bild', id: x.id, x: x.x, y: x.y, b: x.b, h: x.h, dateiId: x.dateiId, ...zusatz(x, true) }
+    return { art: 'bild', id: x.id, x: x.x, y: x.y, b: x.b, h: x.h, dateiId: x.dateiId, ...zusatz(x, true), ...(istKennung(x.pdf) ? { pdf: x.pdf } : {}) }
   }
   if (!istFarbe(x.farbe)) return null
   if (x.art === 'tabelle') {
@@ -352,17 +357,23 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8) {
+    const ab5 = roh.version >= 5
+    const ab6 = roh.version >= 6
     const ids = new Set<string>()
     seiten = (Array.isArray(roh.seiten) ? roh.seiten : []).slice(0, MAX_SEITEN).flatMap((s): Seite[] => {
       if (!istObjekt(s) || typeof s.id !== 'string' || !s.id || ids.has(s.id)) return []
       ids.add(s.id)
       const hintergrund = pruefeHintergrund(s.hintergrund)
-      const muster = roh.version === 5 || roh.version === 6 || roh.version === 7 ? pruefeMuster(s.muster) : undefined
+      const muster = ab5 ? pruefeMuster(s.muster) : undefined
       const elemente = pruefeElemente(s.elemente)
-      // Bis Version 5: PDF-Seite als Hintergrund → Bild-Element (ganz unten), die Seite behält das Maß der PDF-Seite
-      if (hintergrund && istObjekt(s.hintergrund) && typeof s.hintergrund.pdf === 'string') return [{ id: s.id, ...pdfAlsBild(hintergrund, elemente), ...(muster ? { muster } : {}) }]
-      const blatt = roh.version === 6 || roh.version === 7 ? pruefeBlatt(s.blatt) : undefined
+      // Bis Version 5: PDF-Seite als Hintergrund → Bild-Element (ganz unten), die Seite behält das Maß der PDF-Seite.
+      // Die PDF-Kennung des Hintergrunds (Version 4 und 5) geht ans Bild, damit die Seiten zusammengehören.
+      if (hintergrund && istObjekt(s.hintergrund) && typeof s.hintergrund.pdf === 'string') {
+        const pdf = istKennung(s.hintergrund.pdf) ? s.hintergrund.pdf : undefined
+        return [{ id: s.id, ...pdfAlsBild(hintergrund, elemente, pdf), ...(muster ? { muster } : {}) }]
+      }
+      const blatt = ab6 ? pruefeBlatt(s.blatt) : undefined
       return [{ id: s.id, elemente, ...(hintergrund ? { hintergrund } : {}), ...(muster ? { muster } : {}), ...(blatt ? { blatt } : {}) }]
     })
     if (!seiten.length) seiten = [neueSeite()]
@@ -376,7 +387,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
     id: roh.id,
     titel: typeof roh.titel === 'string' && roh.titel.trim() ? roh.titel.trim().slice(0, 200) : 'Tafel',
     // Vor Version 5 war jede Tafel unendlich – so bleibt es auch
-    format: (roh.version === 5 || roh.version === 6 || roh.version === 7) && istFormat(roh.format) ? roh.format : 'unendlich',
+    format: typeof roh.version === 'number' && roh.version >= 5 && istFormat(roh.format) ? roh.format : 'unendlich',
     seiten,
     seiteNr: istZahl(roh.seiteNr) ? Math.min(seiten.length - 1, Math.max(0, Math.round(roh.seiteNr))) : 0,
     kamera: { x: istZahl(k.x) ? k.x : 0, y: istZahl(k.y) ? k.y : 0, zoom },

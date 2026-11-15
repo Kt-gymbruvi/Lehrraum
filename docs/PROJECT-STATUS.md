@@ -1,12 +1,19 @@
 # Projektstand – Lehrraum
 
 Stand: 15.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 24 Testdateien, 298 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 25 Testdateien, 304 Tests grün (`npm test`); Build grün (`npm run build`).
 **Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden. **Ein Passwort, ein Schlüsselbund (Etappe B)** ist veröffentlicht (14.11.2026, auch Notenbuch und Startseite). **Tafeln auf allen Geräten (Etappe C)** ist veröffentlicht (14.11.2026, Migration `012_tafeln.sql` ausgeführt).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Ganzes PDF löschen, Felder öffnen trotz aufliegender Hand – noch nicht veröffentlicht (15.11.2026)
+- Rückmeldung der Lehrkraft: (1) Ein eingefügtes PDF soll sich mit einem Knopf ganz löschen lassen, die einzelnen PDF-Seiten aber weiter als Bild löschbar und veränderbar bleiben. (2) Ab und zu gehen „Hintergrund“ und die Art des Radierers (Schwamm) nicht auf – es erscheint nichts.
+- **Ganzes PDF:** „Seite löschen“ auf einer Seite eines mehrseitigen PDFs fragt „Nur diese Seite“ / „Ganzes PDF (N Seiten)“ / „Nein“. Jedes PDF-Bild trägt dazu die Kennung seines Imports – **Datenmodell Version 8**: nach dem Veröffentlichen auf jedem Gerät einmal neu laden. PDFs, die mit Version 6/7 geöffnet wurden, haben keine Kennung (dort gibt es nur „Ja, löschen“); einmal neu öffnen. PDFs aus Version 4/5 bekommen ihre alte Kennung zurück.
+- **Felder gehen nicht mehr sofort wieder zu:** Ursache war die aufliegende Hand am iPad – sie zählte als Antippen außerhalb und schloss das gerade geöffnete Feld. Jetzt gelten Finger bis 2 s nach dem Stift und zweite Finger als Hand (Hintergrund, Format, Radierer, Mehr Farben; auch Textfeld und „Tabelle einfügen“ auf der Tafel). Am Laptop ließ sich der Fehler nicht nachstellen – dort öffnete sich das Feld immer.
+- Hinweis zur Bedienung: Das Feld „Art und Größe“ des Radierers öffnet sich beim **zweiten** Antippen (das erste wählt den Radierer).
+- Getestet: `npm test` (304 grün; neu `src/test/handballen.test.tsx`, PDF-Tests erweitert), Build; im Browser ein dreiseitiges PDF geöffnet und mit „Ganzes PDF (3 Seiten)“ gelöscht, keine Konsolenfehler. **Am iPad nicht geprüft** – ob die Felder mit aufliegender Hand jetzt offen bleiben, lässt sich nur dort beurteilen.
 
 ## Keine Textauswahl durch den Handrücken – noch nicht veröffentlicht (15.11.2026)
 - Rückmeldung der Lehrkraft (iPad, Bildschirmfoto): Manchmal liegt plötzlich eine blaue Markierung über der ganzen Tafel, danach schreibt der Stift nicht mehr.

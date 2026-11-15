@@ -1,9 +1,10 @@
 // Knopf „Format“ in der Kopfzeile: Blätter in 16:9, A4 hoch, A4 quer oder eine unendliche Fläche.
 // Ragt nach dem Umstellen Inhalt über ein Blatt hinaus, bietet das Feld „Inhalt einpassen“ an. Das Format
 // selbst lässt sich jederzeit zurückstellen – dabei geht nichts verloren, Inhalt neben dem Blatt ist nur verdeckt.
-import { useEffect, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import { FORMAT_NAME } from '../kern/blatt.ts'
 import { FORMATE, type Format } from '../kern/modell.ts'
+import { useSchliessenDraussen } from './handballen.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 
 type Props = {
@@ -20,21 +21,7 @@ export function Formatwahl({ format, ueberstand, beiFormat, beiEinpassen }: Prop
   const feld = useRef<HTMLDivElement>(null)
   const offen = lage !== null
 
-  useEffect(() => {
-    if (!offen) return
-    const draussen = (e: PointerEvent) => {
-      const ziel = e.target as Node
-      if (feld.current?.contains(ziel) || knopf.current?.contains(ziel)) return
-      setLage(null)
-    }
-    const taste = (e: KeyboardEvent) => e.key === 'Escape' && setLage(null)
-    document.addEventListener('pointerdown', draussen, true)
-    window.addEventListener('keydown', taste)
-    return () => {
-      document.removeEventListener('pointerdown', draussen, true)
-      window.removeEventListener('keydown', taste)
-    }
-  }, [offen])
+  useSchliessenDraussen(offen, () => [feld.current, knopf.current], () => setLage(null))
 
   const umschalten = () => {
     if (offen) return setLage(null)

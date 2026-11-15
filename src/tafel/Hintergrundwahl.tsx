@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { FORMAT_MASS } from '../kern/blatt.ts'
 import { MUSTER, MUSTERGRUPPEN, musterTeile } from '../kern/muster.ts'
 import { MUSTERARTEN, type Format, type Muster, type Musterart } from '../kern/modell.ts'
+import { useSchliessenDraussen } from './handballen.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 import { zeichneMusterteile } from './zeichnen.ts'
 
@@ -58,21 +59,7 @@ export function Hintergrundwahl({ format, muster, hintergrund, beiMuster, beiBil
   const feld = useRef<HTMLDivElement>(null)
   const offen = lage !== null
 
-  useEffect(() => {
-    if (!offen) return
-    const draussen = (e: PointerEvent) => {
-      const ziel = e.target as Node
-      if (feld.current?.contains(ziel) || knopf.current?.contains(ziel)) return
-      setLage(null)
-    }
-    const taste = (e: KeyboardEvent) => e.key === 'Escape' && setLage(null)
-    document.addEventListener('pointerdown', draussen, true)
-    window.addEventListener('keydown', taste)
-    return () => {
-      document.removeEventListener('pointerdown', draussen, true)
-      window.removeEventListener('keydown', taste)
-    }
-  }, [offen])
+  useSchliessenDraussen(offen, () => [feld.current, knopf.current], () => setLage(null))
 
   /** Öffnet das Feld links neben der rechten Leiste, auf Höhe des Knopfes */
   const umschalten = () => {

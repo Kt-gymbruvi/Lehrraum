@@ -121,6 +121,25 @@ export function seitenDazu(b: Buch, neue: Seite[]): Buch {
   return { seiten, nr: b.nr + 1 }
 }
 
+/** Kennung des PDFs, aus dem die Seite stammt (das unterste PDF-Bild darauf), oder undefined */
+export function pdfVon(s: Seite | undefined): string | undefined {
+  for (const e of s?.elemente ?? []) if (e.art === 'bild' && e.pdf) return e.pdf
+  return undefined
+}
+
+/** Stellen aller Seiten, die aus demselben PDF stammen wie die gezeigte (leer, wenn sie keines hat) */
+export function pdfSeiten(b: Buch): number[] {
+  const pdf = pdfVon(b.seiten[b.nr])
+  if (!pdf) return []
+  return b.seiten.flatMap((s, i) => (pdfVon(s) === pdf ? [i] : []))
+}
+
+/** Löscht alle Seiten des PDFs, aus dem die gezeigte Seite stammt (mit allem, was darauf steht). */
+export const pdfWeg = (b: Buch): Buch => {
+  const nrs = pdfSeiten(b)
+  return nrs.length ? seitenWeg(b, nrs) : b
+}
+
 /** Löscht mehrere Seiten (Stellen in der Folge). Bleibt keine übrig, gibt es eine leere. Gezeigt wird die Seite an derselben Stelle. */
 export function seitenWeg(b: Buch, nrs: number[]): Buch {
   const weg = new Set(nrs)

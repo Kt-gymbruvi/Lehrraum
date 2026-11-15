@@ -622,6 +622,23 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     if ((e.target as HTMLElement).tagName === 'TEXTAREA') return // im Eingabefeld: normales Tippen und Markieren
     if (e.pointerType === 'mouse' && e.button !== 0) return
     e.preventDefault()
+    const fangen = () => {
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId)
+      } catch {
+        /* manche Browser erlauben das nicht für jeden Zeiger */
+      }
+    }
+    const [x, y] = ort(e)
+    const laufend = aktiv.current
+    const laufendTyp = laufend && laufend.art !== 'geste' ? zeiger.current.get(laufend.zeiger)?.typ : undefined
+    if (e.pointerType === 'touch' && stiftGesehen && (laufendTyp === 'pen' || Date.now() - letzterStift < BALLEN_MS)) {
+      // Handballen beim Schreiben: merken (damit das Abheben nichts auslöst), sonst nichts tun – auch ein offenes
+      // Eingabefeld oder das Feld „Tabelle einfügen“ bleibt offen
+      fangen()
+      zeiger.current.set(e.pointerId, { x, y, typ: 'ballen' })
+      return
+    }
     if (stand.current.editor) {
       schliesseEditor() // Tippen neben das Eingabefeld übernimmt den Text
       return
@@ -630,19 +647,7 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       setWahl(null) // Tippen neben das Feld „Tabelle einfügen“ schließt es
       return
     }
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId)
-    } catch {
-      /* manche Browser erlauben das nicht für jeden Zeiger */
-    }
-    const [x, y] = ort(e)
-    const laufend = aktiv.current
-    const laufendTyp = laufend && laufend.art !== 'geste' ? zeiger.current.get(laufend.zeiger)?.typ : undefined
-    if (e.pointerType === 'touch' && stiftGesehen && (laufendTyp === 'pen' || Date.now() - letzterStift < BALLEN_MS)) {
-      // Handballen beim Schreiben: merken (damit das Abheben nichts auslöst), sonst nichts tun
-      zeiger.current.set(e.pointerId, { x, y, typ: 'ballen' })
-      return
-    }
+    fangen()
     zeiger.current.set(e.pointerId, { x, y, typ: e.pointerType })
     if (e.pointerType === 'pen') {
       stiftGesehen = true

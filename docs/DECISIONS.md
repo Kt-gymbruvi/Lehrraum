@@ -4,6 +4,12 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-15 – Ganzes PDF löschen, aufliegende Hand neben offenen Feldern
+- **PDF-Kennung am Bild der PDF-Seite** (`Bild.pdf`, Datenmodell Version 8) statt am Hintergrund wie in Version 4/5: Die PDF-Seite bleibt ein gewöhnliches Bild (verschieben, drehen, einzeln löschen), aber die Seiten eines Imports gehören zusammen. Kennungen aus Version 4/5 gehen bei der Umwandlung ans Bild; PDF-Bilder aus Version 6/7 haben keine und werden nicht erraten.
+- **„Ganzes PDF“ als dritte Antwort bei „Seite löschen“** (wie bis Version 5), nur bei mehrseitigen PDFs. Gelöscht werden alle Seiten, deren unterstes PDF-Bild zu diesem PDF gehört, mit allem darauf – wie „Seite löschen“ ohne Rückgängig, deshalb mit Rückfrage. Eine duplizierte Seite gehört dazu, ein über Kopieren/Einfügen eingefügtes PDF-Bild nicht (es wird ein gewöhnliches Bild). Verworfen: eigener Knopf an der Auswahl (zweiter Weg zum selben Ziel, Gefahr beim Antippen).
+- **Aufklappfelder schließen nicht durch die aufliegende Hand:** Am iPad öffnete der Stift das Feld (Hintergrund, Radierer, Mehr Farben, Format), die aufliegende Hand galt als „außerhalb antippen“ und schloss es sofort – es schien, als gehe es nicht auf. Finger-Berührungen bis 2 s nach der letzten Stiftbewegung (auch schwebend) und zweite Finger zählen jetzt nicht (`tafel/handballen.ts`). Ebenso schließt die Hand kein offenes Textfeld und nicht „Tabelle einfügen“. Maus, Stift und ein Finger ohne Stift schließen wie bisher. Verworfen: Schließen erst beim Loslassen (Schreiben neben dem Feld soll es weiter sofort schließen).
+
+
 ## 2026-11-14 – Tafeln auf allen Geräten (Etappe C)
 - **Nur der Inhalt wird abgeglichen** (Titel, Format, Seiten), nicht Ansicht, gezeigte Seite und offene Fenster: Sonst löste schon Verschieben oder Zoomen auf dem anderen Gerät „neuer Stand geladen“ aus. Ob sich etwas geändert hat, entscheidet eine Prüfsumme des Inhalts; der Änderungszeitpunkt der Tafel zählt nur noch Inhaltsänderungen.
 - **Die zuletzt geänderte gilt, ohne Zusammenführen** (SPEC). Ausnahme nur beim allerersten Abgleich, wenn beide Seiten schon eine eigene Tafel haben: Die ältere wird angehängt statt verworfen. Das Anhängen wird erst hochgeladen, wenn die Tafel es zeigt (sonst könnte eine gleichzeitige Änderung es doppelt anhängen).

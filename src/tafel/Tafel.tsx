@@ -13,7 +13,7 @@ import { benutzteDateien, MAX_SEITEN, MAX_TEXT, neueId, neuesTafelbild, schriftg
 import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
-import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, seiteDazu, seiteDoppelt, seiteDoppeltBei, seitenDazu, seiteSchieben, seiteVerschieben, seiteWeg, seiteWegBei, type Buch as Seitenfolge } from '../kern/seiten.ts'
+import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, pdfSeiten, pdfWeg, seiteDazu, seiteDoppelt, seiteDoppeltBei, seitenDazu, seiteSchieben, seiteVerschieben, seiteWeg, seiteWegBei, type Buch as Seitenfolge } from '../kern/seiten.ts'
 import { Seitenuebersicht } from './Seitenuebersicht.tsx'
 import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
 import { mitSchrift, spalteDazu, spalteWeg, zeileDazu, zeileWeg } from '../kern/tabelle.ts'
@@ -934,6 +934,8 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
             beiDoppelt={() => blaettern(seiteDoppelt)}
             beiSchieben={(r) => blaettern((b) => seiteSchieben(b, r))}
             beiLoeschen={() => blaettern(seiteWeg)}
+            pdfAnzahl={pdfSeiten(buch).length}
+            beiPdfLoeschen={() => blaettern(pdfWeg)}
             hintergrund={!!seite.hintergrund}
             beiDrehen={(r) => fuehreAus(drehBefehl(seite, r))}
             beiHintergrundWeg={() => fuehreAus(hintergrundWegBefehl(seite))}

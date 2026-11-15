@@ -29,5 +29,10 @@ export function pruefeAblage(roh: unknown): Ablage | null {
 export function einzufuegen(ablage: Ablage, mx: number, my: number): Element[] {
   const r = gesamtRahmen(ablage.elemente)
   if (!r) return []
-  return kopiere(ablage.elemente, mx - (r[0] + r[2]) / 2, my - (r[1] + r[3]) / 2)
+  // Eingefügt ist ein PDF-Bild ein gewöhnliches Bild: Es gehört nicht mehr zu den Seiten seines PDFs
+  return kopiere(ablage.elemente, mx - (r[0] + r[2]) / 2, my - (r[1] + r[3]) / 2).map((e) => {
+    if (e.art !== 'bild' || !e.pdf) return e
+    const { pdf: _pdf, ...rest } = e
+    return rest
+  })
 }
