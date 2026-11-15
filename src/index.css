@@ -180,6 +180,14 @@ body {
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
+/* Knöpfe am iPad: zwei schnelle Tipper (Radierer wählen, gleich noch einmal für Art und Größe) sind sonst für
+   Safari ein Doppeltipp zum Zoomen, und der zweite Klick geht verloren. Klassen mit eigenem touch-action gehen vor. */
+button,
+label,
+select,
+input {
+  touch-action: manipulation;
+}
 .tafel input,
 .tafel textarea,
 .tafel [contenteditable="true"] {

@@ -65,6 +65,37 @@ describe('Aufliegende Hand', () => {
     expect(screen.queryByRole('dialog', { name: 'Art und Größe des Radierers' })).toBeNull()
   })
 
+  it('Radierer mit dem Stift geöffnet: auch eine Hand, die erst Sekunden später aufliegt, schließt das Feld nicht', async () => {
+    render(<Tafel />)
+    await bereit()
+    const jetzt = Date.now()
+    const uhr = vi.spyOn(Date, 'now').mockReturnValue(jetzt)
+    try {
+      const radierer = screen.getByRole('button', { name: 'Radierer' })
+      stiftTippt(radierer)
+      stiftTippt(radierer)
+      uhr.mockReturnValue(jetzt + 5000) // man liest das Feld, dann legt sich die Hand auf
+      hand(flaeche())
+      expect(screen.getByRole('dialog', { name: 'Art und Größe des Radierers' })).toBeTruthy()
+      stiftTippt(screen.getByRole('button', { name: 'Schwamm' }))
+      expect(screen.getByRole('button', { name: 'Schwamm' }).getAttribute('aria-pressed')).toBe('true')
+      // Der Stift daneben schließt es
+      fireEvent.pointerDown(flaeche(), { pointerId: 7, pointerType: 'pen', button: 0, isPrimary: true })
+      expect(screen.queryByRole('dialog', { name: 'Art und Größe des Radierers' })).toBeNull()
+    } finally {
+      uhr.mockRestore()
+    }
+  })
+
+  it('ein mit dem Finger geöffnetes Feld schließt ein Finger daneben weiterhin', async () => {
+    render(<Tafel />)
+    await bereit()
+    fireEvent.click(screen.getByRole('button', { name: 'Hintergrund' }))
+    expect(screen.getByRole('dialog', { name: 'Hintergrund' })).toBeTruthy()
+    hand(flaeche())
+    expect(screen.queryByRole('dialog', { name: 'Hintergrund' })).toBeNull()
+  })
+
   it('ein mit dem Stift geöffnetes Textfeld bleibt offen, wenn die Hand die Tafel berührt', async () => {
     render(<Tafel />)
     await bereit()

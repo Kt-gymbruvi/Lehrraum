@@ -44,10 +44,14 @@ export function useSchliessenDraussen(offen: boolean, innen: () => (Node | null 
   useEffect(() => beobachteStift(), [])
   useEffect(() => {
     if (!offen) return
+    const offenSeit = Date.now()
     const draussen = (e: PointerEvent) => {
       const ziel = e.target as Node
       if (aktuell.current.innen().some((el) => el?.contains(ziel))) return
       if (istHandballen(e)) return
+      // Mit dem Stift geöffnet (oder seitdem mit dem Stift gearbeitet): Die Hand liegt oft erst nach ein paar Sekunden
+      // auf, während man das Feld noch liest. Dann schließt nur noch der Stift, die Maus, Escape oder der Knopf das Feld.
+      if (e.pointerType === 'touch' && letzterStift > offenSeit - HAND_NACH_STIFT_MS) return
       aktuell.current.schliessen()
     }
     const taste = (e: KeyboardEvent) => e.key === 'Escape' && aktuell.current.schliessen()
