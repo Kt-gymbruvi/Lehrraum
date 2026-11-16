@@ -4,6 +4,11 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-16 – Aufklappfelder direkt an der Seite, Hover nur mit Maus
+- **Aufklappfelder der Leisten per Portal an `document.body`** statt im `<aside>`: Die Leisten rollen (`overflow-y: auto`), und Safari am iPad schneidet feste Elemente in einem rollbaren Bereich ab – das Feld des Radierers erschien dann nicht. Verworfen: Leiste nicht rollbar machen (auf kleinen Bildschirmen passen nicht alle Werkzeuge).
+- **Hover nur bei `(hover: hover)`, gewählt schlägt Hover und Drücken:** Am iPad blieb :hover nach dem Antippen hängen und machte das gewählte Werkzeug blass, so dass nicht zu erkennen war, ob es gewählt ist.
+
+
 ## 2026-11-15 – Ganzes PDF löschen, aufliegende Hand neben offenen Feldern
 - **PDF-Kennung am Bild der PDF-Seite** (`Bild.pdf`, Datenmodell Version 8) statt am Hintergrund wie in Version 4/5: Die PDF-Seite bleibt ein gewöhnliches Bild (verschieben, drehen, einzeln löschen), aber die Seiten eines Imports gehören zusammen. Kennungen aus Version 4/5 gehen bei der Umwandlung ans Bild; PDF-Bilder aus Version 6/7 haben keine und werden nicht erraten.
 - **„Ganzes PDF“ als dritte Antwort bei „Seite löschen“** (wie bis Version 5), nur bei mehrseitigen PDFs. Gelöscht werden alle Seiten, deren unterstes PDF-Bild zu diesem PDF gehört, mit allem darauf – wie „Seite löschen“ ohne Rückgängig, deshalb mit Rückfrage. Eine duplizierte Seite gehört dazu, ein über Kopieren/Einfügen eingefügtes PDF-Bild nicht (es wird ein gewöhnliches Bild). Verworfen: eigener Knopf an der Auswahl (zweiter Weg zum selben Ziel, Gefahr beim Antippen).

@@ -4,6 +4,7 @@
 //   Mehr: weitere Farben, eigene Farbplätze mit dem Farbwähler des Geräts und ein Regler für die Stärke.
 // Ein Feld schließt sich beim Antippen außerhalb (auch der Tafel), mit Escape und beim Wechsel des Werkzeugs.
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { begrenzeStaerke, inLeiste, PALETTE, STAERKE_MAX, STAERKE_MIN, staerkeInLeiste } from '../kern/farben.ts'
 import { FARBEN, STAERKEN } from '../kern/modell.ts'
 import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_RADIUS, type Radierer } from '../kern/radieren.ts'
@@ -247,48 +248,50 @@ export function Werkzeugleiste(p: Props) {
         </button>
       </div>
 
-      {offen && (
-        <div
-          ref={feldRef}
-          className="aufklappfeld"
-          role="dialog"
-          aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : 'Mehr Farben und Stärken'}
-          style={{ left: offen.links, top: offen.oben }}
-        >
-          {offen.art === 'mehr' ? (
-            <MehrFeld {...p} />
-          ) : (
-            <>
-              <div className="feld-reihe" role="group" aria-label="Art des Radierers">
-                {RADIERER_ARTEN.map((a) => (
-                  <button
-                    key={a.wert}
-                    type="button"
-                    className="leisten-knopf mit-text"
-                    aria-pressed={p.radierer.art === a.wert}
-                    aria-label={a.wert === 'schwamm' ? 'Schwamm' : 'Element-Radierer'}
-                    title={a.titel}
-                    onClick={() => p.beiRadierer({ ...p.radierer, art: a.wert })}
-                  >
-                    <Symbol name={a.wert === 'schwamm' ? 'schwamm' : 'radierer'} />
-                    <span>{a.name}</span>
-                  </button>
-                ))}
-              </div>
-              <div className="feld-reihe" role="group" aria-label="Größe des Radierers">
-                {RADIERER_GROESSEN.map((g) => {
-                  const d = Math.min(40, RADIERER_RADIUS[g.wert] * 0.9 + 6)
-                  return (
-                    <button key={g.wert} type="button" className="leisten-knopf" aria-pressed={p.radierer.groesse === g.wert} aria-label={'Radierer ' + g.name} title={'Größe: ' + g.name} onClick={() => p.beiRadierer({ ...p.radierer, groesse: g.wert })}>
-                      <span className="radierer-kreis" style={{ width: d, height: d }} />
+      {offen &&
+        createPortal(
+          <div
+            ref={feldRef}
+            className="aufklappfeld"
+            role="dialog"
+            aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : 'Mehr Farben und Stärken'}
+            style={{ left: offen.links, top: offen.oben }}
+          >
+            {offen.art === 'mehr' ? (
+              <MehrFeld {...p} />
+            ) : (
+              <>
+                <div className="feld-reihe" role="group" aria-label="Art des Radierers">
+                  {RADIERER_ARTEN.map((a) => (
+                    <button
+                      key={a.wert}
+                      type="button"
+                      className="leisten-knopf mit-text"
+                      aria-pressed={p.radierer.art === a.wert}
+                      aria-label={a.wert === 'schwamm' ? 'Schwamm' : 'Element-Radierer'}
+                      title={a.titel}
+                      onClick={() => p.beiRadierer({ ...p.radierer, art: a.wert })}
+                    >
+                      <Symbol name={a.wert === 'schwamm' ? 'schwamm' : 'radierer'} />
+                      <span>{a.name}</span>
                     </button>
-                  )
-                })}
-              </div>
-            </>
-          )}
-        </div>
-      )}
+                  ))}
+                </div>
+                <div className="feld-reihe" role="group" aria-label="Größe des Radierers">
+                  {RADIERER_GROESSEN.map((g) => {
+                    const d = Math.min(40, RADIERER_RADIUS[g.wert] * 0.9 + 6)
+                    return (
+                      <button key={g.wert} type="button" className="leisten-knopf" aria-pressed={p.radierer.groesse === g.wert} aria-label={'Radierer ' + g.name} title={'Größe: ' + g.name} onClick={() => p.beiRadierer({ ...p.radierer, groesse: g.wert })}>
+                        <span className="radierer-kreis" style={{ width: d, height: d }} />
+                      </button>
+                    )
+                  })}
+                </div>
+              </>
+            )}
+          </div>,
+          document.body, // nicht in der Leiste: Safari am iPad schneidet feste Felder in einer rollbaren Leiste ab
+        )}
     </aside>
   )
 }

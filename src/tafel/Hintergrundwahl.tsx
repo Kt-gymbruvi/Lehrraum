@@ -1,6 +1,7 @@
 // Knopf „Hintergrund“ oben in der rechten Leiste: Muster für diese Seite oder alle Seiten wählen (mit Vorschau),
 // Abstand und Linienfarbe einstellen, Muster beim PDF-Export weglassen. Jeder Wechsel lässt sich zurücknehmen.
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { FORMAT_MASS } from '../kern/blatt.ts'
 import { MUSTER, MUSTERGRUPPEN, musterTeile } from '../kern/muster.ts'
 import { MUSTERARTEN, type Format, type Muster, type Musterart } from '../kern/modell.ts'
@@ -89,91 +90,93 @@ export function Hintergrundwahl({ format, muster, hintergrund, beiMuster, beiBil
         <Symbol name="hintergrund" />
         <span>Hintergrund</span>
       </button>
-      {lage && (
-        <div ref={feld} className="aufklappfeld hintergrundfeld" role="dialog" aria-label="Hintergrund" style={{ right: lage.rechts, top: lage.oben, maxHeight: window.innerHeight - lage.oben - 8 }}>
-          <div className="segmente" role="group" aria-label="Gilt für">
-            <button type="button" aria-pressed={!alle} onClick={() => setAlle(false)}>
-              Diese Seite
-            </button>
-            <button type="button" aria-pressed={alle} onClick={() => setAlle(true)}>
-              Alle Seiten
-            </button>
-          </div>
-          {gesperrt && (
-            <p className="feld-hinweis">
-              Diese Seite hat ein Bild als Hintergrund. „Hintergrundbild entfernen“ in der Seitenleiste macht sie wieder frei.
-            </p>
-          )}
-          {alle && <p className="feld-hinweis">Seiten mit einem Bild als Hintergrund bleiben, wie sie sind; PDF-Seiten bekommen kein Hintergrundbild.</p>}
-          <div className="muster-liste">
-            {MUSTERGRUPPEN.map((gruppe, i) => (
-              <section key={gruppe} aria-label={gruppe}>
-                <p className="feld-titel">{gruppe}</p>
-                <div className="muster-raster">
-                  {i === 0 && (
-                    <button type="button" className="muster-knopf" aria-pressed={!muster} disabled={gesperrt} onClick={() => waehle(null)}>
-                      <Vorschau />
-                      Leer
-                    </button>
-                  )}
-                  {MUSTERARTEN.filter((a) => MUSTER[a].gruppe === gruppe).map((art) => {
-                    const nurBlatt = unendlich && MUSTER[art].nurBlatt
-                    return (
-                      <button
-                        key={art}
-                        type="button"
-                        className="muster-knopf"
-                        aria-pressed={muster?.art === art}
-                        disabled={gesperrt || nurBlatt}
-                        title={nurBlatt ? 'Nur mit festem Format (16:9 oder A4)' : undefined}
-                        onClick={() => waehle(art)}
-                      >
-                        <Vorschau muster={{ art, ...(muster?.farbe ? { farbe: muster.farbe } : {}) }} />
-                        {MUSTER[art].name}
+      {lage &&
+        createPortal(
+          <div ref={feld} className="aufklappfeld hintergrundfeld" role="dialog" aria-label="Hintergrund" style={{ right: lage.rechts, top: lage.oben, maxHeight: window.innerHeight - lage.oben - 8 }}>
+            <div className="segmente" role="group" aria-label="Gilt für">
+              <button type="button" aria-pressed={!alle} onClick={() => setAlle(false)}>
+                Diese Seite
+              </button>
+              <button type="button" aria-pressed={alle} onClick={() => setAlle(true)}>
+                Alle Seiten
+              </button>
+            </div>
+            {gesperrt && (
+              <p className="feld-hinweis">
+                Diese Seite hat ein Bild als Hintergrund. „Hintergrundbild entfernen“ in der Seitenleiste macht sie wieder frei.
+              </p>
+            )}
+            {alle && <p className="feld-hinweis">Seiten mit einem Bild als Hintergrund bleiben, wie sie sind; PDF-Seiten bekommen kein Hintergrundbild.</p>}
+            <div className="muster-liste">
+              {MUSTERGRUPPEN.map((gruppe, i) => (
+                <section key={gruppe} aria-label={gruppe}>
+                  <p className="feld-titel">{gruppe}</p>
+                  <div className="muster-raster">
+                    {i === 0 && (
+                      <button type="button" className="muster-knopf" aria-pressed={!muster} disabled={gesperrt} onClick={() => waehle(null)}>
+                        <Vorschau />
+                        Leer
                       </button>
-                    )
-                  })}
-                </div>
-              </section>
-            ))}
-            <section aria-label="Eigenes Bild">
-              <p className="feld-titel">Eigenes Bild</p>
-              <button type="button" className="f-knopf breit" onClick={() => beiBild(alle)}>
-                <Symbol name="bild" />
-                {hintergrund && !alle ? 'Anderes Bild wählen …' : 'Bild wählen …'}
-              </button>
-            </section>
-          </div>
-          {angaben?.abstand && !gesperrt && (
-            <div className="segmente" role="group" aria-label="Abstand">
-              {(['eng', undefined, 'weit'] as const).map((a) => (
-                <button key={a ?? 'mittel'} type="button" aria-pressed={muster?.abstand === a} onClick={() => aendere({ abstand: a })}>
-                  {a === 'eng' ? 'Eng' : a === 'weit' ? 'Weit' : 'Mittel'}
-                </button>
+                    )}
+                    {MUSTERARTEN.filter((a) => MUSTER[a].gruppe === gruppe).map((art) => {
+                      const nurBlatt = unendlich && MUSTER[art].nurBlatt
+                      return (
+                        <button
+                          key={art}
+                          type="button"
+                          className="muster-knopf"
+                          aria-pressed={muster?.art === art}
+                          disabled={gesperrt || nurBlatt}
+                          title={nurBlatt ? 'Nur mit festem Format (16:9 oder A4)' : undefined}
+                          onClick={() => waehle(art)}
+                        >
+                          <Vorschau muster={{ art, ...(muster?.farbe ? { farbe: muster.farbe } : {}) }} />
+                          {MUSTER[art].name}
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
               ))}
+              <section aria-label="Eigenes Bild">
+                <p className="feld-titel">Eigenes Bild</p>
+                <button type="button" className="f-knopf breit" onClick={() => beiBild(alle)}>
+                  <Symbol name="bild" />
+                  {hintergrund && !alle ? 'Anderes Bild wählen …' : 'Bild wählen …'}
+                </button>
+              </section>
             </div>
-          )}
-          {muster && !gesperrt && (
-            <div className="segmente" role="group" aria-label="Linienfarbe">
-              <button type="button" aria-pressed={!muster.farbe} onClick={() => aendere({ farbe: undefined })}>
-                Grau
+            {angaben?.abstand && !gesperrt && (
+              <div className="segmente" role="group" aria-label="Abstand">
+                {(['eng', undefined, 'weit'] as const).map((a) => (
+                  <button key={a ?? 'mittel'} type="button" aria-pressed={muster?.abstand === a} onClick={() => aendere({ abstand: a })}>
+                    {a === 'eng' ? 'Eng' : a === 'weit' ? 'Weit' : 'Mittel'}
+                  </button>
+                ))}
+              </div>
+            )}
+            {muster && !gesperrt && (
+              <div className="segmente" role="group" aria-label="Linienfarbe">
+                <button type="button" aria-pressed={!muster.farbe} onClick={() => aendere({ farbe: undefined })}>
+                  Grau
+                </button>
+                <button type="button" aria-pressed={muster.farbe === 'blau'} onClick={() => aendere({ farbe: 'blau' })}>
+                  Blau
+                </button>
+              </div>
+            )}
+            {klasse && beiVorlage && (
+              <button type="button" className="f-knopf" disabled={klasse.gemerkt} title="Format und Muster gelten dann für neue Seiten dieser Klasse (und für ihre Kopie im nächsten Schuljahr)" onClick={beiVorlage}>
+                {klasse.gemerkt ? `Vorlage von ${klasse.name}` : `Für ${klasse.name} merken`}
               </button>
-              <button type="button" aria-pressed={muster.farbe === 'blau'} onClick={() => aendere({ farbe: 'blau' })}>
-                Blau
-              </button>
-            </div>
-          )}
-          {klasse && beiVorlage && (
-            <button type="button" className="f-knopf" disabled={klasse.gemerkt} title="Format und Muster gelten dann für neue Seiten dieser Klasse (und für ihre Kopie im nächsten Schuljahr)" onClick={beiVorlage}>
-              {klasse.gemerkt ? `Vorlage von ${klasse.name}` : `Für ${klasse.name} merken`}
-            </button>
-          )}
-          <label className="feld-schalter">
-            <input type="checkbox" checked={ohneMusterExport} onChange={(e) => beiOhneMusterExport(e.target.checked)} />
-            Muster beim PDF-Export weglassen
-          </label>
-        </div>
-      )}
+            )}
+            <label className="feld-schalter">
+              <input type="checkbox" checked={ohneMusterExport} onChange={(e) => beiOhneMusterExport(e.target.checked)} />
+              Muster beim PDF-Export weglassen
+            </label>
+          </div>,
+          document.body, // nicht in der Leiste: Safari am iPad schneidet feste Felder in einer rollbaren Leiste ab
+        )}
     </>
   )
 }

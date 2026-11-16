@@ -325,13 +325,19 @@ input {
   color: var(--text);
   cursor: pointer;
 }
-.leisten-knopf:hover:not(:disabled) {
-  background: var(--leiste-2);
+/* Hover nur mit Maus: Am iPad bleibt :hover nach dem Antippen hängen und machte das gewählte Werkzeug blass */
+@media (hover: hover) {
+  .leisten-knopf:hover:not(:disabled) {
+    background: var(--leiste-2);
+  }
 }
 .leisten-knopf:active:not(:disabled) {
   background: var(--leiste-3);
 }
-.leisten-knopf[aria-pressed='true'] {
+/* Gewählt bleibt gewählt – auch beim Drücken und unter dem Mauszeiger */
+.leisten-knopf[aria-pressed='true'],
+.leisten-knopf[aria-pressed='true']:hover:not(:disabled),
+.leisten-knopf[aria-pressed='true']:active:not(:disabled) {
   background: var(--gewaehlt);
   color: var(--gewaehlt-text);
   box-shadow: 0 2px 8px rgb(10 45 83 / 0.25);
@@ -357,7 +363,9 @@ input {
   width: calc(var(--tipp) * 2 / 3);
 }
 /* Stärke: gewählt nur leicht hinterlegt – kräftig hervorgehoben ist allein das Werkzeug */
-.leisten-knopf.schmal[aria-pressed='true'] {
+.leisten-knopf.schmal[aria-pressed='true'],
+.leisten-knopf.schmal[aria-pressed='true']:hover:not(:disabled),
+.leisten-knopf.schmal[aria-pressed='true']:active:not(:disabled) {
   background: var(--leiste-3);
   color: var(--text);
   box-shadow: none;
@@ -379,6 +387,10 @@ input {
 .aufklappfeld {
   position: fixed;
   z-index: 30;
+  /* hängt direkt an der Seite (außerhalb von .tafel): langes Drücken soll auch hier nichts markieren */
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
   display: flex;
   flex-direction: column;
   gap: 0.4rem;
