@@ -4,6 +4,13 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-16 – Fenstergröße per Eckgriff
+- **Der Inhalt wird gleichmäßig vergrößert (CSS `zoom` am Inhalt), nicht das Fenster in Breite und Höhe frei gezogen:** Uhr und Timer bestehen aus Schrift und Knöpfen – größer soll heißen „vom hinteren Platz lesbar“, wie bei einem Bild. `zoom` statt `transform: scale`, damit das Fenster seinen Platz behält und Verschieben/Begrenzen weiter stimmen.
+- **Die Titelzeile wächst nicht mit:** Ihre Knöpfe bleiben handlich, und ein stark vergrößertes Fenster lässt sich weiter greifen.
+- **Griff halb außerhalb der Ecke** (wie an Bildern), damit er keine Knöpfe im Fenster verdeckt.
+- **Kein neues Datenmodell:** `skala` ist ein zusätzliches, freiwilliges Feld der Fenster; fehlt es, gilt 100 %. Fenster werden nicht abgeglichen (je Gerät).
+- **Anwendungsfenster ausgenommen:** Sie haben schon „auf die ganze Fläche vergrößern“; ein Zoom der eingebetteten Seite würde deren eigenes Layout stören.
+
 ## 2026-11-16 – Aufklappfelder direkt an der Seite, Hover nur mit Maus
 - **Aufklappfelder der Leisten per Portal an `document.body`** statt im `<aside>`: Die Leisten rollen (`overflow-y: auto`), und Safari am iPad schneidet feste Elemente in einem rollbaren Bereich ab – das Feld des Radierers erschien dann nicht. Verworfen: Leiste nicht rollbar machen (auf kleinen Bildschirmen passen nicht alle Werkzeuge).
 - **Hover nur bei `(hover: hover)`, gewählt schlägt Hover und Drücken:** Am iPad blieb :hover nach dem Antippen hängen und machte das gewählte Werkzeug blass, so dass nicht zu erkennen war, ob es gewählt ist.

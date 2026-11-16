@@ -653,6 +653,36 @@ input {
   padding: 0 1rem 1rem;
   text-align: center;
 }
+/* Eckgriff unten rechts: klein gezeichnet wie die Griffe an Bildern, 44 px Trefferfläche um die Ecke */
+.fenster-griff {
+  position: absolute;
+  right: -22px;
+  bottom: -22px;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: nwse-resize;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.fenster-griff::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  border: 2px solid var(--gewaehlt);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+.fenster-griff:focus-visible {
+  outline: none;
+}
+.fenster-griff:focus-visible::before {
+  box-shadow: 0 0 0 3px var(--fokus, var(--gewaehlt));
+}
 .fenster .grosse-zahl {
   margin: 0;
   font-size: 3.5rem;

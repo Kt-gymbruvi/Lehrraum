@@ -1,12 +1,19 @@
 # Projektstand – Lehrraum
 
 Stand: 16.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 25 Testdateien, 307 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 25 Testdateien, 311 Tests grün (`npm test`); Build grün (`npm run build`).
 **Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden. **Ein Passwort, ein Schlüsselbund (Etappe B)** ist veröffentlicht (14.11.2026, auch Notenbuch und Startseite). **Tafeln auf allen Geräten (Etappe C)** ist veröffentlicht (14.11.2026, Migration `012_tafeln.sql` ausgeführt).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Fenster in der Größe veränderbar – noch nicht veröffentlicht (16.11.2026)
+- Wunsch der Lehrkraft: Uhr, Timer, Stoppuhr, Notiz usw. sollen sich wie Bilder in der Größe ändern lassen.
+- Jedes Werkzeugfenster (Uhr, Timer, Stoppuhr, Notiz, Zufall & Gruppen) hat unten rechts einen runden Eckgriff wie an Bildern (44 px Trefferfläche). Ziehen vergrößert oder verkleinert den Inhalt gleichmäßig (75–400 %, nie über den Rand der Fläche hinaus); Doppeltippen setzt auf 100 % zurück; mit Tastatur: Pfeiltasten am Griff. Die Titelzeile mit ihren Knöpfen bleibt gleich groß.
+- Die Größe wird mit dem Fenster gespeichert (Feld `skala`, fehlt = 100 %); keine neue Version des Datenmodells nötig – ältere Tafeln laden unverändert.
+- Quizzo, Klassenfunk und Lernangebote haben keinen Griff; sie lassen sich wie bisher auf die ganze Fläche vergrößern.
+- Getestet: `npm test` (311 grün; neu: Logik `neueSkala`, Prüfung, Bedienung mit Ziehen/Tastatur/Doppeltippen, kein Griff an Anwendungen), Build; im Browser bei 800 × 600 Timer und Notiz per Maus vergrößert, Knöpfe im vergrößerten Timer funktionieren, Notiz beschreibbar, Größe nach dem Neuladen erhalten, keine Konsolenfehler. **Am iPad/SMART Board mit Finger und Stift nicht geprüft.**
 
 ## Radierer-Feld am iPad: Felder außerhalb der Leiste, gewähltes Werkzeug bleibt blau – noch nicht veröffentlicht (16.11.2026)
 - Rückmeldung der Lehrkraft (iPad): Der Radierer lässt sich weiterhin nicht zwischen Schwamm und Element umstellen; beim Antippen ist der Knopf „mal komisch blass, mal blau“.

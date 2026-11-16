@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { aendere, begrenze, MAX_FENSTER, nachVorn, pruefeFenster, schalte, schliesse, stoppText, zeitText, type FensterZustand } from '../kern/fenster.ts'
+import { aendere, begrenze, istSkalierbar, MAX_FENSTER, nachVorn, neueSkala, pruefeFenster, schalte, schliesse, SKALA_MAX, SKALA_MIN, skalaSchritt, stoppText, zeitText, type FensterZustand } from '../kern/fenster.ts'
 import { neuesTafelbild, pruefeTafel } from '../kern/modell.ts'
 import { ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
@@ -77,6 +77,33 @@ describe('Fenster-Logik', () => {
     expect(stoppText(61_234)).toBe('1:01,2')
   })
 
+  it('Größe am Eckgriff: gleichmäßig wie ein Bild, begrenzt durch Mindest-/Höchstmaß und den Platz', () => {
+    expect(neueSkala(1, 200, 100, 0, 0)).toBe(1)
+    expect(neueSkala(1, 200, 100, 200, 100)).toBe(2) // Ecke um die eigene Größe weitergezogen: doppelt so groß
+    expect(neueSkala(2, 200, 100, -100, -50)).toBe(1)
+    expect(neueSkala(1, 200, 100, -1000, -1000)).toBe(SKALA_MIN)
+    expect(neueSkala(1, 200, 100, 5000, 5000)).toBe(SKALA_MAX)
+    expect(neueSkala(1, 200, 100, 5000, 5000, 500, 1000)).toBe(2.5) // nur so breit, wie Platz ist
+    expect(neueSkala(3, 600, 300, 50, 50, 400, 200)).toBe(3) // war schon größer als der Platz: bleibt, schrumpft nicht von selbst
+    expect(neueSkala(3, 600, 300, -300, -150, 400, 200)).toBe(1.5)
+    expect(neueSkala(1.5, 0, 0, 10, 10)).toBe(1.5)
+    expect(skalaSchritt(1, 1)).toBe(1.1)
+    expect(skalaSchritt(SKALA_MIN, -1)).toBe(SKALA_MIN)
+    expect(istSkalierbar('uhr') && istSkalierbar('notiz') && istSkalierbar('zufall')).toBe(true)
+    expect(istSkalierbar('quizzo')).toBe(false)
+  })
+
+  it('prüft die gespeicherte Größe', () => {
+    const l = pruefeFenster([
+      { id: 'a', art: 'uhr', x: 0, y: 0, skala: 2.345 },
+      { id: 'b', art: 'timer', x: 0, y: 0, skala: 99 },
+      { id: 'c', art: 'stoppuhr', x: 0, y: 0, skala: 'groß' },
+      { id: 'd', art: 'notiz', x: 0, y: 0, skala: 1 },
+      { id: 'e', art: 'quizzo', x: 0, y: 0, skala: 2 },
+    ])
+    expect(l.map((f) => f.skala)).toEqual([2.35, SKALA_MAX, undefined, undefined, undefined])
+  })
+
   it('ein gespeichertes Würfel-Fenster (gibt es nicht mehr) fällt beim Laden weg', () => {
     expect(pruefeFenster([{ id: 'w', art: 'wuerfel', x: 1, y: 1 }, { id: 'u', art: 'uhr', x: 1, y: 1 }]).map((f) => f.art)).toEqual(['uhr'])
   })
@@ -131,6 +158,38 @@ describe('Fenster über der Tafel', () => {
     render(<Tafel />)
     expect(await screen.findByDisplayValue('Hefte einsammeln')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Stift' })).toHaveAttribute('aria-pressed', 'true') // Tippen von „s“ oder „m“ in der Notiz wechselt kein Werkzeug
+  })
+
+  it('Eckgriff: Ziehen vergrößert den Inhalt, Tastatur und Doppeltippen ändern die Größe; sie wird gespeichert', async () => {
+    const nutzer = userEvent.setup()
+    await speichereTafel({ ...neuesTafelbild(), fenster: [{ id: 't', art: 'timer', x: 40, y: 40, eingeklappt: false }] })
+    render(<Tafel />)
+    const fenster = await screen.findByRole('region', { name: 'Timer' })
+    const griff = within(fenster).getByRole('slider', { name: 'Größe von Timer' })
+    expect(griff).toHaveAttribute('aria-valuenow', '100')
+    const inhalt = fenster.querySelector('.fenster-inhalt') as HTMLElement
+    inhalt.getBoundingClientRect = () => ({ left: 40, top: 80, right: 240, bottom: 180, width: 200, height: 100, x: 40, y: 80, toJSON: () => ({}) })
+    ;(fenster.parentElement as HTMLElement).getBoundingClientRect = () => ({ left: 0, top: 0, right: 1200, bottom: 800, width: 1200, height: 800, x: 0, y: 0, toJSON: () => ({}) })
+    fireEvent.pointerDown(griff, { pointerId: 3, pointerType: 'pen', clientX: 240, clientY: 180 })
+    fireEvent.pointerMove(griff, { pointerId: 3, pointerType: 'pen', clientX: 340, clientY: 230 })
+    fireEvent.pointerUp(griff, { pointerId: 3, pointerType: 'pen', clientX: 340, clientY: 230 })
+    expect(griff).toHaveAttribute('aria-valuenow', '150')
+    expect(inhalt.style.zoom).toBe('1.5')
+    await waitFor(async () => expect((await ladeLetzteTafel())?.fenster[0].skala).toBe(1.5))
+    griff.focus()
+    await nutzer.keyboard('{ArrowDown}')
+    expect(griff).toHaveAttribute('aria-valuenow', '140')
+    await nutzer.dblClick(griff)
+    expect(griff).toHaveAttribute('aria-valuenow', '100')
+    expect(inhalt.style.zoom).toBe('')
+    await waitFor(async () => expect((await ladeLetzteTafel())?.fenster[0].skala).toBeUndefined())
+  })
+
+  it('Anwendungsfenster haben keinen Eckgriff', async () => {
+    await speichereTafel({ ...neuesTafelbild(), fenster: [{ id: 'q', art: 'lernangebote', x: 40, y: 40, eingeklappt: false }] })
+    render(<Tafel />)
+    const fenster = await screen.findByRole('region', { name: 'Lernangebote' })
+    expect(within(fenster).queryByRole('slider')).not.toBeInTheDocument()
   })
 
   it('einklappen versteckt den Inhalt, das Fenster bleibt', async () => {

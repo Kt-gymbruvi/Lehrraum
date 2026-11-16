@@ -22,6 +22,8 @@ export type FensterZustand = {
   ziel?: string
   /** nur Anwendungsfenster: füllt die ganze Tafelfläche */
   gross?: boolean
+  /** nur Werkzeugfenster (Uhr, Timer, Notiz …): Vergrößerung des Inhalts, fehlt = 1 */
+  skala?: number
 }
 
 export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', zufall: 'Zufall & Gruppen', notiz: 'Notiz', quizzo: 'Quizzo', klassenfunk: 'Klassenfunk', lernangebote: 'Lernangebote' }
@@ -68,6 +70,28 @@ export function aendere(liste: FensterZustand[], id: string, neu: Partial<Omit<F
   return liste.map((f) => (f.id === id ? { ...f, ...neu } : f))
 }
 
+// ---------- Größe (Eckgriff unten rechts, wie bei Bildern) ----------
+export const SKALA_MIN = 0.75
+export const SKALA_MAX = 4
+/** Anwendungsfenster haben ihre eigene Größe und lassen sich stattdessen auf die ganze Fläche vergrößern. */
+export const istSkalierbar = (art: FensterArt): boolean => !ANWENDUNGEN.has(art)
+const rundeSkala = (s: number) => Math.round(s * 100) / 100
+
+/**
+ * Neue Vergrößerung beim Ziehen am Eckgriff: Der Inhalt wächst gleichmäßig wie ein Bild, gemessen am Zugweg
+ * entlang seiner Diagonale. b, h: Größe des Inhalts beim Greifen (Bildschirm-Pixel); dx, dy: Zugweg;
+ * platzB, platzH: Platz bis zum Rand der Fläche – darüber hinaus wächst der Inhalt nicht (war er schon größer, bleibt er).
+ */
+export function neueSkala(start: number, b: number, h: number, dx: number, dy: number, platzB = Infinity, platzH = Infinity): number {
+  if (!(b > 0 && h > 0)) return start
+  const faktor = 1 + (dx * b + dy * h) / (b * b + h * h)
+  const grenze = Math.max(start, Math.min(SKALA_MAX, start * Math.min(platzB / b, platzH / h)))
+  return rundeSkala(Math.min(grenze, Math.max(SKALA_MIN, start * faktor)))
+}
+
+/** Tastatur am Griff: ein Schritt größer oder kleiner */
+export const skalaSchritt = (s: number, richtung: 1 | -1): number => rundeSkala(Math.min(SKALA_MAX, Math.max(SKALA_MIN, s + richtung * 0.1)))
+
 /** Hält die linke obere Ecke so, dass vom Fenster mindestens die Titelzeile erreichbar bleibt. */
 export function begrenze(x: number, y: number, flaecheB: number, flaecheH: number, fensterB: number): [number, number] {
   const rand = 56 // so viel vom Fenster bleibt immer sichtbar
@@ -95,6 +119,8 @@ export function pruefeFenster(roh: unknown): FensterZustand[] {
     if (ANWENDUNGEN.has(art)) {
       if (istZiel(x.ziel)) f.ziel = x.ziel
       if (x.gross === true) f.gross = true
+    } else if (typeof x.skala === 'number' && Number.isFinite(x.skala) && x.skala !== 1) {
+      f.skala = rundeSkala(Math.min(SKALA_MAX, Math.max(SKALA_MIN, x.skala)))
     }
     liste.push(f)
   }

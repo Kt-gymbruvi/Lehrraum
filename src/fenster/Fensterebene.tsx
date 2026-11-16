@@ -21,6 +21,7 @@ export function Fensterebene({ fenster, beiAendern, schueler = null, beiText }: 
           beiBewegen={(x, y) => beiAendern((alt) => aendere(alt, f.id, { x, y }))}
           beiEinklappen={() => beiAendern((alt) => aendere(alt, f.id, { eingeklappt: !f.eingeklappt }))}
           beiGross={() => beiAendern((alt) => aendere(alt, f.id, { gross: !f.gross }))}
+          beiSkala={(skala) => beiAendern((alt) => aendere(alt, f.id, { skala: skala === 1 ? undefined : skala }))}
           beiSchliessen={() => beiAendern((alt) => schliesse(alt, f.id))}
           beiVorn={() => beiAendern((alt) => nachVorn(alt, f.id))}
         >
