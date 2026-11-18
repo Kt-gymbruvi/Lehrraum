@@ -1,6 +1,6 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { aendere, begrenze, istSkalierbar, MAX_FENSTER, nachVorn, neueSkala, pruefeFenster, schalte, schliesse, SKALA_MAX, SKALA_MIN, skalaSchritt, stoppText, zeitText, type FensterZustand } from '../kern/fenster.ts'
+import { aendere, begrenze, MAX_FENSTER, nachVorn, neueSkala, pruefeFenster, schalte, schliesse, SKALA_MAX, SKALA_MIN, skalaSchritt, stoppText, zeitText, type FensterZustand } from '../kern/fenster.ts'
 import { neuesTafelbild, pruefeTafel } from '../kern/modell.ts'
 import { ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
@@ -89,8 +89,6 @@ describe('Fenster-Logik', () => {
     expect(neueSkala(1.5, 0, 0, 10, 10)).toBe(1.5)
     expect(skalaSchritt(1, 1)).toBe(1.1)
     expect(skalaSchritt(SKALA_MIN, -1)).toBe(SKALA_MIN)
-    expect(istSkalierbar('uhr') && istSkalierbar('notiz') && istSkalierbar('zufall')).toBe(true)
-    expect(istSkalierbar('quizzo')).toBe(false)
   })
 
   it('prüft die gespeicherte Größe', () => {
@@ -99,13 +97,14 @@ describe('Fenster-Logik', () => {
       { id: 'b', art: 'timer', x: 0, y: 0, skala: 99 },
       { id: 'c', art: 'stoppuhr', x: 0, y: 0, skala: 'groß' },
       { id: 'd', art: 'notiz', x: 0, y: 0, skala: 1 },
-      { id: 'e', art: 'quizzo', x: 0, y: 0, skala: 2 },
     ])
-    expect(l.map((f) => f.skala)).toEqual([2.35, SKALA_MAX, undefined, undefined, undefined])
+    expect(l.map((f) => f.skala)).toEqual([2.35, SKALA_MAX, undefined, undefined])
   })
 
-  it('ein gespeichertes Würfel-Fenster (gibt es nicht mehr) fällt beim Laden weg', () => {
-    expect(pruefeFenster([{ id: 'w', art: 'wuerfel', x: 1, y: 1 }, { id: 'u', art: 'uhr', x: 1, y: 1 }]).map((f) => f.art)).toEqual(['uhr'])
+  it('gespeicherte Fenster, die es nicht mehr gibt (Würfel, Quizzo, Klassenfunk, Lernangebote), fallen beim Laden weg', () => {
+    const alt = ['wuerfel', 'quizzo', 'klassenfunk', 'lernangebote'].map((art, i) => ({ id: `a${i}`, art, x: 1, y: 1, ziel: 'abc', gross: true }))
+    const l = pruefeFenster([...alt, { id: 'u', art: 'uhr', x: 1, y: 1, gross: true, ziel: 'abc' }])
+    expect(l).toEqual([{ id: 'u', art: 'uhr', x: 1, y: 1, eingeklappt: false }])
   })
 })
 
@@ -185,11 +184,11 @@ describe('Fenster über der Tafel', () => {
     await waitFor(async () => expect((await ladeLetzteTafel())?.fenster[0].skala).toBeUndefined())
   })
 
-  it('Anwendungsfenster haben keinen Eckgriff', async () => {
-    await speichereTafel({ ...neuesTafelbild(), fenster: [{ id: 'q', art: 'lernangebote', x: 40, y: 40, eingeklappt: false }] })
+  it('die rechte Leiste bietet nur noch Werkzeuge, keine eingebetteten Anwendungen', async () => {
     render(<Tafel />)
-    const fenster = await screen.findByRole('region', { name: 'Lernangebote' })
-    expect(within(fenster).queryByRole('slider')).not.toBeInTheDocument()
+    await bereit()
+    for (const name of ['Quizzo', 'Klassenfunk', 'Lernangebote']) expect(leiste().queryByRole('button', { name })).not.toBeInTheDocument()
+    expect(leiste().getByRole('button', { name: 'Uhr' })).toBeInTheDocument()
   })
 
   it('einklappen versteckt den Inhalt, das Fenster bleibt', async () => {

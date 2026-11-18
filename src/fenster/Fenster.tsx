@@ -1,29 +1,25 @@
 // Ein Fenster über der Tafel: Titelzeile zum Verschieben, Einklappen, Schließen. Der Inhalt bleibt auch
-// eingeklappt eingebaut (nur versteckt), damit ein laufender Timer weiterläuft. Werkzeugfenster haben unten rechts
+// eingeklappt eingebaut (nur versteckt), damit ein laufender Timer weiterläuft. Fenster haben unten rechts
 // einen Eckgriff wie Bilder: Ziehen vergrößert oder verkleinert den Inhalt gleichmäßig (Doppeltippen: zurück auf 100 %).
 import { useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { ANWENDUNGEN, begrenze, FENSTERNAMEN, istSkalierbar, neueSkala, SKALA_MAX, SKALA_MIN, skalaSchritt, type FensterZustand } from '../kern/fenster.ts'
+import { begrenze, FENSTERNAMEN, neueSkala, SKALA_MAX, SKALA_MIN, skalaSchritt, type FensterZustand } from '../kern/fenster.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 
 type Props = {
   fenster: FensterZustand
   beiBewegen: (x: number, y: number) => void
   beiEinklappen: () => void
-  beiGross: () => void
   beiSkala?: (skala: number) => void
   beiSchliessen: () => void
   beiVorn: () => void
   children: ReactNode
 }
 
-export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiGross, beiSkala, beiSchliessen, beiVorn, children }: Props) {
-  const anwendung = ANWENDUNGEN.has(f.art)
-  const gross = anwendung && f.gross === true && !f.eingeklappt
+export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiSkala, beiSchliessen, beiVorn, children }: Props) {
   const rahmen = useRef<HTMLElement>(null)
   const zug = useRef<{ zeiger: number; dx: number; dy: number } | null>(null)
   const name = FENSTERNAMEN[f.art]
-  const skalierbar = istSkalierbar(f.art)
-  const skala = skalierbar ? (f.skala ?? 1) : 1
+  const skala = f.skala ?? 1
   const inhalt = useRef<HTMLDivElement>(null)
   const griffZug = useRef<{ zeiger: number; x: number; y: number; start: number; b: number; h: number; platzB: number; platzH: number } | null>(null)
 
@@ -56,7 +52,6 @@ export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiGross, beiSk
   function greifen(e: ReactPointerEvent<HTMLDivElement>) {
     if ((e.target as HTMLElement).closest('button')) return // Knöpfe in der Titelzeile bleiben Knöpfe
     if (e.pointerType === 'mouse' && e.button !== 0) return
-    if (gross) return // füllt die Fläche: nichts zu verschieben
     try {
       e.currentTarget.setPointerCapture(e.pointerId)
     } catch {
@@ -79,19 +74,14 @@ export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiGross, beiSk
   return (
     <section
       ref={rahmen}
-      className={`fenster fenster-${f.art}${anwendung ? ' anwendung' : ''}${gross ? ' gross' : ''}${f.eingeklappt ? ' eingeklappt' : ''}${f.farbe ? ' notiz-' + f.farbe : ''}`}
-      style={gross ? undefined : { left: `min(${f.x}px, calc(100% - 3.5rem))`, top: `min(${f.y}px, calc(100% - 3.5rem))` }}
+      className={`fenster fenster-${f.art}${f.eingeklappt ? ' eingeklappt' : ''}${f.farbe ? ' notiz-' + f.farbe : ''}`}
+      style={{ left: `min(${f.x}px, calc(100% - 3.5rem))`, top: `min(${f.y}px, calc(100% - 3.5rem))` }}
       aria-label={name}
       onPointerDownCapture={beiVorn}
     >
       <div className="fenster-titel" onPointerDown={greifen} onPointerMove={ziehen} onPointerUp={loslassen} onPointerCancel={loslassen}>
         <Symbol name={f.art as SymbolName} />
         <h2>{name}</h2>
-        {anwendung && !f.eingeklappt && (
-          <button type="button" className="fenster-knopf" aria-label={`${name} ${gross ? 'verkleinern' : 'vergrößern'}`} aria-pressed={gross} onClick={beiGross}>
-            <Symbol name={gross ? 'klein' : 'gross'} />
-          </button>
-        )}
         <button type="button" className="fenster-knopf" aria-label={`${name} ${f.eingeklappt ? 'ausklappen' : 'einklappen'}`} aria-expanded={!f.eingeklappt} onClick={beiEinklappen}>
           <Symbol name={f.eingeklappt ? 'ausklappen' : 'einklappen'} />
         </button>
@@ -102,7 +92,7 @@ export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiGross, beiSk
       <div ref={inhalt} className="fenster-inhalt" hidden={f.eingeklappt} style={skala !== 1 ? { zoom: skala } : undefined}>
         {children}
       </div>
-      {skalierbar && beiSkala && !f.eingeklappt && (
+      {beiSkala && !f.eingeklappt && (
         <div
           className="fenster-griff"
           role="slider"

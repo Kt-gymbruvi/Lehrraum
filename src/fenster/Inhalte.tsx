@@ -1,7 +1,28 @@
-// Inhalte der Fenster: Uhr, Timer, Stoppuhr, Notiz. Alles läuft nur auf diesem Gerät.
-import { useEffect, useRef, useState } from 'react'
-import { MAX_NOTIZTEXT, NOTIZFARBEN, stoppText, zeitText, type FensterZustand, type NotizFarbe } from '../kern/fenster.ts'
+// Inhalte der Fenster: Uhr, Timer, Stoppuhr, Notiz, Arbeitsform, Geräuschampel, QR-Code. Alles läuft nur auf diesem Gerät.
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+import {
+  ARBEITSFORM_NAMEN,
+  ARBEITSFORMEN,
+  GRENZE_MAX,
+  GRENZE_MIN,
+  GRENZE_STANDARD,
+  kurzeAdresse,
+  LAUTSTAERKE_NAMEN,
+  LAUTSTAERKEN,
+  MAX_ADRESSE,
+  MAX_NOTIZTEXT,
+  NOTIZFARBEN,
+  pruefeAdresse,
+  stoppText,
+  zeitText,
+  type FensterZustand,
+  type NotizFarbe,
+} from '../kern/fenster.ts'
+import { AMPEL_NAMEN, AMPEL_START, glaette, naechsteAmpel, pegel, type Ampelstand } from '../kern/geraeusch.ts'
+import { qrPfad } from '../kern/qrcode.ts'
 import { Symbol } from '../ui/Symbol.tsx'
+
+type Aenderung = Partial<Omit<FensterZustand, 'id' | 'art'>>
 
 /** Ruft `tun` regelmäßig auf, solange `an` gilt. */
 function useTakt(an: boolean, ms: number, tun: () => void) {
@@ -188,5 +209,241 @@ export function Notiz({ fenster, beiAendern }: { fenster: FensterZustand; beiAen
         ))}
       </div>
     </div>
+  )
+}
+
+// ---------- Arbeitsform ----------
+/** Schild für die Klasse: Sozialform und erlaubte Lautstärke – groß lesbar, mit dem Eckgriff noch größer */
+export function Arbeitsform({ fenster, beiAendern }: { fenster: FensterZustand; beiAendern: (neu: Aenderung) => void }) {
+  const form = fenster.form ?? 'einzel'
+  const laut = fenster.laut ?? 'still'
+  return (
+    <div className="arbeitsform">
+      <div className={'schild laut-' + laut} role="status" aria-label={`${ARBEITSFORM_NAMEN[form]}, ${LAUTSTAERKE_NAMEN[laut]}`}>
+        <span className="schild-symbol">
+          <Symbol name={form} />
+        </span>
+        <p className="schild-name">{ARBEITSFORM_NAMEN[form]}</p>
+        <p className="schild-laut">
+          <Symbol name={laut} />
+          {LAUTSTAERKE_NAMEN[laut]}
+        </p>
+      </div>
+      <div className="reihe eng" role="group" aria-label="Arbeitsform wählen">
+        {ARBEITSFORMEN.map((a) => (
+          <button key={a} type="button" className="f-knopf symbol-knopf" aria-pressed={form === a} aria-label={ARBEITSFORM_NAMEN[a]} title={ARBEITSFORM_NAMEN[a]} onClick={() => beiAendern({ form: a })}>
+            <Symbol name={a} />
+          </button>
+        ))}
+      </div>
+      <div className="reihe eng" role="group" aria-label="Lautstärke wählen">
+        {LAUTSTAERKEN.map((l) => (
+          <button key={l} type="button" className="f-knopf symbol-knopf" aria-pressed={laut === l} aria-label={LAUTSTAERKE_NAMEN[l]} title={LAUTSTAERKE_NAMEN[l]} onClick={() => beiAendern({ laut: l })}>
+            <Symbol name={l} />
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+// ---------- Geräuschampel ----------
+type Messung = { strom: MediaStream; audio: AudioContext; analyse: AnalyserNode; puffer: Float32Array<ArrayBuffer> }
+
+function mikrofonFehler(err: unknown): string {
+  const name = typeof err === 'object' && err !== null && 'name' in err ? String((err as { name: unknown }).name) : ''
+  if (name === 'NotAllowedError' || name === 'SecurityError') return 'Das Mikrofon ist nicht erlaubt. In den Einstellungen des Browsers lässt es sich für diese Seite freigeben.'
+  if (name === 'NotFoundError' || name === 'OverconstrainedError') return 'Es wurde kein Mikrofon gefunden.'
+  if (name === 'NotReadableError') return 'Das Mikrofon wird gerade von einer anderen Anwendung benutzt.'
+  return 'Das Mikrofon ließ sich nicht einschalten.'
+}
+
+/**
+ * Ampel nach der Lautstärke im Raum. Das Mikrofon läuft erst nach „Start“ und nur, solange das Fenster offen ist.
+ * Gemessen wird nur der Pegel auf diesem Gerät – nichts wird aufgenommen, gespeichert oder gesendet.
+ */
+export function Geraeuschampel({ fenster, beiAendern }: { fenster: FensterZustand; beiAendern: (neu: Aenderung) => void }) {
+  const grenze = fenster.grenze ?? GRENZE_STANDARD
+  const [an, setAn] = useState(false)
+  const [startet, setStartet] = useState(false)
+  const [fehler, setFehler] = useState('')
+  const [wert, setWert] = useState(0)
+  const [ampel, setAmpel] = useState<Ampelstand>(AMPEL_START)
+  const messung = useRef<Messung | null>(null)
+  const geglaettet = useRef(0)
+  const grenzeRef = useRef(grenze)
+  grenzeRef.current = grenze
+  const offen = useRef(true)
+
+  function gibFrei() {
+    const m = messung.current
+    messung.current = null
+    if (!m) return
+    for (const spur of m.strom.getTracks()) spur.stop()
+    void m.audio.close().catch(() => {})
+  }
+  function stoppe() {
+    gibFrei()
+    geglaettet.current = 0
+    setWert(0)
+    setAmpel(AMPEL_START)
+    setAn(false)
+  }
+  // Fenster zu: Mikrofon aus
+  useEffect(() => {
+    offen.current = true
+    return () => {
+      offen.current = false
+      gibFrei()
+    }
+  }, [])
+
+  async function starte() {
+    setFehler('')
+    const Klasse = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+    if (!navigator.mediaDevices?.getUserMedia || !Klasse) {
+      setFehler('Das Mikrofon ist hier nicht verfügbar (nur über eine sichere Verbindung).')
+      return
+    }
+    setStartet(true)
+    try {
+      const strom = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } })
+      if (!offen.current) {
+        for (const spur of strom.getTracks()) spur.stop() // Fenster wurde inzwischen geschlossen
+        return
+      }
+      const audio = new Klasse()
+      const analyse = audio.createAnalyser()
+      analyse.fftSize = 2048
+      audio.createMediaStreamSource(strom).connect(analyse) // nur zur Messung, nicht zu den Lautsprechern
+      messung.current = { strom, audio, analyse, puffer: new Float32Array(analyse.fftSize) }
+      setAn(true)
+    } catch (err) {
+      setFehler(mikrofonFehler(err))
+    } finally {
+      setStartet(false)
+    }
+  }
+
+  useTakt(an, 100, () => {
+    const m = messung.current
+    if (!m) return
+    m.analyse.getFloatTimeDomainData(m.puffer)
+    const p = glaette(geglaettet.current, pegel(m.puffer))
+    geglaettet.current = p
+    setWert(p)
+    setAmpel((a) => naechsteAmpel(a, p, grenzeRef.current, Date.now()))
+  })
+
+  const farbe = an ? ampel.farbe : null
+  return (
+    <div className="geraeusch">
+      <div className="ampel-reihe">
+        <div className="ampel" role="status" aria-label={farbe ? `Ampel: ${AMPEL_NAMEN[farbe]}` : 'Ampel aus'}>
+          {(['rot', 'gelb', 'gruen'] as const).map((f) => (
+            <span key={f} className={'licht licht-' + f + (farbe === f ? ' an' : '')} />
+          ))}
+        </div>
+        <div className="ampel-steuerung">
+          <div className="pegel" aria-hidden="true">
+            <span className="pegel-wert" style={{ width: `${Math.round(wert)}%` }} />
+            <span className="pegel-grenze" style={{ left: `${grenze}%` }} />
+          </div>
+          <label className="regler">
+            Rot ab
+            <input type="range" min={GRENZE_MIN} max={GRENZE_MAX} step={1} value={grenze} aria-label="Grenze für Rot" onChange={(e) => beiAendern({ grenze: Number(e.target.value) })} />
+          </label>
+          <button type="button" className={'f-knopf' + (an ? '' : ' haupt')} disabled={startet} onClick={() => (an ? stoppe() : void starte())}>
+            <Symbol name={an ? 'pause' : 'mikrofon'} />
+            {an ? 'Stopp' : startet ? 'Einen Moment …' : 'Start'}
+          </button>
+        </div>
+      </div>
+      {fehler && (
+        <p className="fehler" role="alert">
+          {fehler}
+        </p>
+      )}
+      <p className="hinweis klein">Nur der Pegel wird auf diesem Gerät gemessen – nichts wird aufgenommen oder gesendet.</p>
+    </div>
+  )
+}
+
+// ---------- QR-Code ----------
+/** Zeigt eine Adresse als QR-Code, damit die Klasse sie mit dem Handy öffnen kann. Der Code entsteht auf dem Gerät. */
+export function QrCode({ fenster, beiAendern }: { fenster: FensterZustand; beiAendern: (neu: Aenderung) => void }) {
+  const adresse = fenster.adresse
+  const [eingabe, setEingabe] = useState(adresse ?? '')
+  const [aendern, setAendern] = useState(!adresse)
+  const [fehler, setFehler] = useState(false)
+  const code = useMemo(() => {
+    if (!adresse) return null
+    try {
+      return qrPfad(adresse)
+    } catch {
+      return null
+    }
+  }, [adresse])
+
+  function zeigen(e: FormEvent) {
+    e.preventDefault()
+    const a = pruefeAdresse(eingabe)
+    if (!a) return setFehler(true)
+    setFehler(false)
+    setEingabe(a)
+    beiAendern({ adresse: a })
+    setAendern(false)
+  }
+
+  if (!aendern && adresse && code)
+    return (
+      <div className="qr-code">
+        <svg className="qr-bild" viewBox={`0 0 ${code.groesse} ${code.groesse}`} role="img" aria-label={`QR-Code für ${adresse}`} shapeRendering="crispEdges">
+          <rect width={code.groesse} height={code.groesse} fill="#ffffff" />
+          <path d={code.pfad} fill="#000000" />
+        </svg>
+        <p className="qr-adresse">{kurzeAdresse(adresse)}</p>
+        <button type="button" className="f-knopf" onClick={() => setAendern(true)}>
+          Andere Adresse
+        </button>
+      </div>
+    )
+  return (
+    <form className="qr-eingabe" onSubmit={zeigen} noValidate>
+      <label>
+        Adresse
+        <input
+          type="url"
+          inputMode="url"
+          autoComplete="off"
+          autoCapitalize="off"
+          spellCheck={false}
+          placeholder="z. B. kt-gymbruvi.github.io"
+          maxLength={MAX_ADRESSE}
+          value={eingabe}
+          aria-invalid={fehler}
+          onChange={(e) => {
+            setEingabe(e.target.value)
+            setFehler(false)
+          }}
+        />
+      </label>
+      {fehler && (
+        <p className="fehler" role="alert">
+          Bitte eine Internetadresse eingeben (http oder https).
+        </p>
+      )}
+      <div className="reihe">
+        <button type="submit" className="f-knopf haupt">
+          <Symbol name="qr" />
+          Code zeigen
+        </button>
+        {adresse && (
+          <button type="button" className="f-knopf" onClick={() => setAendern(false)}>
+            Abbrechen
+          </button>
+        )}
+      </div>
+    </form>
   )
 }

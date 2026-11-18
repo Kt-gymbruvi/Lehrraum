@@ -1,0 +1,30 @@
+/* Anmeldeformular der Lehrkraft (Klassenseite) */
+.anmeldung {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  max-width: 22rem;
+}
+.anmeldung label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-weight: 700;
+}
+.anmeldung .hinweis {
+  margin: 0;
+}
+.anmeldung input {
+  min-height: 3rem;
+  padding: 0.25rem 0.75rem;
+  border: 2px solid var(--linie);
+  border-radius: 0.75rem;
+  background: var(--leiste);
+  color: var(--text);
+  font: inherit;
+}
+.anmeldung .fehler {
+  margin: 0.25rem 0;
+  color: var(--fehler);
+  font-weight: 700;
+}

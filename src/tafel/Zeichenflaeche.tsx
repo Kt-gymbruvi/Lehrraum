@@ -35,9 +35,10 @@
 //   die Trennlinien zwischen den Spalten ziehen.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, mitGruppen, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
-import { beruehrtRechteck, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
+import { breite, beruehrtRechteck, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
+import { anKante, fangeKante, type Instrument, type Kante } from '../kern/instrumente.ts'
 import type { Werkzeug } from '../kern/einstellungen.ts'
 import { kuerze, lebt, punktLeben, type Spur } from '../kern/laser.ts'
 import { MAX_TEXT, MAX_ZELLTEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Muster, type Strich, type Tabelle, type Text } from '../kern/modell.ts'
@@ -77,7 +78,12 @@ type Props = {
   blatt?: Blatt | null
   /** Begrenzt eine Ansicht beim Verschieben und Zoomen (auf das Blatt); fehlt: keine Grenze */
   begrenze?: (k: Kamera) => Kamera
+  /** Lineal, Geodreieck, Winkelmesser: ein Strich, der dicht an einer Kante beginnt, wird angelegt */
+  instrumente?: Instrument[]
 }
+
+/** So nah (Bildschirm-Pixel) muss ein Strich an einer Kante beginnen, damit er angelegt wird */
+const KANTEN_FANG = 24
 
 /** Fangradius der Auswahl in Bildschirm-Pixeln */
 const FANG_RADIUS = 8
@@ -90,7 +96,7 @@ const vorschau = (a: Extract<Aktiv, { art: 'skalieren' }>) =>
 
 type Aktiv =
   /** halt: wo der Stift zuletzt stillzustehen begann (Bildschirm); begradigt: die erkannte Form nach dem Halten */
-  | { art: 'zeichnen'; zeiger: number; strich: Strich; halt: { x: number; y: number }; begradigt: Form | Strich | null }
+  | { art: 'zeichnen'; zeiger: number; strich: Strich; halt: { x: number; y: number }; begradigt: Form | Strich | null; kante: Anlage | null }
   | { art: 'form'; zeiger: number; form: Form }
   | { art: 'zeigen'; zeiger: number; spur: Spur }
   /** x/y: Zeiger (Bildschirm), vx/vy: wo er zuletzt war; wisch: der Wischzug des Schwamms (Element-Radierer: null) */
@@ -106,6 +112,9 @@ type Aktiv =
   | { art: 'geste'; mitteX: number; mitteY: number; abstand: number }
   /** Breite einer Tabellenspalte ziehen: startX in den Koordinaten der Tabelle */
   | { art: 'spalte'; zeiger: number; t: Tabelle; spalte: number; startX: number; breite: number; neu: Tabelle }
+
+/** Ein Strich am Lineal: Werkzeug und Kante beim Aufsetzen, Abstand = halbe Strichbreite */
+type Anlage = { i: Instrument; k: Kante; abstand: number }
 
 /** zelle: es wird eine Zelle einer Tabelle beschrieben (x, y: ihre linke obere Ecke, gedreht wie die Tabelle) */
 type Editor = { id: string | null; x: number; y: number; groesse: number; farbe: string; text: string; vorher: Text | null; zelle?: { t: Tabelle; r: number; s: number } }
@@ -128,8 +137,9 @@ export const setzeHaltezeit = (ms: number) => {
 }
 
 const keineGrenze = (k: Kamera) => k
+const KEINE: Instrument[] = []
 
-export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze, instrumente = KEINE }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -145,8 +155,8 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
   /** Eine verschobene Ansicht, die erst mit dem nächsten Bildwechsel weitergemeldet wird */
   const kameraOffen = useRef<Kamera | null>(null)
   // Aktuelle Werte für die Eingabe-Funktionen (die sich sonst bei jedem Zeichnen neu anmelden müssten)
-  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahl, editor, blatt, begrenze })
-  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahl, editor, blatt, begrenze }
+  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahl, editor, blatt, begrenze, instrumente })
+  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahl, editor, blatt, begrenze, instrumente }
   /** Wo Maus oder schwebender Stift gerade ist (Bildschirm) – dort zeigt ein Kreis die Größe des Radierers (beim Laserpointer: ein roter Punkt) */
   const schwebe = useRef<{ x: number; y: number } | null>(null)
   /** Spuren des Laserpointers: nur hier auf der oberen Ebene, nie gespeichert, nicht im Verlauf */
@@ -712,15 +722,23 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       aktiv.current = { art: 'zeigen', zeiger: e.pointerId, spur }
     } else if (w === 'stift' || w === 'marker') {
       const stift = e.pointerType === 'pen'
-      const a: Aktiv = {
-        art: 'zeichnen',
-        zeiger: e.pointerId,
-        strich: { art: 'strich', id: neueId(), werkzeug: w, farbe: s.farbe, staerke: s.staerke, druckEcht: stift, punkte: [[tx, ty, stift ? e.pressure || 0.5 : 0.5]] },
-        halt: { x, y },
-        begradigt: null,
+      const strich: Strich = { art: 'strich', id: neueId(), werkzeug: w, farbe: s.farbe, staerke: s.staerke, druckEcht: stift, punkte: [[tx, ty, stift ? e.pressure || 0.5 : 0.5]] }
+      // Dicht an Lineal, Geodreieck oder Winkelmesser: an die Kante anlegen (das oberste Werkzeug zuerst)
+      let kante: Anlage | null = null
+      for (const i of [...s.instrumente].reverse()) {
+        const k = fangeKante(i, tx, ty, KANTEN_FANG / s.kamera.zoom)
+        if (k) {
+          kante = { i, k, abstand: breite(strich) / 2 }
+          break
+        }
       }
+      if (kante) {
+        const [ax, ay] = anKante(kante.i, kante.k, tx, ty, kante.abstand)
+        strich.punkte[0] = [ax, ay, strich.punkte[0][2]]
+      }
+      const a: Aktiv = { art: 'zeichnen', zeiger: e.pointerId, strich, halt: { x, y }, begradigt: null, kante }
       aktiv.current = a
-      halteAn(a)
+      if (!kante) halteAn(a) // am Lineal gibt es nichts zu begradigen
     } else {
       aktiv.current = { art: 'form', zeiger: e.pointerId, form: { art: 'form', id: neueId(), form: w, x1: tx, y1: ty, x2: tx, y2: ty, farbe: s.farbe, staerke: s.staerke } }
     }
@@ -827,13 +845,14 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       const einzeln = e.nativeEvent.getCoalescedEvents?.() ?? []
       const r = rahmen.current!.getBoundingClientRect() // einmal je Meldung messen, nicht je Punkt
       for (const ev of einzeln.length ? einzeln : [e.nativeEvent]) {
-        const [px, py] = zuTafel(k, ev.clientX - r.left, ev.clientY - r.top)
+        let [px, py] = zuTafel(k, ev.clientX - r.left, ev.clientY - r.top)
+        if (a.kante) [px, py] = anKante(a.kante.i, a.kante.k, px, py, a.kante.abstand)
         const letzter = a.strich.punkte[a.strich.punkte.length - 1]
         if (Math.hypot(px - letzter[0], py - letzter[1]) * k.zoom < 0.5) continue
         a.strich.punkte.push([px, py, a.strich.druckEcht ? ev.pressure || letzter[2] : 0.5])
       }
       // Weiter als ein Zittern bewegt: die Haltezeit beginnt neu, eine schon erkannte Form gilt nicht mehr
-      if (Math.hypot(x - a.halt.x, y - a.halt.y) > HALTE_TOLERANZ) {
+      if (!a.kante && Math.hypot(x - a.halt.x, y - a.halt.y) > HALTE_TOLERANZ) {
         a.halt = { x, y }
         a.begradigt = null
         halteAn(a)

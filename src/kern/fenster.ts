@@ -1,12 +1,20 @@
-// Fenster über der Tafel (Uhr, Timer, Stoppuhr, Zufall & Gruppen, Notiz): welche offen sind, wo sie liegen, was vorne ist.
+// Fenster über der Tafel (Uhr, Timer, Stoppuhr, Zufall & Gruppen, Notiz, Arbeitsform, Geräuschampel, QR-Code): welche offen sind, wo sie liegen, was vorne ist.
 // Reine Funktionen. Die Reihenfolge der Liste ist die Stapelfolge: das letzte Fenster liegt vorne.
 import { neueId } from './modell.ts'
 
-export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'zufall', 'notiz', 'quizzo', 'klassenfunk', 'lernangebote'] as const
+export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'zufall', 'notiz', 'arbeitsform', 'geraeusch', 'qr'] as const
 export type FensterArt = (typeof FENSTERARTEN)[number]
 
 export const NOTIZFARBEN = ['gelb', 'gruen', 'rosa', 'blau'] as const
 export type NotizFarbe = (typeof NOTIZFARBEN)[number]
+
+/** Arbeitsform-Schild: Sozialform und erlaubte Lautstärke */
+export const ARBEITSFORMEN = ['einzel', 'partner', 'gruppe', 'plenum'] as const
+export type Arbeitsform = (typeof ARBEITSFORMEN)[number]
+export const ARBEITSFORM_NAMEN: Record<Arbeitsform, string> = { einzel: 'Einzelarbeit', partner: 'Partnerarbeit', gruppe: 'Gruppenarbeit', plenum: 'Plenum' }
+export const LAUTSTAERKEN = ['still', 'fluestern', 'leise', 'normal'] as const
+export type Lautstaerke = (typeof LAUTSTAERKEN)[number]
+export const LAUTSTAERKE_NAMEN: Record<Lautstaerke, string> = { still: 'Still', fluestern: 'Flüstern', leise: 'Leise sprechen', normal: 'Normal sprechen' }
 
 export type FensterZustand = {
   id: string
@@ -18,28 +26,38 @@ export type FensterZustand = {
   /** nur Notiz */
   text?: string
   farbe?: NotizFarbe
-  /** nur Anwendungsfenster: was gerade läuft – Kennung des Spiels bzw. der Sitzung, oder der Ordner des Lernangebots */
-  ziel?: string
-  /** nur Anwendungsfenster: füllt die ganze Tafelfläche */
-  gross?: boolean
-  /** nur Werkzeugfenster (Uhr, Timer, Notiz …): Vergrößerung des Inhalts, fehlt = 1 */
+  /** nur Arbeitsform */
+  form?: Arbeitsform
+  laut?: Lautstaerke
+  /** nur Geräuschampel: ab welchem Pegel (0–100) die Ampel rot wird */
+  grenze?: number
+  /** nur QR-Code: die geprüfte Adresse */
+  adresse?: string
+  /** Vergrößerung des Inhalts, fehlt = 1 */
   skala?: number
 }
 
-export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', zufall: 'Zufall & Gruppen', notiz: 'Notiz', quizzo: 'Quizzo', klassenfunk: 'Klassenfunk', lernangebote: 'Lernangebote' }
+export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', zufall: 'Zufall & Gruppen', notiz: 'Notiz', arbeitsform: 'Arbeitsform', geraeusch: 'Geräuschampel', qr: 'QR-Code' }
 
-/** Fenster, die eine andere Anwendung der Plattform zeigen (größer, lassen sich auf die ganze Fläche vergrößern) */
+/** Reihenfolge und Gruppen der Knöpfe in der rechten Leiste: Zeit, dann Unterricht */
+export const LEISTENGRUPPEN: FensterArt[][] = [
+  ['uhr', 'timer', 'stoppuhr'],
+  ['zufall', 'notiz', 'arbeitsform', 'geraeusch', 'qr'],
+]
+/** Beschriftung in der Leiste, wo der Name zu lang ist (weiches Trennzeichen) */
+export const LEISTENNAMEN: Partial<Record<FensterArt, string>> = { geraeusch: 'Geräusch\u00adampel' }
+
 /** Nur in der Tafel einer Klasse (braucht ihre Namen) */
 export const NUR_KLASSE: ReadonlySet<FensterArt> = new Set(['zufall'])
-
-export const ANWENDUNGEN: ReadonlySet<FensterArt> = new Set(['quizzo', 'klassenfunk', 'lernangebote'])
-/** Kennung eines Spiels, einer Sitzung oder ein Ordnername – nur solche Zeichen gelangen in eine Adresse */
-export const istZiel = (x: unknown): x is string => typeof x === 'string' && /^[A-Za-z0-9-]{1,64}$/.test(x)
 
 /** Von diesen Arten kann es mehrere Fenster geben; alle anderen höchstens einmal. */
 export const MEHRFACH: ReadonlySet<FensterArt> = new Set(['notiz'])
 export const MAX_FENSTER = 12
 export const MAX_NOTIZTEXT = 2000
+export const GRENZE_MIN = 20
+export const GRENZE_MAX = 95
+export const GRENZE_STANDARD = 60
+export const MAX_ADRESSE = 500
 
 /**
  * Knopf in der rechten Leiste: öffnet ein Fenster. Gibt es die Art schon (und nur einmal erlaubt), wird es
@@ -54,6 +72,11 @@ export function schalte(liste: FensterZustand[], art: FensterArt): FensterZustan
     neu.text = ''
     neu.farbe = NOTIZFARBEN[liste.filter((f) => f.art === 'notiz').length % NOTIZFARBEN.length]
   }
+  if (art === 'arbeitsform') {
+    neu.form = 'einzel'
+    neu.laut = 'still'
+  }
+  if (art === 'geraeusch') neu.grenze = GRENZE_STANDARD
   return [...liste, neu]
 }
 
@@ -73,8 +96,6 @@ export function aendere(liste: FensterZustand[], id: string, neu: Partial<Omit<F
 // ---------- Größe (Eckgriff unten rechts, wie bei Bildern) ----------
 export const SKALA_MIN = 0.75
 export const SKALA_MAX = 4
-/** Anwendungsfenster haben ihre eigene Größe und lassen sich stattdessen auf die ganze Fläche vergrößern. */
-export const istSkalierbar = (art: FensterArt): boolean => !ANWENDUNGEN.has(art)
 const rundeSkala = (s: number) => Math.round(s * 100) / 100
 
 /**
@@ -101,7 +122,7 @@ export function begrenze(x: number, y: number, flaecheB: number, flaecheH: numbe
 const istObjekt = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
 const zahl = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) ? Math.round(Math.min(20000, Math.max(-2000, x))) : 0)
 
-/** Prüft gespeicherte Fenster; Unbekanntes und Doppeltes fällt weg. */
+/** Prüft gespeicherte Fenster; Unbekanntes und Doppeltes fällt weg (auch die früheren Fenster Quizzo, Klassenfunk, Lernangebote). */
 export function pruefeFenster(roh: unknown): FensterZustand[] {
   if (!Array.isArray(roh)) return []
   const liste: FensterZustand[] = []
@@ -116,16 +137,46 @@ export function pruefeFenster(roh: unknown): FensterZustand[] {
       f.text = typeof x.text === 'string' ? x.text.slice(0, MAX_NOTIZTEXT) : ''
       f.farbe = NOTIZFARBEN.find((n) => n === x.farbe) ?? 'gelb'
     }
-    if (ANWENDUNGEN.has(art)) {
-      if (istZiel(x.ziel)) f.ziel = x.ziel
-      if (x.gross === true) f.gross = true
-    } else if (typeof x.skala === 'number' && Number.isFinite(x.skala) && x.skala !== 1) {
+    if (art === 'arbeitsform') {
+      f.form = ARBEITSFORMEN.find((a) => a === x.form) ?? 'einzel'
+      f.laut = LAUTSTAERKEN.find((a) => a === x.laut) ?? 'still'
+    }
+    if (art === 'geraeusch') f.grenze = typeof x.grenze === 'number' && Number.isFinite(x.grenze) ? Math.round(Math.min(GRENZE_MAX, Math.max(GRENZE_MIN, x.grenze))) : GRENZE_STANDARD
+    if (art === 'qr' && typeof x.adresse === 'string') {
+      const a = pruefeAdresse(x.adresse)
+      if (a) f.adresse = a
+    }
+    if (typeof x.skala === 'number' && Number.isFinite(x.skala) && x.skala !== 1) {
       f.skala = rundeSkala(Math.min(SKALA_MAX, Math.max(SKALA_MIN, x.skala)))
     }
     liste.push(f)
   }
   return liste
 }
+
+// ---------- QR-Code ----------
+
+/**
+ * Macht aus einer Eingabe eine Adresse für den QR-Code – oder null. Nur http und https; fehlt das Schema, gilt https.
+ * Leerzeichen am Rand fallen weg; Adressen mit Leerzeichen oder Steuerzeichen werden nicht angenommen.
+ */
+export function pruefeAdresse(eingabe: string): string | null {
+  const t = eingabe.trim()
+  if (!t || t.length > MAX_ADRESSE || /[\s\u0000-\u001f\u007f]/.test(t)) return null
+  const mitSchema = /^[a-z][a-z0-9+.-]*:/i.test(t) ? t : 'https://' + t
+  let url: URL
+  try {
+    url = new URL(mitSchema)
+  } catch {
+    return null
+  }
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return null
+  if (!url.hostname.includes('.') && url.hostname !== 'localhost') return null
+  return url.href.length <= MAX_ADRESSE ? url.href : null
+}
+
+/** Kurze Form zum Anzeigen unter dem Code: ohne https:// und ohne abschließenden Schrägstrich */
+export const kurzeAdresse = (adresse: string): string => adresse.replace(/^https?:\/\//, '').replace(/\/$/, '')
 
 // ---------- Zeit (Logik der Fenster, ohne Oberfläche) ----------
 

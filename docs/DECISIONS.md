@@ -4,6 +4,18 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-18 – Abdecken, Scheinwerfer, Geometrie, Arbeitsform, Geräuschampel, QR-Code
+- **Arbeitsform, Geräuschampel, QR-Code als Fenster** (wie Uhr und Notiz): verschiebbar, vergrößerbar, mit der Tafel gemerkt. **Abdecken, Scheinwerfer und Geometrie als eigene Ebenen**, nicht als Fenster: Sie gehören zur ganzen Fläche bzw. zur Tafel und haben keine Titelzeile. Sie werden nicht gespeichert – nach dem Neuladen ist die Tafel frei.
+- **Geometrie-Werkzeuge in Tafel-Koordinaten:** Sie wachsen mit dem Zoom wie ein echtes Lineal und messen auf A4-Blättern echte Zentimeter. Verworfen: feste Bildschirmgröße (dann stimmte die Skala nie mit dem Blatt überein).
+- **Anlegen nur beim Aufsetzen:** Liegt der Anfang eines Strichs dicht an einer Kante, folgt der ganze Strich dieser Kante. Verworfen: Einrasten mitten im Strich (überraschend beim Freihandschreiben neben dem Lineal).
+- **Drehen um den Nullpunkt** (rot markiert), damit man den Nullpunkt auf einen Punkt legen und das Werkzeug darum drehen kann.
+- **Geräuschampel misst nur den Pegel** und schaltet das Mikrofon nur auf Knopfdruck ein; beim Schließen wird es freigegeben. Leiser wird erst nach 1,5 s angezeigt, damit Rot nicht bei jeder Atempause verschwindet.
+- **QR-Code nur für http/https-Adressen**, auf dem Gerät berechnet (Bibliothek `qrcode`, ohne Netz).
+
+## 2026-11-18 – Keine eingebetteten Anwendungen mehr in der Tafel
+- **Quizzo, Klassenfunk und Lernangebote aus der rechten Leiste entfernt** (Wunsch der Lehrkraft): Sie werden besser draußen auf der Startseite benutzt. Die rechte Leiste ist damit reine Werkzeugleiste für den Unterricht an der Tafel. Ersetzt die Entscheidung „Quizzo, Klassenfunk und Lernangebote in der Tafel (Etappe 5a)“.
+- Gespeicherte Fenster dieser Arten fallen beim Laden still weg, ohne neue Datenversion: Fenster sind Ansichtszustand, kein Tafelinhalt.
+
 ## 2026-11-16 – Fenstergröße per Eckgriff
 - **Der Inhalt wird gleichmäßig vergrößert (CSS `zoom` am Inhalt), nicht das Fenster in Breite und Höhe frei gezogen:** Uhr und Timer bestehen aus Schrift und Knöpfen – größer soll heißen „vom hinteren Platz lesbar“, wie bei einem Bild. `zoom` statt `transform: scale`, damit das Fenster seinen Platz behält und Verschieben/Begrenzen weiter stimmen.
 - **Die Titelzeile wächst nicht mit:** Ihre Knöpfe bleiben handlich, und ein stark vergrößertes Fenster lässt sich weiter greifen.

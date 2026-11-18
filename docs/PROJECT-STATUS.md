@@ -1,12 +1,29 @@
 # Projektstand – Lehrraum
 
-Stand: 16.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 25 Testdateien, 311 Tests grün (`npm test`); Build grün (`npm run build`).
+Stand: 18.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
+Tests: 25 Testdateien, 323 Tests grün (`npm test`); Build grün (`npm run build`).
 **Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden. **Ein Passwort, ein Schlüsselbund (Etappe B)** ist veröffentlicht (14.11.2026, auch Notenbuch und Startseite). **Tafeln auf allen Geräten (Etappe C)** ist veröffentlicht (14.11.2026, Migration `012_tafeln.sql` ausgeführt).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Neue Unterrichtswerkzeuge in der rechten Leiste – noch nicht veröffentlicht (18.11.2026)
+- Wunsch der Lehrkraft (aus den Vorschlägen 1, 2, 4, 5, 7, 8): Abdecken, Scheinwerfer, Geometrie, Arbeitsform, Geräuschampel, QR-Code.
+- **Leiste:** Gruppen Zeit (Uhr, Timer, Stoppuhr) · Unterricht (Zufall & Gruppen, Notiz, Arbeitsform, Geräuschampel, QR-Code) · Zeigen (Abdecken, Scheinwerfer, Geometrie mit Feld). Unter 58 rem Fensterhöhe (iPad) zwei Spalten, damit nichts gerollt werden muss.
+- **Fenster** (gespeichert mit der Tafel wie Notizen, mit Eckgriff vergrößerbar): *Arbeitsform* – Schild Einzel-/Partner-/Gruppenarbeit/Plenum und Still/Flüstern/Leise/Normal (`form`, `laut`). *Geräuschampel* – Mikrofon erst nach „Start“, Pegel 0–100 aus dem Effektivwert, lauter sofort, leiser erst nach 1,5 s Stufe um Stufe; Regler „Rot ab“ (`grenze`). *QR-Code* – nur http/https-Adressen (`pruefeAdresse`), Code entsteht auf dem Gerät als SVG (`adresse`).
+- **Abdecken** (Vorhang mit vier Griffen, Tastatur am Griff) und **Scheinwerfer** (dunkel bis auf einen Kreis; Ziehen im Dunkeln verschiebt, Randgriff ändert die Größe) liegen über der Tafel und unter den Fenstern, werden nicht gespeichert.
+- **Geometrie:** Lineal (30 cm), Geodreieck (16 cm), Winkelmesser (r = 8 cm) in Tafel-Koordinaten (wachsen mit dem Zoom; 1 cm = 96/2,54 Einheiten wie bei A4). Ziehen am Körper verschiebt, zwei Finger drehen und verschieben, runder Griff dreht um den Nullpunkt (rastet auf 15° ein, Pfeiltasten am Griff), Winkel wird angezeigt. Ein Stift-/Marker-Strich, der höchstens 24 px neben einer Kante beginnt, wird angelegt (gerade bzw. am Bogen des Winkelmessers), ohne Begradigen. Aufliegende Hand kurz nach dem Stift verschiebt das Werkzeug nicht. Nicht gespeichert.
+- Keine neue Version des Datenmodells: Fenster sind Ansichtszustand, alte Tafeln laden unverändert.
+- Getestet: `npm test` (323 grün; neu `werkzeuge.test.tsx` mit 20 Tests: Pegel und Ampel, Adressprüfung, QR-Felder, Abdecken/Scheinwerfer-Logik, Anlegen an Lineal/Geodreieck/Winkelmesser, Drehen/zwei Finger, Bedienung aller sechs Werkzeuge in der Tafel mit ersetztem Mikrofon), Build. Im Browser (Maus): Leiste in einer und zwei Spalten, Arbeitsform, QR-Code einer echten Adresse, Abdecken aufgezogen, Scheinwerfer verschoben, Lineal aufgelegt, Strich an der Kante gerade, gedreht (−21°), Geodreieck und Winkelmesser angezeigt.
+- **Nicht geprüft:** Geräuschampel mit echtem Mikrofon (im eingebauten Browser nicht erlaubt), QR-Code mit dem Handy eingelesen, Geometrie mit Stift und zwei Fingern am iPad/SMART Board.
+
+## Rechte Leiste ohne Quizzo, Klassenfunk, Lernangebote – noch nicht veröffentlicht (18.11.2026)
+- Wunsch der Lehrkraft: Die drei eingebetteten Anwendungen lassen sich besser draußen auf der Startseite benutzen; die rechte Leiste enthält nur noch Werkzeuge (Uhr, Timer, Stoppuhr, Zufall & Gruppen, Notiz).
+- Entfernt: `fenster/Anwendungen.tsx` (samt CSS), `speicher/plattform.ts`, Quiz-/Präsentations-/Spiel-/Sitzungs-Aufrufe in `server.ts`, Fensterarten `quizzo`, `klassenfunk`, `lernangebote` mit „Vergrößern auf die ganze Fläche“ (`gross`, `ziel`). Das Anmeldeformular für den Abgleich liegt jetzt in `klassen/Anmeldung.tsx`.
+- Gespeicherte Tafeln mit offenem Quizzo-/Klassenfunk-/Lernangebote-Fenster laden unverändert; diese Fenster fallen beim Laden weg (wie früher der Würfel). Keine neue Version des Datenmodells nötig – Fenster gehören nicht zum Tafelinhalt.
+- Die folgenden Abschnitte über Etappe 5a beschreiben den früheren Stand.
+- Getestet: `npm test` (303 grün; Tests der Anwendungsfenster entfernt, neu: alte Fenster fallen beim Laden weg, Leiste ohne die drei Knöpfe), Build.
 
 ## Fenster in der Größe veränderbar – noch nicht veröffentlicht (16.11.2026)
 - Wunsch der Lehrkraft: Uhr, Timer, Stoppuhr, Notiz usw. sollen sich wie Bilder in der Größe ändern lassen.

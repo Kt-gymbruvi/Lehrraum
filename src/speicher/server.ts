@@ -1,5 +1,5 @@
-// Alles, was Lehrraum vom Server braucht – an einer Stelle. Benutzt nur, was Quizzo und Klassenfunk schon
-// bereitstellen (Tabellen mit Zugriffsregeln, Funktionen spiel_erstellen und kf_sitzung_starten).
+// Alles, was Lehrraum vom Server braucht – an einer Stelle: Anmeldung (dieselben Konten wie Quizzo und
+// Klassenfunk), Tresore, Tafeln und Dateien.
 // Schülernamen gehen nur verschlüsselt über den Server (Tresore, siehe unten). In Tests wird dieses Modul ersetzt.
 import { db, supabase } from './supabase.ts'
 
@@ -33,53 +33,6 @@ export function beiAnmeldung(tun: (angemeldet: boolean) => void): () => void {
 
 export async function melde_an(email: string, passwort: string): Promise<void> {
   const { error } = await db().auth.signInWithPassword({ email, password: passwort })
-  if (error) throw error
-}
-
-// ---------- Quizzo ----------
-export type QuizKurz = { id: string; titel: string; anzahl: number; ordner: string | null }
-export type Spielmodus = 'klassisch' | 'team'
-
-export async function ladeQuizze(): Promise<QuizKurz[]> {
-  const { data, error } = await db().from('quizze').select('id, titel, ordner, fragen(count)').order('geaendert_am', { ascending: false })
-  if (error) throw error
-  return ((data ?? []) as unknown as { id: string; titel: string; ordner: string | null; fragen: { count: number }[] | null }[]).map((q) => ({
-    id: q.id,
-    titel: q.titel,
-    ordner: q.ordner ?? null,
-    anzahl: q.fragen?.[0]?.count ?? 0,
-  }))
-}
-
-async function aufruf<T>(funktion: string, args: Record<string, unknown>): Promise<T> {
-  const { data, error } = await db().rpc(funktion, args)
-  if (error) throw error
-  return data as T
-}
-
-export const starteSpiel = (quizId: string, modus: Spielmodus, teams: number | null) =>
-  aufruf<{ id: string; pin: string }>('spiel_erstellen', { p_quiz_id: quizId, p_modus: modus, p_teams: modus === 'team' ? teams : null })
-
-/** Löscht das Spiel samt Spitznamen, Antworten und Punkten (wie „Beenden“ in Quizzo). */
-export async function beendeSpiel(id: string): Promise<void> {
-  const { error } = await db().from('spiele').delete().eq('id', id)
-  if (error) throw error
-}
-
-// ---------- Klassenfunk ----------
-export type PraesentationKurz = { id: string; titel: string; anzahl: number }
-
-export async function ladePraesentationen(): Promise<PraesentationKurz[]> {
-  const { data, error } = await db().from('kf_praesentationen').select('id, titel, kf_folien(count)').order('geaendert_am', { ascending: false })
-  if (error) throw error
-  return ((data ?? []) as unknown as { id: string; titel: string; kf_folien: { count: number }[] | null }[]).map((p) => ({ id: p.id, titel: p.titel, anzahl: p.kf_folien?.[0]?.count ?? 0 }))
-}
-
-export const starteSitzung = (praesentationId: string) => aufruf<{ id: string; pin: string }>('kf_sitzung_starten', { p_praesentation: praesentationId })
-
-/** Löscht die Sitzung samt allen Antworten (wie „Beenden“ in Klassenfunk). */
-export async function beendeSitzung(id: string): Promise<void> {
-  const { error } = await db().from('kf_sitzungen').delete().eq('id', id)
   if (error) throw error
 }
 

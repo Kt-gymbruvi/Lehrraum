@@ -1,0 +1,490 @@
+/* Neue Unterrichtswerkzeuge der rechten Leiste: Arbeitsform, Geräuschampel, QR-Code, Abdecken, Scheinwerfer, Geometrie */
+
+/* ---------- Rechte Leiste ---------- */
+.leisten-knopf.mit-text span {
+  max-width: 100%;
+  text-align: center;
+  line-height: 1.1;
+  hyphens: manual;
+  overflow-wrap: anywhere;
+}
+/* Geometrie: ein Werkzeug liegt auf der Tafel – hervorgehoben wie ein gewähltes */
+.leisten-knopf.an,
+.leisten-knopf.an:hover:not(:disabled),
+.leisten-knopf.an:active:not(:disabled) {
+  background: var(--gewaehlt);
+  color: var(--gewaehlt-text);
+  box-shadow: 0 2px 8px rgb(10 45 83 / 0.25);
+}
+/* Nicht genug Höhe für eine Spalte (iPad, kleine Bildschirme): zwei Spalten, damit nichts gerollt werden muss */
+@media (max-height: 58rem) and (min-height: 34.01rem) {
+  .werkzeugleiste.rechts .gruppe {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-items: center;
+    gap: 0.125rem;
+  }
+  .werkzeugleiste.rechts .gruppe > :only-child {
+    grid-column: span 2;
+  }
+  .werkzeugleiste.rechts .leisten-knopf.mit-text {
+    width: 4.4rem;
+    height: 3.6rem;
+    font-size: 0.64rem;
+  }
+}
+@media (max-height: 34rem) {
+  .werkzeugleiste.rechts .gruppe {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    justify-items: center;
+  }
+}
+
+.geometriefeld {
+  min-width: 15rem;
+  transform-origin: right top;
+}
+.geometriefeld .feld-zeile {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 3.5rem;
+  padding: 0 0.9rem;
+  border: 0;
+  border-radius: 0.875rem;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+.geometriefeld .feld-zeile:hover {
+  background: var(--leiste-2);
+}
+.geometriefeld .feld-zeile[aria-pressed='true'] {
+  background: var(--gewaehlt);
+  color: var(--gewaehlt-text);
+}
+.geometriefeld .symbol {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.geometriefeld .hinweis {
+  max-width: 15rem;
+  margin: 0.25rem 0.5rem 0.25rem;
+  color: var(--text-2);
+  font-size: 0.8rem;
+}
+
+/* ---------- Gemeinsames in Fenstern ---------- */
+.fenster .hinweis.klein {
+  max-width: 18rem;
+  font-size: 0.75rem;
+}
+.fenster .fehler {
+  max-width: 18rem;
+  margin: 0.5rem 0 0;
+  color: var(--fehler);
+  font-weight: 700;
+}
+.f-knopf.symbol-knopf {
+  width: 3.5rem;
+  min-height: 3.5rem;
+  padding: 0;
+}
+.f-knopf.symbol-knopf .symbol {
+  width: 1.6rem;
+  height: 1.6rem;
+}
+
+/* ---------- Arbeitsform ---------- */
+.arbeitsform {
+  min-width: 16rem;
+}
+.schild {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem 0.75rem 0.75rem;
+  border-radius: 1rem;
+  background: var(--leiste-2);
+  text-align: center;
+}
+.schild-symbol .symbol {
+  width: 4.5rem;
+  height: 4.5rem;
+  stroke-width: 1.5;
+}
+.schild-name {
+  margin: 0.25rem 0 0;
+  font-size: 1.9rem;
+  font-weight: 700;
+  line-height: 1.1;
+}
+.schild-laut {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0.5rem 0 0;
+  padding: 0.25rem 0.8rem;
+  border-radius: 999px;
+  font-size: 1.15rem;
+  font-weight: 700;
+}
+.schild-laut .symbol {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+.schild.laut-still .schild-laut {
+  background: #c4291f;
+  color: #ffffff;
+}
+.schild.laut-fluestern .schild-laut {
+  background: #e3a008;
+  color: #2b1d00;
+}
+.schild.laut-leise .schild-laut {
+  background: #2d8a4e;
+  color: #ffffff;
+}
+.schild.laut-normal .schild-laut {
+  background: #1f5fa8;
+  color: #ffffff;
+}
+
+/* ---------- Geräuschampel ---------- */
+.geraeusch {
+  min-width: 17rem;
+}
+.ampel-reihe {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.ampel {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  padding: 0.5rem;
+  border-radius: 1.25rem;
+  background: #1d2733;
+}
+.licht {
+  width: 3rem;
+  height: 3rem;
+  border-radius: 50%;
+  opacity: 0.22;
+  transition: opacity var(--schnell), box-shadow var(--schnell);
+}
+.licht-rot {
+  background: #e5372b;
+}
+.licht-gelb {
+  background: #f5b800;
+}
+.licht-gruen {
+  background: #2fbf5b;
+}
+.licht.an {
+  opacity: 1;
+  box-shadow: 0 0 18px currentColor;
+}
+.licht-rot.an {
+  color: #e5372b;
+}
+.licht-gelb.an {
+  color: #f5b800;
+}
+.licht-gruen.an {
+  color: #2fbf5b;
+}
+.ampel-steuerung {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  flex: 1;
+}
+.pegel {
+  position: relative;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: var(--leiste-2);
+  overflow: hidden;
+}
+.pegel-wert {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--gewaehlt);
+  transition: width 100ms linear;
+}
+.pegel-grenze {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #e5372b;
+}
+.geraeusch .regler {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-2);
+}
+.geraeusch .regler input {
+  width: 100%;
+  min-height: 2.75rem;
+  accent-color: var(--gewaehlt);
+}
+
+/* ---------- QR-Code ---------- */
+.qr-code {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.qr-bild {
+  display: block;
+  width: 15rem;
+  height: 15rem;
+  border-radius: 0.5rem;
+}
+.qr-adresse {
+  max-width: 15rem;
+  margin: 0.5rem 0 0;
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  overflow-wrap: anywhere;
+}
+.qr-code .f-knopf {
+  margin-top: 0.5rem;
+}
+.qr-eingabe {
+  display: flex;
+  flex-direction: column;
+  min-width: 17rem;
+}
+.qr-eingabe label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  font-weight: 700;
+}
+.qr-eingabe input {
+  min-height: 3rem;
+  padding: 0.25rem 0.75rem;
+  border: 2px solid var(--linie);
+  border-radius: 0.75rem;
+  background: var(--leiste);
+  color: var(--text);
+  font: inherit;
+}
+.qr-eingabe input[aria-invalid='true'] {
+  border-color: var(--fehler);
+}
+
+/* ---------- Abdecken und Scheinwerfer (über der Tafel, unter den Fenstern) ---------- */
+.zeige-ebene {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.abdeckung {
+  position: absolute;
+  pointer-events: auto;
+  background: repeating-linear-gradient(135deg, #e3e9f1 0 18px, #dbe2ec 18px 36px);
+  box-shadow: 0 0 0 1px rgb(10 45 83 / 0.18), 0 6px 24px rgb(10 45 83 / 0.18);
+  touch-action: none;
+}
+.abdeck-griff {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 3rem;
+  touch-action: none;
+  cursor: ns-resize;
+}
+.abdeck-griff span {
+  width: 3.5rem;
+  height: 0.6rem;
+  border-radius: 999px;
+  background: #0a2d53;
+  box-shadow: 0 0 0 3px #ffffff;
+}
+.abdeck-griff.griff-o {
+  top: -0.25rem;
+  left: 50%;
+  translate: -50% 0;
+}
+.abdeck-griff.griff-u {
+  bottom: -0.25rem;
+  left: 50%;
+  translate: -50% 0;
+}
+.abdeck-griff.griff-l,
+.abdeck-griff.griff-r {
+  top: 50%;
+  width: 3rem;
+  height: 4.5rem;
+  translate: 0 -50%;
+  cursor: ew-resize;
+}
+.abdeck-griff.griff-l {
+  left: -0.25rem;
+}
+.abdeck-griff.griff-r {
+  right: -0.25rem;
+}
+.abdeck-griff.griff-l span,
+.abdeck-griff.griff-r span {
+  width: 0.6rem;
+  height: 3.5rem;
+}
+.abdeck-griff:focus-visible span {
+  box-shadow: 0 0 0 3px var(--fokus);
+}
+.ebene-schliessen {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  border: 0;
+  border-radius: 50%;
+  background: #ffffff;
+  color: #0a2d53;
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.25);
+  pointer-events: auto;
+  cursor: pointer;
+}
+.abdeckung .ebene-schliessen {
+  top: 0.75rem;
+  right: 0.75rem;
+}
+.ebene-schliessen .symbol {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+.scheinwerfer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.scheinwerfer path {
+  fill: rgb(4 10 20 / 0.86);
+  pointer-events: visiblePainted;
+  touch-action: none;
+  cursor: move;
+}
+.scheinwerfer-griff,
+.zeige-ebene > .ebene-schliessen {
+  translate: -50% -50%;
+}
+.scheinwerfer-griff {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: nwse-resize;
+}
+.scheinwerfer-griff span {
+  width: 1.25rem;
+  height: 1.25rem;
+  border: 3px solid #0a2d53;
+  border-radius: 50%;
+  background: #ffffff;
+}
+
+/* ---------- Lineal, Geodreieck, Winkelmesser ---------- */
+.instrumente {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+.instrument-flaeche {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.instrument-koerper {
+  fill: rgb(214 232 250 / 0.55);
+  stroke: #2b5c9e;
+  pointer-events: visiblePainted;
+  touch-action: none;
+  cursor: grab;
+}
+.instrument-koerper:active {
+  cursor: grabbing;
+}
+.instrument .skala path {
+  stroke: #17324f;
+  fill: none;
+}
+.instrument .skala text {
+  fill: #17324f;
+  font-family: system-ui, sans-serif;
+  font-weight: 600;
+  user-select: none;
+}
+.instrument .skala,
+.instrument .nullpunkt {
+  pointer-events: none;
+}
+.instrument .nullpunkt {
+  fill: #c4291f;
+}
+.instrument-griff,
+.instrument-schliessen,
+.instrument-winkel {
+  position: absolute;
+  translate: -50% -50%;
+}
+.instrument-griff,
+.instrument-schliessen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 0;
+  border-radius: 50%;
+  background: rgb(255 255 255 / 0.92);
+  color: #0a2d53;
+  box-shadow: 0 1px 6px rgb(10 45 83 / 0.3);
+  pointer-events: auto;
+  touch-action: none;
+  cursor: pointer;
+}
+.instrument-griff {
+  cursor: grab;
+}
+.instrument-griff .symbol,
+.instrument-schliessen .symbol {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.instrument-winkel {
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgb(255 255 255 / 0.85);
+  color: #0a2d53;
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}

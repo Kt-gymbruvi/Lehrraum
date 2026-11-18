@@ -1,6 +1,6 @@
 // Abgleich auf der Klassenseite: Stand in der Kopfzeile und – wenn nötig – Anmeldung oder Passwort.
 import { useEffect, useState, type FormEvent } from 'react'
-import { Anmeldung } from '../fenster/Anwendungen.tsx'
+import { Anmeldung } from './Anmeldung.tsx'
 import { abgleichInfo, beiAbgleich, entsperre, gleicheAb, type AbgleichInfo } from '../speicher/abgleich.ts'
 
 export function useAbgleich(): AbgleichInfo {

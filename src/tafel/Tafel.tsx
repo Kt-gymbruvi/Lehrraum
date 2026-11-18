@@ -2,6 +2,9 @@
 // unten die Seiten. Speichert automatisch auf diesem Gerät und stellt beim Öffnen die zuletzt benutzte Tafel wieder her.
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Fensterebene, Schnellleiste } from '../fenster/Fensterebene.tsx'
+import { AbdeckEbene, ScheinwerferEbene } from '../fenster/Zeigen.tsx'
+import { neuesInstrument, type Instrument, type InstrumentArt } from '../kern/instrumente.ts'
+import { GANZ_ABGEDECKT, SCHEINWERFER_START, type Abdeckung, type Scheinwerfer } from '../kern/zeigen.ts'
 import { einzufuegen, neueAblage, type Ablage } from '../kern/ablage.ts'
 import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl.ts'
 import { ausfuehrenAuf, entfernenBefehl, inhaltVon, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
@@ -27,6 +30,7 @@ import { Symbol } from '../ui/Symbol.tsx'
 import { Auswahlleiste, type Befehlsknopf } from './Auswahlleiste.tsx'
 import { Formatwahl } from './Formatwahl.tsx'
 import { Hintergrundwahl } from './Hintergrundwahl.tsx'
+import { Instrumente } from './Instrumente.tsx'
 
 /** Steht nach dem Kopieren in der Zwischenablage des Systems (eingefügt wird in der Tafel die Kopie selbst) */
 const KOPIE_HINWEIS = 'Aus einer Lehrraum-Tafel kopiert – einfügen lässt es sich nur in einer Lehrraum-Tafel.'
@@ -75,6 +79,10 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   const [kamera, setKameraRoh] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
   const [format, setFormat] = useState<Format>('unendlich')
   const [fenster, setFenster] = useState<FensterZustand[]>([])
+  // Abdecken, Scheinwerfer und Geometrie-Werkzeuge: nur Ansicht, nie gespeichert, ändern die Tafel nicht
+  const [abdeckung, setAbdeckung] = useState<Abdeckung | null>(null)
+  const [scheinwerfer, setScheinwerfer] = useState<Scheinwerfer | null>(null)
+  const [instrumente, setInstrumente] = useState<Instrument[]>([])
   const [werkzeug, setWerkzeug] = useState<Werkzeug>(STANDARD_EINSTELLUNGEN.werkzeug)
   const [farbe, setFarbe] = useState<string>(STANDARD_EINSTELLUNGEN.farbe)
   const [staerke, setStaerke] = useState<number>(STANDARD_EINSTELLUNGEN.staerke)
@@ -526,6 +534,21 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   const neueSeiteAnlegen = (amEnde = false) =>
     blaettern((b) => seiteDazu(amEnde ? gehe(b, b.seiten.length - 1) : b, klasse?.vorlage ? { muster: klasse.vorlage.muster } : undefined))
   /** Seitenübersicht offen? (dann gelten die Tastenkürzel der Tafel nicht) */
+  // ---------- Lineal, Geodreieck, Winkelmesser ----------
+  /** Legt ein Werkzeug mitten in die sichtbare Fläche – oder nimmt es weg, wenn es schon liegt */
+  function schalteInstrument(art: InstrumentArt) {
+    setInstrumente((alt) => {
+      if (alt.some((i) => i.art === art)) return alt.filter((i) => i.art !== art)
+      // weitere Werkzeuge etwas versetzt, damit sie sich nicht genau überdecken
+      const versatz = alt.length * 56
+      const [mx, my] = zuTafel(kamera, (flaeche.current?.clientWidth || 800) / 2 + versatz, (flaeche.current?.clientHeight || 600) / 2 + versatz)
+      return [...alt, neuesInstrument(art, mx, my)]
+    })
+  }
+  const aendereInstrument = useCallback((art: InstrumentArt, neu: Instrument | null) => {
+    setInstrumente((alt) => (neu ? alt.map((i) => (i.art === art ? neu : i)) : alt.filter((i) => i.art !== art)))
+  }, [])
+
   const [uebersicht, setUebersicht] = useState(false)
   const uebersichtOffen = useRef(false)
   uebersichtOffen.current = uebersicht
@@ -921,8 +944,12 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
               beiKamera={setKamera}
               blatt={blatt}
               begrenze={begrenze}
+              instrumente={instrumente}
             />
+            {instrumente.length > 0 && <Instrumente liste={instrumente} kamera={kamera} beiAendern={aendereInstrument} />}
             {leistenRahmen && <Auswahlleiste rahmen={leistenRahmen} knoepfe={auswahlKnoepfe} />}
+            {abdeckung && <AbdeckEbene wert={abdeckung} beiAendern={setAbdeckung} beiSchliessen={() => setAbdeckung(null)} />}
+            {scheinwerfer && <ScheinwerferEbene wert={scheinwerfer} beiAendern={setScheinwerfer} beiSchliessen={() => setScheinwerfer(null)} />}
             <Fensterebene fenster={fenster} beiAendern={setFenster} schueler={klasseId ? (klasse?.schueler ?? []) : null} beiText={schreibeText} />
             {pruefen && <Pruefansicht elemente={seite.elemente.length} />}
           </div>
@@ -951,6 +978,14 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
           fenster={fenster}
           beiAendern={setFenster}
           klasse={!!klasseId}
+          zeigen={{
+            abdecken: abdeckung !== null,
+            scheinwerfer: scheinwerfer !== null,
+            instrumente: instrumente.map((i) => i.art),
+            beiAbdecken: () => setAbdeckung((a) => (a ? null : GANZ_ABGEDECKT)),
+            beiScheinwerfer: () => setScheinwerfer((s) => (s ? null : SCHEINWERFER_START)),
+            beiInstrument: schalteInstrument,
+          }}
           vorne={
             <Hintergrundwahl
               format={format}
