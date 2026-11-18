@@ -4,6 +4,12 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-18 – Linienart und Pfeilspitzen (Datenmodell Version 10)
+- **Eigenschaften der Formen statt neuer Werkzeuge:** „Doppelpfeil“ und „gestrichelte Linie“ sind Linie bzw. Pfeil mit einer Eigenschaft, gewählt im Feld des Werkzeugs. Die linke Leiste bleibt so lang wie bisher, und vorhandene Formen lassen sich an der Auswahl umstellen.
+- **Eine Linienart für alle Formen** (wie die Strichstärke): Wer gestrichelt zeichnet, will das meist für mehrere Formen. Verworfen: je Werkzeug eine eigene Linienart (schwer zu durchschauen, welche gerade gilt).
+- **Pfeilspitzen immer durchgezogen**, sonst zerfällt eine gestrichelte Spitze.
+- **Neue Version 10** aus demselben Grund wie Version 9: Ältere Geräte sollen neuere Tafeln nicht annehmen und dabei Eigenschaften verlieren.
+
 ## 2026-11-18 – Ausgefüllte Formen (Datenmodell Version 9)
 - **Deckend in der Randfarbe** statt durchscheinend: „ausgefüllt“ soll aussehen wie ausgemalt (Mengen, Punkte, Flächen in Skizzen). Wer etwas lesbar markieren will, nimmt den Textmarker.
 - **Neue Version 9** statt stillem Zusatzfeld: Ein Gerät mit älterer Fassung würde die Füllung sonst beim Speichern verlieren; so lehnt es neuere Tafeln beim Abgleich ab, bis es neu geladen ist.

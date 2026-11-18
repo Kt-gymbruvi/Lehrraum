@@ -190,6 +190,8 @@ export function rahmen(e: Element): [number, number, number, number] {
     const r = e.staerke / 2
     const w = drehungVon(e)
     if (e.form === 'dreieck') return huelle(dreieckPunkte(e), r)
+    // Pfeil: die Spitzen ragen seitlich über die Linie hinaus
+    if (e.form === 'pfeil') return huelle(formStrecken(e).flatMap(([ax, ay, bx, by]): [number, number][] => [[ax, ay], [bx, by]]), r)
     if (w && e.form === 'rechteck') return huelle(rechteckEcken(e), r)
     if (w && e.form === 'ellipse') {
       const [mx, my] = formMitte(e)
@@ -300,7 +302,12 @@ function formStrecken(f: Form): [number, number, number, number][] {
   if (f.form === 'linie') return [[f.x1, f.y1, f.x2, f.y2]]
   if (f.form === 'pfeil') {
     const [a, b] = pfeilspitze(f)
-    return [[f.x1, f.y1, f.x2, f.y2], [a[0], a[1], f.x2, f.y2], [b[0], b[1], f.x2, f.y2]]
+    const spitzen: [number, number, number, number][] = [[a[0], a[1], f.x2, f.y2], [b[0], b[1], f.x2, f.y2]]
+    if (f.beidseitig) {
+      const [c, d] = pfeilspitze(f, true)
+      spitzen.push([c[0], c[1], f.x1, f.y1], [d[0], d[1], f.x1, f.y1])
+    }
+    return [[f.x1, f.y1, f.x2, f.y2], ...spitzen]
   }
   const ring = (p: [number, number][]) => p.map((a, i) => [...a, ...p[(i + 1) % p.length]] as [number, number, number, number])
   if (f.form === 'rechteck') return ring(rechteckEcken(f))
@@ -383,12 +390,22 @@ export function verschoben<T extends Element>(e: T, dx: number, dy: number): T {
   return { ...e, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy }
 }
 
-/** Die zwei Endpunkte der Pfeilspitze am Ende (x2, y2) */
-export function pfeilspitze(f: Form): [[number, number], [number, number]] {
-  const winkel = Math.atan2(f.y2 - f.y1, f.x2 - f.x1)
-  const laenge = Math.min(Math.hypot(f.x2 - f.x1, f.y2 - f.y1) * 0.6, 10 + f.staerke * 3)
-  const ecke = (w: number): [number, number] => [f.x2 - laenge * Math.cos(winkel + w), f.y2 - laenge * Math.sin(winkel + w)]
+/** Die zwei Endpunkte der Pfeilspitze am Ende (x2, y2) – oder am Anfang (x1, y1) bei Pfeilen in beide Richtungen */
+export function pfeilspitze(f: Form, amAnfang = false): [[number, number], [number, number]] {
+  const [vx, vy, sx, sy] = amAnfang ? [f.x2, f.y2, f.x1, f.y1] : [f.x1, f.y1, f.x2, f.y2]
+  const winkel = Math.atan2(sy - vy, sx - vx)
+  // Mit zwei Spitzen darf jede nur knapp die halbe Länge einnehmen
+  const laenge = Math.min(Math.hypot(sx - vx, sy - vy) * (f.beidseitig ? 0.4 : 0.6), 10 + f.staerke * 3)
+  const ecke = (w: number): [number, number] => [sx - laenge * Math.cos(winkel + w), sy - laenge * Math.sin(winkel + w)]
   return [ecke(0.45), ecke(-0.45)]
+}
+
+/** Strichmuster für gestrichelte und gepunktete Formen (für setLineDash, mit runden Enden gezeichnet) – leer: durchgezogen */
+export function strichmuster(f: Form): number[] {
+  const s = f.staerke
+  if (f.linie === 'gestrichelt') return [Math.max(6, s * 3), Math.max(6, s * 2) + s]
+  if (f.linie === 'gepunktet') return [0.001, Math.max(5, s * 1.2) + s]
+  return []
 }
 
 // ---------- Seitenmaß für den PDF-Export ----------

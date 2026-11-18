@@ -2,12 +2,15 @@
 // Zwei Aufklappfelder rechts neben der Leiste:
 //   Auswahl: erneutes Antippen der gewählten Auswahl öffnet Rechteck oder Lasso.
 //   Radierer: erneutes Antippen des gewählten Radierers öffnet Art und Größe.
-//   Rechteck, Ellipse: erneutes Antippen öffnet Umriss oder Ausgefüllt.
+//   Rechteck, Ellipse, Linie, Pfeil: erneutes Antippen öffnet Füllung, Linienart (durchgezogen, gestrichelt, gepunktet)
+//   und beim Pfeil eine oder zwei Spitzen.
 //   Mehr: weitere Farben, eigene Farbplätze mit dem Farbwähler des Geräts und ein Regler für die Stärke.
 // Ein Feld schließt sich beim Antippen außerhalb (auch der Tafel), mit Escape und beim Wechsel des Werkzeugs.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AuswahlArt } from '../kern/auswahl.ts'
+import type { Formwahl } from '../kern/einstellungen.ts'
+import { LINIENARTEN, type Linienart } from '../kern/modell.ts'
 import { begrenzeStaerke, inLeiste, PALETTE, STAERKE_MAX, STAERKE_MIN, staerkeInLeiste } from '../kern/farben.ts'
 import { FARBEN, STAERKEN } from '../kern/modell.ts'
 import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_RADIUS, type Radierer } from '../kern/radieren.ts'
@@ -26,9 +29,9 @@ type Props = {
   /** Auswahl mit Rechteck oder Lasso */
   auswahlArt: AuswahlArt
   beiAuswahlArt: (a: AuswahlArt) => void
-  /** Neue Rechtecke und Ellipsen ausgefüllt? */
-  gefuellt: boolean
-  beiGefuellt: (g: boolean) => void
+  /** Füllung, Linienart und Pfeilspitzen neuer Formen */
+  formwahl: Formwahl
+  beiFormwahl: (w: Formwahl) => void
   kannZurueck: boolean
   kannVor: boolean
   leer: boolean
@@ -65,7 +68,7 @@ export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; tast
 ]
 
 /** Werkzeuge, deren Feld sich durch erneutes Antippen öffnet – mit der Höhe des Feldes */
-const FELD_HOEHE = { auswahl: 140, radierer: 240, rechteck: 140, ellipse: 140 } as const
+const FELD_HOEHE = { auswahl: 140, radierer: 240, rechteck: 240, ellipse: 240, linie: 140, pfeil: 240 } as const
 type Werkzeugfeld = keyof typeof FELD_HOEHE
 const hatFeld = (w: Werkzeug): w is Werkzeugfeld => w in FELD_HOEHE
 type Feldart = Werkzeugfeld | 'mehr'
@@ -74,6 +77,71 @@ const AUSWAHL_WAHL: { wert: AuswahlArt; name: string; symbol: SymbolName; titel:
   { wert: 'rechteck', name: 'Rechteck', symbol: 'auswahl', titel: 'Rechteck aufziehen: alles, was es berührt, wird ausgewählt' },
   { wert: 'lasso', name: 'Lasso', symbol: 'lasso', titel: 'Frei umfahren: ausgewählt wird, was überwiegend innerhalb liegt' },
 ]
+
+const LINIEN_NAME: Record<Linienart, string> = { voll: 'Durchgezogen', gestrichelt: 'Gestrichelt', gepunktet: 'Gepunktet' }
+const LINIEN_SYMBOL: Record<Linienart, SymbolName> = { voll: 'linie', gestrichelt: 'linieGestrichelt', gepunktet: 'liniePunkte' }
+
+/** Kurz, was gerade für neue Formen gilt (für den Titel des Knopfes) */
+function formBeschreibung(w: Werkzeug, f: Formwahl): string {
+  const teile = [
+    ...((w === 'rechteck' || w === 'ellipse') && f.gefuellt ? ['ausgefüllt'] : []),
+    ...(f.linienart !== 'voll' ? [LINIEN_NAME[f.linienart].toLowerCase()] : []),
+    ...(w === 'pfeil' && f.beidseitig ? ['in beide Richtungen'] : []),
+  ]
+  return teile.length ? ', ' + teile.join(', ') : ''
+}
+
+/** Feld der Formwerkzeuge: Füllung (Rechteck, Ellipse), Spitzen (Pfeil), Linienart (alle) */
+function FormFeld({ art, wahl, beiWahl }: { art: 'rechteck' | 'ellipse' | 'linie' | 'pfeil'; wahl: Formwahl; beiWahl: (w: Formwahl) => void }) {
+  return (
+    <>
+      {(art === 'rechteck' || art === 'ellipse') && (
+        <div className="feld-reihe" role="group" aria-label="Füllung">
+          {[false, true].map((g) => (
+            <button
+              key={String(g)}
+              type="button"
+              className="leisten-knopf mit-text"
+              aria-pressed={wahl.gefuellt === g}
+              aria-label={g ? 'Ausgefüllt' : 'Umriss'}
+              title={g ? 'Innen mit der Farbe ausgefüllt' : 'Nur der Umriss – innen frei zum Hineinschreiben'}
+              onClick={() => beiWahl({ ...wahl, gefuellt: g })}
+            >
+              <Symbol name={art} voll={g} />
+              <span>{g ? 'Ausgefüllt' : 'Umriss'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      {art === 'pfeil' && (
+        <div className="feld-reihe" role="group" aria-label="Pfeilspitzen">
+          {[false, true].map((b) => (
+            <button
+              key={String(b)}
+              type="button"
+              className="leisten-knopf mit-text"
+              aria-pressed={wahl.beidseitig === b}
+              aria-label={b ? 'Beide Richtungen' : 'Eine Richtung'}
+              title={b ? 'Spitzen an beiden Enden' : 'Spitze am Ende'}
+              onClick={() => beiWahl({ ...wahl, beidseitig: b })}
+            >
+              <Symbol name={b ? 'pfeilBeide' : 'pfeil'} />
+              <span>{b ? 'Beide' : 'Eine'}</span>
+            </button>
+          ))}
+        </div>
+      )}
+      <div className="feld-reihe" role="group" aria-label="Linienart">
+        {LINIENARTEN.map((l) => (
+          <button key={l} type="button" className="leisten-knopf mit-text" aria-pressed={wahl.linienart === l} aria-label={LINIEN_NAME[l]} title={LINIEN_NAME[l]} onClick={() => beiWahl({ ...wahl, linienart: l })}>
+            <Symbol name={LINIEN_SYMBOL[l]} />
+            <span>{LINIEN_NAME[l]}</span>
+          </button>
+        ))}
+      </div>
+    </>
+  )
+}
 
 /** Größe des Punktes, der eine Stärke zeigt (wie bei den drei Knöpfen, nach oben begrenzt) */
 const punktGroesse = (s: number) => Math.min(30, s * 1.4 + 2)
@@ -151,7 +219,7 @@ function MehrFeld(p: Props) {
 }
 
 export function Werkzeugleiste(p: Props) {
-  const ausloeser = { auswahl: useRef<HTMLButtonElement>(null), radierer: useRef<HTMLButtonElement>(null), rechteck: useRef<HTMLButtonElement>(null), ellipse: useRef<HTMLButtonElement>(null), mehr: useRef<HTMLButtonElement>(null) }
+  const ausloeser = { auswahl: useRef<HTMLButtonElement>(null), radierer: useRef<HTMLButtonElement>(null), rechteck: useRef<HTMLButtonElement>(null), ellipse: useRef<HTMLButtonElement>(null), linie: useRef<HTMLButtonElement>(null), pfeil: useRef<HTMLButtonElement>(null), mehr: useRef<HTMLButtonElement>(null) }
   const feldRef = useRef<HTMLDivElement>(null)
   /** Offenes Feld mit seiner Lage (Bildschirm) oder null */
   const [feld, setFeld] = useState<{ art: Feldart; links: number; oben: number } | null>(null)
@@ -186,14 +254,18 @@ export function Werkzeugleiste(p: Props) {
         {WERKZEUGE.map((w) => {
           const feld = hatFeld(w.wert) ? w.wert : null
           const symbol = w.wert === 'auswahl' && p.auswahlArt === 'lasso' ? 'lasso' : w.wert === 'radierer' && p.radierer.art === 'schwamm' ? 'schwamm' : w.symbol
-          const voll = p.gefuellt && (w.wert === 'rechteck' || w.wert === 'ellipse')
+          const f = p.formwahl
+          const istFlaeche = w.wert === 'rechteck' || w.wert === 'ellipse'
+          const voll = f.gefuellt && istFlaeche
+          const zeichen: SymbolName =
+            w.wert === 'linie' && f.linienart !== 'voll' ? LINIEN_SYMBOL[f.linienart] : w.wert === 'pfeil' && f.beidseitig ? 'pfeilBeide' : symbol
           const titel =
             w.wert === 'auswahl'
               ? `${w.name}: ${auswahlName} (${w.taste}) – noch einmal antippen: Rechteck oder Lasso`
               : w.wert === 'radierer'
                 ? `${w.name}: ${artName} (${w.taste}) – noch einmal antippen: Art und Größe`
-                : w.wert === 'rechteck' || w.wert === 'ellipse'
-                  ? `${w.name}${p.gefuellt ? ', ausgefüllt' : ''} (${w.taste}) – noch einmal antippen: Umriss oder ausgefüllt`
+                : istFlaeche || w.wert === 'linie' || w.wert === 'pfeil'
+                  ? `${w.name}${formBeschreibung(w.wert, f)} (${w.taste}) – noch einmal antippen: ${istFlaeche ? 'Füllung und ' : ''}Linienart${w.wert === 'pfeil' ? ' und Spitzen' : ''}`
                   : w.wert === 'laser'
                     ? `${w.name} (${w.taste}) – zeigen, die Spur verschwindet von selbst`
                     : w.wert === 'tabelle'
@@ -211,7 +283,7 @@ export function Werkzeugleiste(p: Props) {
               title={titel}
               onClick={() => waehle(w.wert)}
             >
-              <Symbol name={symbol} voll={voll} />
+              <Symbol name={zeichen} voll={voll} />
             </button>
           )
         })}
@@ -276,31 +348,13 @@ export function Werkzeugleiste(p: Props) {
             ref={feldRef}
             className="aufklappfeld"
             role="dialog"
-            aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : offen.art === 'auswahl' ? 'Art der Auswahl' : offen.art === 'mehr' ? 'Mehr Farben und Stärken' : 'Umriss oder ausgefüllt'}
+            aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : offen.art === 'auswahl' ? 'Art der Auswahl' : offen.art === 'mehr' ? 'Mehr Farben und Stärken' : 'Form: Füllung, Linienart, Spitzen'}
             style={{ left: offen.links, top: offen.oben }}
           >
             {offen.art === 'mehr' ? (
               <MehrFeld {...p} />
-            ) : offen.art === 'rechteck' || offen.art === 'ellipse' ? (
-              <div className="feld-reihe" role="group" aria-label="Füllung">
-                {[false, true].map((g) => (
-                  <button
-                    key={String(g)}
-                    type="button"
-                    className="leisten-knopf mit-text"
-                    aria-pressed={p.gefuellt === g}
-                    aria-label={g ? 'Ausgefüllt' : 'Umriss'}
-                    title={g ? 'Innen mit der Farbe ausgefüllt' : 'Nur der Umriss – innen frei zum Hineinschreiben'}
-                    onClick={() => {
-                      p.beiGefuellt(g)
-                      setFeld(null)
-                    }}
-                  >
-                    <Symbol name={offen.art === 'ellipse' ? 'ellipse' : 'rechteck'} voll={g} />
-                    <span>{g ? 'Ausgefüllt' : 'Umriss'}</span>
-                  </button>
-                ))}
-              </div>
+            ) : offen.art === 'rechteck' || offen.art === 'ellipse' || offen.art === 'linie' || offen.art === 'pfeil' ? (
+              <FormFeld art={offen.art} wahl={p.formwahl} beiWahl={p.beiFormwahl} />
             ) : offen.art === 'auswahl' ? (
               <div className="feld-reihe" role="group" aria-label="Art der Auswahl">
                 {AUSWAHL_WAHL.map((a) => (

@@ -39,9 +39,9 @@ import { breite, beruehrtRechteck, drehePunkt, drehungVon, gedreht, gesamtRahmen
 import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
 import { anKante, fangeKante, type Instrument, type Kante } from '../kern/instrumente.ts'
-import type { Werkzeug } from '../kern/einstellungen.ts'
+import type { Formwahl, Werkzeug } from '../kern/einstellungen.ts'
 import { kuerze, lebt, punktLeben, type Spur } from '../kern/laser.ts'
-import { FUELLBARE_FORMEN, MAX_TEXT, MAX_ZELLTEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Muster, type Strich, type Tabelle, type Text } from '../kern/modell.ts'
+import { FUELLBARE_FORMEN, MAX_TEXT, type Formart, MAX_ZELLTEXT, neueId, normiereWinkel, schriftgroesse, type Element, type Form, type Hintergrund, type Kamera, type Muster, type Strich, type Tabelle, type Text } from '../kern/modell.ts'
 import { innen, mitSpaltenbreite, mitZelle, naechsteZelle, neueTabelle, trennerBei, zeileDazu, zelleBei, zellLage, zellRand } from '../kern/tabelle.ts'
 import { Tabellenwahl } from './Tabellenwahl.tsx'
 import { beginneWischzug, neueTeile, RADIERER_RADIUS, RADIERER_STANDARD, wischBefehl, wischeWeiter, type Radierer, type Wischzug } from '../kern/radieren.ts'
@@ -65,8 +65,8 @@ type Props = {
   staerke: number
   /** Art und Größe des Radierers (fehlt: Schwamm, mittel) */
   radierer?: Radierer
-  /** Neue Rechtecke und Ellipsen ausgefüllt (fehlt: nur der Umriss) */
-  gefuellt?: boolean
+  /** Füllung, Linienart und Pfeilspitzen neuer Formen (fehlt: Umriss, durchgezogen, eine Spitze) */
+  formwahl?: Formwahl
   /** Auswahl mit Rechteck oder Lasso (fehlt: Rechteck) */
   auswahlArt?: AuswahlArt
   /** Kennungen der ausgewählten Elemente */
@@ -94,6 +94,13 @@ const FANG_RADIUS = 8
 const DOPPELTIPP_MS = 450
 /** Kürzere Wege (Bildschirm-Pixel) gelten als Antippen, nicht als Ziehen */
 const TIPP_WEG = 4
+const OHNE_FORMWAHL: Formwahl = { gefuellt: false, linienart: 'voll', beidseitig: false }
+/** Was eine neue Form von der Wahl in der Leiste bekommt */
+const formZusatz = (w: Formart, f: Formwahl): Partial<Form> => ({
+  ...(f.gefuellt && FUELLBARE_FORMEN.includes(w) ? { gefuellt: true as const } : {}),
+  ...(f.linienart !== 'voll' ? { linie: f.linienart } : {}),
+  ...(f.beidseitig && w === 'pfeil' ? { beidseitig: true as const } : {}),
+})
 /** Abstand der Lasso-Punkte (Bildschirm-Pixel) */
 const LASSO_SCHRITT = 3
 
@@ -146,7 +153,7 @@ export const setzeHaltezeit = (ms: number) => {
 const keineGrenze = (k: Kamera) => k
 const KEINE: Instrument[] = []
 
-export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahlArt = 'rechteck', gefuellt = false, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze, instrumente = KEINE }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahlArt = 'rechteck', formwahl = OHNE_FORMWAHL, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze, instrumente = KEINE }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -162,8 +169,8 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
   /** Eine verschobene Ansicht, die erst mit dem nächsten Bildwechsel weitergemeldet wird */
   const kameraOffen = useRef<Kamera | null>(null)
   // Aktuelle Werte für die Eingabe-Funktionen (die sich sonst bei jedem Zeichnen neu anmelden müssten)
-  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahlArt, gefuellt, auswahl, editor, blatt, begrenze, instrumente })
-  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahlArt, gefuellt, auswahl, editor, blatt, begrenze, instrumente }
+  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahlArt, formwahl, auswahl, editor, blatt, begrenze, instrumente })
+  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahlArt, formwahl, auswahl, editor, blatt, begrenze, instrumente }
   /** Wo Maus oder schwebender Stift gerade ist (Bildschirm) – dort zeigt ein Kreis die Größe des Radierers (beim Laserpointer: ein roter Punkt) */
   const schwebe = useRef<{ x: number; y: number } | null>(null)
   /** Spuren des Laserpointers: nur hier auf der oberen Ebene, nie gespeichert, nicht im Verlauf */
@@ -760,7 +767,7 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       aktiv.current = a
       if (!kante) halteAn(a) // am Lineal gibt es nichts zu begradigen
     } else {
-      aktiv.current = { art: 'form', zeiger: e.pointerId, form: { art: 'form', id: neueId(), form: w, x1: tx, y1: ty, x2: tx, y2: ty, farbe: s.farbe, staerke: s.staerke, ...(s.gefuellt && FUELLBARE_FORMEN.includes(w) ? { gefuellt: true as const } : {}) } }
+      aktiv.current = { art: 'form', zeiger: e.pointerId, form: { art: 'form', id: neueId(), form: w, x1: tx, y1: ty, x2: tx, y2: ty, farbe: s.farbe, staerke: s.staerke, ...formZusatz(w, s.formwahl) } }
     }
     zeichneOben()
   }

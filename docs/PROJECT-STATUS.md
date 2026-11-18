@@ -1,14 +1,24 @@
 # Projektstand – Lehrraum
 
 Stand: 18.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 25 Testdateien, 327 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 25 Testdateien, 330 Tests grün (`npm test`); Build grün (`npm run build`).
 **Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden. **Ein Passwort, ein Schlüsselbund (Etappe B)** ist veröffentlicht (14.11.2026, auch Notenbuch und Startseite). **Tafeln auf allen Geräten (Etappe C)** ist veröffentlicht (14.11.2026, Migration `012_tafeln.sql` ausgeführt).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
-## Ausgefüllte Rechtecke und Ellipsen – noch nicht veröffentlicht (18.11.2026) – Datenmodell Version 9
+## Gestrichelte und gepunktete Formen, Pfeile in beide Richtungen – noch nicht veröffentlicht (18.11.2026) – Datenmodell Version 10
+- Wunsch der Lehrkraft: verschiedene Pfeilwerkzeuge, gestrichelte Linie, Pfeil in beide Richtungen.
+- **Werkzeuge:** Linie, Pfeil, Rechteck, Ellipse noch einmal antippen öffnet ein Feld: **Linienart** (durchgezogen, gestrichelt, gepunktet – gilt für alle Formen), beim Pfeil **eine oder beide Spitzen**, bei Rechteck/Ellipse wie bisher die **Füllung**. Das Feld bleibt offen, bis man außerhalb tippt. Die Symbole in der Leiste zeigen die Wahl (gestrichelte Linie, Doppelpfeil, ausgefülltes Rechteck); gemerkt je Gerät (`linienart`, `beidseitig`).
+- **An der Auswahl:** „Linienart“ schaltet ausgewählte Formen der Reihe nach um; bei Pfeilen „Zwei Spitzen“/„Eine Spitze“ und **„Richtung umkehren“** (Spitze ans andere Ende). Alles rückgängig zu machen.
+- Zeichnen: Strichmuster abhängig von der Stärke, runde Enden (Punkte); Pfeilspitzen immer durchgezogen; bei zwei Spitzen ist jede etwas kürzer.
+- Nebenbei behoben: Der Auswahlrahmen eines Pfeils schloss die Spitzen nicht ein (bei waagerechten Pfeilen ragten sie heraus, und ein Rahmen über der Spitze erfasste den Pfeil nicht).
+- **Datenmodell Version 10:** Form mit `linie` (`gestrichelt`/`gepunktet`) und `beidseitig` (nur Pfeil). Ältere Tafeln laden unverändert. **Nach dem Veröffentlichen auf jedem Gerät einmal neu laden.**
+- Getestet: `npm test` (330 grün; neu: Prüfung Version 10, Spitzen an beiden Enden samt Treffer, Strichmuster, Bedienung Feld → gestrichelter Doppelpfeil, Linienart gilt auch für Linie, an der Auswahl umkehren/Spitzen/Linienart, rückgängig), Build. Im Browser (Maus): gepunktete Linie, gestrichelter Doppelpfeil, gestricheltes Rechteck, gepunktete ausgefüllte Ellipse; Pfeil umgekehrt, auf eine Spitze und gepunktet gestellt. Ein Gesamtlauf der Tests hatte bei hoher Rechnerlast fünf Zeitüberschreitungen in anderen Dateien; einzeln und im zweiten Gesamtlauf alles grün.
+- **Nicht geprüft:** am iPad/SMART Board; PDF-Export mit Strichmustern nicht eigens angesehen.
+
+## Ausgefüllte Rechtecke und Ellipsen – veröffentlicht (18.11.2026) – Datenmodell Version 9
 - Wunsch der Lehrkraft: Bei Rechtecken und Kreisen wählen können, ob sie ausgefüllt sind.
 - **Werkzeug:** Rechteck oder Ellipse noch einmal antippen öffnet „Umriss / Ausgefüllt“ (wie bei Radierer und Auswahl); die Wahl gilt für beide Formen, das Symbol in der Leiste ist dann ausgefüllt, und sie wird je Gerät gemerkt (Einstellung `gefuellt`).
 - **Vorhandene Formen:** Sind Rechtecke, Ellipsen oder Dreiecke ausgewählt, bietet die Leiste an der Auswahl „Ausfüllen“ bzw. „Nur Umriss“ (für alle zusammen, rückgängig zu machen).

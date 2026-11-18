@@ -12,13 +12,13 @@ import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, textMass, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { alsHintergrundBefehl, aufsBlattBefehl, begrenzt, bildHintergrund, bildHintergrundBefehl, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
 import { geaendert, vorlageAus, type Klasse } from '../kern/klassen.ts'
-import { benutzteDateien, istFuellbar, MAX_SEITEN, MAX_TEXT, neueId, neuesTafelbild, schriftgroesse, TABELLE_MAX_SPALTEN, TABELLE_MAX_ZEILEN, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tabelle, type Tafelbild } from '../kern/modell.ts'
+import { benutzteDateien, istFuellbar, LINIENARTEN, linienartVon, MAX_SEITEN, type Form, MAX_TEXT, neueId, neuesTafelbild, schriftgroesse, TABELLE_MAX_SPALTEN, TABELLE_MAX_ZEILEN, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tabelle, type Tafelbild } from '../kern/modell.ts'
 import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
 import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, pdfSeiten, pdfWeg, seiteDazu, seiteDoppelt, seiteDoppeltBei, seitenDazu, seiteSchieben, seiteVerschieben, seiteWeg, seiteWegBei, type Buch as Seitenfolge } from '../kern/seiten.ts'
 import { Seitenuebersicht } from './Seitenuebersicht.tsx'
-import { STANDARD_EINSTELLUNGEN } from '../kern/einstellungen.ts'
+import { STANDARD_EINSTELLUNGEN, type Formwahl } from '../kern/einstellungen.ts'
 import { mitSchrift, spalteDazu, spalteWeg, zeileDazu, zeileWeg } from '../kern/tabelle.ts'
 import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, ladeTafel, speichereKlasse, ladeAlleTafeln, ladeEinstellungen, ladeFarbplaetze, ladeFreieTafel, merkeAblage, merkeEinstellungen, merkeFarbplaetze, merkeFreieTafel, oeffneKlassenTafel, speichereTafel } from '../speicher/datenbank.ts'
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
@@ -88,7 +88,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   const [staerke, setStaerke] = useState<number>(STANDARD_EINSTELLUNGEN.staerke)
   const [radierer, setRadierer] = useState<Radierer>(STANDARD_EINSTELLUNGEN.radierer)
   const [auswahlArt, setAuswahlArt] = useState<AuswahlArt>(STANDARD_EINSTELLUNGEN.auswahl)
-  const [gefuellt, setGefuellt] = useState<boolean>(STANDARD_EINSTELLUNGEN.gefuellt)
+  const [formwahl, setFormwahl] = useState<Formwahl>({ gefuellt: STANDARD_EINSTELLUNGEN.gefuellt, linienart: STANDARD_EINSTELLUNGEN.linienart, beidseitig: STANDARD_EINSTELLUNGEN.beidseitig })
   const [eigeneFarben, setEigeneFarben] = useState<string[]>([])
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
@@ -165,8 +165,8 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   const einstellungenDa = useRef(false)
   useEffect(() => {
     if (!einstellungenDa.current) return
-    merkeEinstellungen({ werkzeug, farbe, staerke, radierer, auswahl: auswahlArt, gefuellt }).catch(() => undefined) // misslingt es, startet die Tafel eben wie neu
-  }, [werkzeug, farbe, staerke, radierer, auswahlArt, gefuellt])
+    merkeEinstellungen({ werkzeug, farbe, staerke, radierer, auswahl: auswahlArt, ...formwahl }).catch(() => undefined) // misslingt es, startet die Tafel eben wie neu
+  }, [werkzeug, farbe, staerke, radierer, auswahlArt, formwahl])
 
   // ---------- Laden: zuletzt benutzte Tafel oder eine neue ----------
   useEffect(() => {
@@ -190,7 +190,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
         setStaerke(e.staerke)
         setRadierer(e.radierer)
         setAuswahlArt(e.auswahl)
-        setGefuellt(e.gefuellt)
+        setFormwahl({ gefuellt: e.gefuellt, linienart: e.linienart, beidseitig: e.beidseitig })
         einstellungenDa.current = true
         const t = gefunden ?? neuesTafelbild()
         if (!gefunden) void merkeFreieTafel(t.id).catch(() => undefined) // neue freie Tafel: gleich festhalten, welche es ist
@@ -771,6 +771,26 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
     })
     beiErsetzen(fuellbare, neu)
   }
+  // Ausgewählte Formen: Linienart der Reihe nach umschalten (durchgezogen → gestrichelt → gepunktet)
+  const formen = gewaehlte.filter((e): e is Form => e.art === 'form')
+  const naechsteLinie = formen.length ? LINIENARTEN[(LINIENARTEN.indexOf(linienartVon(formen[0])) + 1) % LINIENARTEN.length] : 'voll'
+  const mitLinie = (f: Form): Form => {
+    const { linie: _weg, ...rest } = f
+    return naechsteLinie === 'voll' ? rest : { ...rest, linie: naechsteLinie }
+  }
+  // Ausgewählte Pfeile: zwei Spitzen an/aus, Richtung umkehren
+  const pfeile = formen.filter((f) => f.form === 'pfeil')
+  const alleBeidseitig = pfeile.length > 0 && pfeile.every((f) => f.beidseitig)
+  const schalteSpitzen = () =>
+    beiErsetzen(
+      pfeile,
+      pfeile.map((f) => {
+        const { beidseitig: _weg, ...rest } = f
+        return alleBeidseitig ? rest : { ...rest, beidseitig: true as const }
+      }),
+    )
+  const kehreUm = () => beiErsetzen(pfeile, pfeile.map((f) => ({ ...f, x1: f.x2, y1: f.y2, x2: f.x1, y2: f.y1 })))
+  const LINIEN_TEXT = { voll: 'durchgezogen', gestrichelt: 'gestrichelt', gepunktet: 'gepunktet' } as const
   const eineTabelle = gewaehlte.length === 1 && gewaehlte[0].art === 'tabelle' ? gewaehlte[0] : null
   /** Befehle für eine ausgewählte Tabelle; jeder ist ein Schritt im Verlauf (Zeilen und Spalten am Ende) */
   const tabellenKnoepfe = (t: Tabelle): Befehlsknopf[] => {
@@ -823,6 +843,24 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
           alleGefuellt
             ? { name: 'Nur Umriss', symbol: 'rechteck' as const, titel: 'Füllung entfernen – nur der Umriss bleibt', tun: fuelle }
             : { name: 'Ausfüllen', symbol: 'fuellen' as const, titel: 'Innen mit der Farbe ausfüllen', tun: fuelle },
+        ]
+      : []),
+    ...(formen.length
+      ? [
+          {
+            name: 'Linienart',
+            symbol: naechsteLinie === 'voll' ? ('linie' as const) : naechsteLinie === 'gestrichelt' ? ('linieGestrichelt' as const) : ('liniePunkte' as const),
+            titel: `Linienart ändern – als Nächstes ${LINIEN_TEXT[naechsteLinie]}`,
+            tun: () => beiErsetzen(formen, formen.map(mitLinie)),
+          },
+        ]
+      : []),
+    ...(pfeile.length
+      ? [
+          alleBeidseitig
+            ? { name: 'Eine Spitze', symbol: 'pfeil' as const, titel: 'Nur am Ende eine Spitze', tun: schalteSpitzen }
+            : { name: 'Zwei Spitzen', symbol: 'pfeilBeide' as const, titel: 'Pfeil in beide Richtungen', tun: schalteSpitzen },
+          { name: 'Richtung umkehren', symbol: 'umkehren' as const, titel: 'Pfeil umdrehen – die Spitze wechselt ans andere Ende', tun: kehreUm },
         ]
       : []),
     ...(eineTabelle ? tabellenKnoepfe(eineTabelle) : []),
@@ -917,8 +955,8 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
           beiRadierer={setRadierer}
           auswahlArt={auswahlArt}
           beiAuswahlArt={setAuswahlArt}
-          gefuellt={gefuellt}
-          beiGefuellt={setGefuellt}
+          formwahl={formwahl}
+          beiFormwahl={setFormwahl}
           eigeneFarben={eigeneFarben}
           beiEigeneFarbe={waehleEigeneFarbe}
           kannZurueck={verlauf.zurueck.length > 0}
@@ -961,7 +999,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
               staerke={staerke}
               radierer={radierer}
               auswahlArt={auswahlArt}
-              gefuellt={gefuellt}
+              formwahl={formwahl}
               auswahl={auswahl}
               beiHinzu={beiHinzu}
               beiRadieren={entferne}

@@ -1,4 +1,4 @@
-// Datenmodell der Tafel (Version 9). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 10). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
@@ -7,11 +7,12 @@
 // bis Version 5 konnte eine PDF-Seite Hintergrund sein – sie wird zu einem Bild-Element auf einer Seite mit eigenem Blattmaß;
 // Version 7 bringt das Element Tabelle, sonst gleich wie Version 6; Version 8 bringt die PDF-Kennung am Bild einer
 // PDF-Seite, sonst gleich wie Version 7 – ältere PDF-Bilder haben keine und werden nicht erraten; Version 9 bringt
-// ausgefüllte Rechtecke, Ellipsen und Dreiecke, sonst gleich wie Version 8 – ältere Formen sind nicht ausgefüllt).
+// ausgefüllte Rechtecke, Ellipsen und Dreiecke, sonst gleich wie Version 8 – ältere Formen sind nicht ausgefüllt;
+// Version 10 bringt gestrichelte und gepunktete Formen und Pfeile mit zwei Spitzen, sonst gleich wie Version 9).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 9
+export const TAFEL_VERSION = 10
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -55,6 +56,11 @@ export type Formart = (typeof FORMEN)[number]
 export const DREHBARE_FORMEN: readonly Formart[] = ['rechteck', 'ellipse', 'dreieck']
 /** Geschlossene Formen, die sich ausfüllen lassen */
 export const FUELLBARE_FORMEN: readonly Formart[] = ['rechteck', 'ellipse', 'dreieck']
+/** Art der Linie einer Form; durchgezogen ist der Normalfall und wird nicht gespeichert */
+export const LINIENARTEN = ['voll', 'gestrichelt', 'gepunktet'] as const
+export type Linienart = (typeof LINIENARTEN)[number]
+export const linienartVon = (f: Form): Linienart => f.linie ?? 'voll'
+
 export const istFuellbar = (e: Element): e is Form => e.art === 'form' && FUELLBARE_FORMEN.includes(e.form)
 
 export type Form = Gemeinsam & {
@@ -76,6 +82,10 @@ export type Form = Gemeinsam & {
   spitze?: number
   /** Nur Rechteck, Ellipse, Dreieck: innen mit der Farbe ausgefüllt (fehlt: nur der Umriss) */
   gefuellt?: true
+  /** Gestrichelt oder gepunktet (fehlt: durchgezogen) */
+  linie?: Exclude<Linienart, 'voll'>
+  /** Nur Pfeil: auch am Anfang (x1, y1) eine Spitze (fehlt: nur am Ende) */
+  beidseitig?: true
 }
 
 export type Bild = Gemeinsam & {
@@ -345,6 +355,8 @@ function pruefeElement(x: unknown): Element | null {
     const f: Form = { art: 'form', id: x.id, form, x1: x.x1 as number, y1: x.y1 as number, x2: x.x2 as number, y2: x.y2 as number, farbe: x.farbe, staerke: x.staerke, ...zusatz(x, DREHBARE_FORMEN.includes(form)) }
     if (form === 'dreieck' && istZahl(x.spitze) && x.spitze !== 0.5) f.spitze = Math.min(1, Math.max(0, x.spitze))
     if (x.gefuellt === true && FUELLBARE_FORMEN.includes(form)) f.gefuellt = true
+    if (x.linie === 'gestrichelt' || x.linie === 'gepunktet') f.linie = x.linie
+    if (x.beidseitig === true && form === 'pfeil') f.beidseitig = true
     return f
   }
   return null
@@ -355,7 +367,7 @@ export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x :
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 9.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 10.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -364,7 +376,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8 || roh.version === 9) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8 || roh.version === 9 || roh.version === 10) {
     const ab5 = roh.version >= 5
     const ab6 = roh.version >= 6
     const ids = new Set<string>()

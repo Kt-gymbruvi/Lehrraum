@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { anwenden, ausfuehren, leererVerlauf, rueckgaengig, wiederholen } from '../kern/befehle.ts'
-import { beruehrtRechteck, gesamtRahmen, oberstesBei, pfeilspitze, rahmen, textMass, trifft, verschoben } from '../kern/geometrie.ts'
+import { beruehrtRechteck, gesamtRahmen, oberstesBei, pfeilspitze, strichmuster, rahmen, textMass, trifft, verschoben } from '../kern/geometrie.ts'
 import { MAX_SEITEN, istFuellbar, neueSeite, neuesTafelbild, pruefeTafel, schriftgroesse, type Element, type Form, type Strich, type Text } from '../kern/modell.ts'
 import { gehe, kopie, seiteDazu, seiteDoppelt, seiteSchieben, seiteWeg, type Buch } from '../kern/seiten.ts'
 import { ladeEinstellungen, ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
@@ -24,7 +24,7 @@ describe('Datenmodell', () => {
   it('wandelt Tafeln der Version 1 (ohne Seiten) in eine Seite um', () => {
     const alt = { schema: 'lehrraum/tafel', version: 1, id: 'alt', titel: 'Alt', elemente: [strich('a'), strich('b')], kamera: { x: 1, y: 2, zoom: 1.5 }, geaendertAm: '2026-11-11T10:00:00.000Z' }
     const t = pruefeTafel(alt)!
-    expect(t.version).toBe(9)
+    expect(t.version).toBe(10)
     expect(t.seiten).toHaveLength(1)
     expect(t.seiten[0].elemente.map((e) => e.id)).toEqual(['a', 'b'])
     expect(t).toMatchObject({ id: 'alt', titel: 'Alt', seiteNr: 0, kamera: { x: 1, y: 2, zoom: 1.5 }, fenster: [] })
@@ -116,7 +116,7 @@ describe('Geometrie von Text und Formen', () => {
     expect(roh({ ...form('r', 'rechteck'), gefuellt: 'ja' })!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt')
     expect(roh({ ...form('l', 'linie'), gefuellt: true })!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt') // Linien haben kein Inneres
     expect(roh(form('r', 'rechteck'), 8)!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt') // ältere Formen bleiben leer
-    expect(roh(form('r', 'rechteck'), 10)).toBeNull() // neuere Fassung: nicht raten
+    expect(roh(form('r', 'rechteck'), 11)).toBeNull() // neuere Fassung: nicht raten
     expect([form('a', 'rechteck'), form('b', 'ellipse'), form('c', 'dreieck'), form('d', 'pfeil')].map(istFuellbar)).toEqual([true, true, true, false])
 
     const r = form('r', 'rechteck', { x2: 200, y2: 200, gefuellt: true })
@@ -264,6 +264,62 @@ describe('Formen und Text auf der Tafel', () => {
     await nutzer.click(knopf('Rückgängig'))
     await waitFor(async () => expect(await seite()).toHaveLength(1))
   })
+})
+
+describe('Linienart und Pfeilspitzen', () => {
+  it('Version 10: gestrichelt/gepunktet für alle Formen, zwei Spitzen nur am Pfeil', () => {
+    const roh = (f: Record<string, unknown>) => pruefeTafel({ schema: 'lehrraum/tafel', version: 10, id: 't', seiten: [{ id: 's', elemente: [f] }] })!.seiten[0].elemente[0]
+    expect(roh({ ...form('l', 'linie'), linie: 'gestrichelt' })).toMatchObject({ linie: 'gestrichelt' })
+    expect(roh({ ...form('r', 'rechteck'), linie: 'gepunktet' })).toMatchObject({ linie: 'gepunktet' })
+    expect(roh({ ...form('l', 'linie'), linie: 'wellig' })).not.toHaveProperty('linie')
+    expect(roh({ ...form('p', 'pfeil'), beidseitig: true })).toMatchObject({ beidseitig: true })
+    expect(roh({ ...form('l', 'linie'), beidseitig: true })).not.toHaveProperty('beidseitig')
+    expect(strichmuster(form('l', 'linie'))).toEqual([])
+    expect(strichmuster(form('l', 'linie', { linie: 'gestrichelt' })).length).toBe(2)
+    expect(strichmuster(form('l', 'linie', { linie: 'gepunktet' }))[0]).toBeLessThan(0.01) // Punkte durch runde Enden
+  })
+
+  it('Pfeil in beide Richtungen: Spitzen an beiden Enden, auch für Treffer und Auswahlrahmen', () => {
+    const p = form('p', 'pfeil', { x1: 0, y1: 0, x2: 200, y2: 0, beidseitig: true })
+    const [a, b] = pfeilspitze(p, true)
+    expect(a[0]).toBeGreaterThan(0) // die Spitze am Anfang zeigt nach links
+    expect(b[0]).toBeGreaterThan(0)
+    expect(Math.sign(a[1])).toBe(-Math.sign(b[1]))
+    expect(pfeilspitze(p)[0][0]).toBeLessThan(200)
+    expect(beruehrtRechteck(p, [a[0] - 2, a[1] - 2, a[0] + 2, a[1] + 2])).toBe(true)
+    expect(beruehrtRechteck({ ...p, beidseitig: undefined }, [a[0] - 2, a[1] - 2, a[0] + 2, a[1] + 2])).toBe(false)
+  })
+
+  it('Feld am Pfeil und an der Linie; an der Auswahl: Linienart, Spitzen, Richtung umkehren', async () => {
+    const nutzer = userEvent.setup()
+    render(<Tafel />)
+    await bereit()
+    await nutzer.click(knopf('Pfeil'))
+    await nutzer.click(knopf('Pfeil')) // noch einmal: Linienart und Spitzen
+    await nutzer.click(screen.getByRole('button', { name: 'Beide Richtungen' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Gestrichelt' }))
+    expect(knopf('Pfeil').title).toContain('in beide Richtungen')
+    ziehe([20, 50], [220, 50])
+    await waitFor(async () => expect((await seite())[0]).toMatchObject({ form: 'pfeil', beidseitig: true, linie: 'gestrichelt' }))
+    await waitFor(async () => expect(await ladeEinstellungen()).toMatchObject({ linienart: 'gestrichelt', beidseitig: true }))
+    await nutzer.click(knopf('Linie')) // die Linienart gilt für alle Formen, die Spitzen nur für Pfeile
+    ziehe([20, 150], [220, 150])
+    await waitFor(async () => expect((await seite())[1]).toMatchObject({ form: 'linie', linie: 'gestrichelt' }))
+    expect((await seite())[1]).not.toHaveProperty('beidseitig')
+
+    await nutzer.click(knopf('Auswahl'))
+    tippe(120, 50)
+    await nutzer.click(knopf('Richtung umkehren'))
+    await waitFor(async () => expect((await seite())[0]).toMatchObject({ x1: 220, x2: 20 }))
+    await nutzer.click(knopf('Eine Spitze'))
+    await waitFor(async () => expect((await seite())[0]).not.toHaveProperty('beidseitig'))
+    await nutzer.click(knopf('Linienart')) // gestrichelt → gepunktet
+    await waitFor(async () => expect((await seite())[0]).toMatchObject({ linie: 'gepunktet' }))
+    await nutzer.click(knopf('Linienart')) // gepunktet → durchgezogen
+    await waitFor(async () => expect((await seite())[0]).not.toHaveProperty('linie'))
+    await nutzer.click(knopf('Rückgängig'))
+    await waitFor(async () => expect((await seite())[0]).toMatchObject({ linie: 'gepunktet' }))
+  }, 20_000) // viele Schritte in der ganzen Tafel
 })
 
 describe('Ausgefüllte Formen auf der Tafel', () => {

@@ -1,5 +1,5 @@
 // Zeichnet Elemente der Tafel auf ein Canvas – für die Zeichenfläche und für den PDF-Export.
-import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, pfeilspitze, rechteckEcken, stiftUmriss, ZEILENHOEHE } from '../kern/geometrie.ts'
+import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, pfeilspitze, rechteckEcken, stiftUmriss, strichmuster, ZEILENHOEHE } from '../kern/geometrie.ts'
 import { hintergrundMass, MARKER_DECKKRAFT, type Element, type Hintergrund, type Muster, type Seite, type Strich, type Tabelle } from '../kern/modell.ts'
 import { gitter, zellRand } from '../kern/tabelle.ts'
 import { bildquelle } from './bildquellen.ts'
@@ -127,18 +127,26 @@ export function zeichne(ctx: Ctx, e: Element, frisch = false) {
     else {
       ctx.moveTo(e.x1, e.y1)
       ctx.lineTo(e.x2, e.y2)
-      if (e.form === 'pfeil') {
-        const [a, b] = pfeilspitze(e)
-        ctx.moveTo(a[0], a[1])
-        ctx.lineTo(e.x2, e.y2)
-        ctx.lineTo(b[0], b[1])
-      }
     }
     if (e.gefuellt) {
       ctx.fillStyle = e.farbe
       ctx.fill()
     }
+    ctx.setLineDash(strichmuster(e))
     ctx.stroke()
+    ctx.setLineDash([])
+    // Pfeilspitzen immer durchgezogen
+    if (e.form === 'pfeil') {
+      ctx.beginPath()
+      for (const amAnfang of e.beidseitig ? [false, true] : [false]) {
+        const [a, b] = pfeilspitze(e, amAnfang)
+        const [sx, sy] = amAnfang ? [e.x1, e.y1] : [e.x2, e.y2]
+        ctx.moveTo(a[0], a[1])
+        ctx.lineTo(sx, sy)
+        ctx.lineTo(b[0], b[1])
+      }
+      ctx.stroke()
+    }
     return
   }
   let p = frisch ? undefined : pfade.get(e)

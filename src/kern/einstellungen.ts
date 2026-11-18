@@ -1,10 +1,10 @@
 // Einstellungen merken (E1): Werkzeug, Farbe, Stärke, Art und Größe des Radierers, Rechteck oder Lasso,
-// ausgefüllte oder leere Formen sind nach dem Neuladen so wie
+// ausgefüllte oder leere Formen, Linienart und Pfeilspitzen sind nach dem Neuladen so wie
 // zuletzt – je Gerät und Browser, für alle Tafeln gemeinsam. (Die eigenen Farbplätze liegen getrennt, siehe farben.ts.)
 // Reine Daten und Prüfung, kein Browser-Speicher.
 import { AUSWAHL_ARTEN, type AuswahlArt } from './auswahl.ts'
 import { begrenzeStaerke, istFarbwert, normiereFarbe } from './farben.ts'
-import { FARBEN, FORMEN, STAERKEN, type Formart, type Zeichenwerkzeug } from './modell.ts'
+import { FARBEN, FORMEN, LINIENARTEN, STAERKEN, type Formart, type Linienart, type Zeichenwerkzeug } from './modell.ts'
 import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_STANDARD, type Radierer } from './radieren.ts'
 
 export type Werkzeug = 'auswahl' | 'hand' | Zeichenwerkzeug | 'radierer' | 'text' | 'tabelle' | Formart | 'laser'
@@ -17,11 +17,15 @@ export const EINSTELLUNGEN_VERSION = 1
 
 /**
  * auswahl: Rechteck oder Lasso (fehlt in älteren gespeicherten Einstellungen – dann Rechteck);
- * gefuellt: neue Rechtecke und Ellipsen ausgefüllt (fehlt – dann nur der Umriss)
+ * gefuellt: neue Rechtecke und Ellipsen ausgefüllt (fehlt – dann nur der Umriss);
+ * linienart: neue Formen durchgezogen, gestrichelt oder gepunktet; beidseitig: neue Pfeile mit zwei Spitzen
  */
-export type Einstellungen = { werkzeug: Werkzeug; farbe: string; staerke: number; radierer: Radierer; auswahl: AuswahlArt; gefuellt: boolean }
+export type Einstellungen = { werkzeug: Werkzeug; farbe: string; staerke: number; radierer: Radierer; auswahl: AuswahlArt; gefuellt: boolean; linienart: Linienart; beidseitig: boolean }
 
-export const STANDARD_EINSTELLUNGEN: Einstellungen = { werkzeug: 'stift', farbe: FARBEN[0].wert, staerke: STAERKEN[1].wert, radierer: RADIERER_STANDARD, auswahl: 'rechteck', gefuellt: false }
+/** Wahl für neue Formen: Füllung (Rechteck, Ellipse), Linienart (alle Formen), zwei Spitzen (Pfeil) */
+export type Formwahl = Pick<Einstellungen, 'gefuellt' | 'linienart' | 'beidseitig'>
+
+export const STANDARD_EINSTELLUNGEN: Einstellungen = { werkzeug: 'stift', farbe: FARBEN[0].wert, staerke: STAERKEN[1].wert, radierer: RADIERER_STANDARD, auswahl: 'rechteck', gefuellt: false, linienart: 'voll', beidseitig: false }
 
 /** Mit diesem Werkzeug beginnt die Tafel: Radierer, Laserpointer und Hand werden zum Stift (nach dem Laden will man schreiben) */
 export const startWerkzeug = (w: Werkzeug): Werkzeug => (w === 'radierer' || w === 'laser' || w === 'hand' ? 'stift' : w)
@@ -41,8 +45,8 @@ export function pruefeEinstellungen(roh: unknown): Einstellungen {
     groesse: RADIERER_GROESSEN.some((g) => g.wert === r.groesse) ? (r.groesse as Radierer['groesse']) : s.radierer.groesse,
   }
   const auswahl = AUSWAHL_ARTEN.find((a) => a === x.auswahl) ?? s.auswahl
-  return { werkzeug, farbe, staerke, radierer, auswahl, gefuellt: x.gefuellt === true }
+  return { werkzeug, farbe, staerke, radierer, auswahl, gefuellt: x.gefuellt === true, linienart: LINIENARTEN.find((l) => l === x.linienart) ?? s.linienart, beidseitig: x.beidseitig === true }
 }
 
 /** Zum Speichern: mit Schema und Version */
-export const neueEinstellungen = (e: Einstellungen) => ({ schema: EINSTELLUNGEN_SCHEMA, version: EINSTELLUNGEN_VERSION, werkzeug: e.werkzeug, farbe: e.farbe, staerke: e.staerke, radierer: { art: e.radierer.art, groesse: e.radierer.groesse }, auswahl: e.auswahl, gefuellt: e.gefuellt })
+export const neueEinstellungen = (e: Einstellungen) => ({ schema: EINSTELLUNGEN_SCHEMA, version: EINSTELLUNGEN_VERSION, werkzeug: e.werkzeug, farbe: e.farbe, staerke: e.staerke, radierer: { art: e.radierer.art, groesse: e.radierer.groesse }, auswahl: e.auswahl, gefuellt: e.gefuellt, linienart: e.linienart, beidseitig: e.beidseitig })

@@ -28,6 +28,11 @@ const ZEICHNUNGEN = {
   kopfzeile: 'M4 5h16v14H4zM4 10h16M7 7.5h10',
   linie: 'M5 19L19 5',
   pfeil: 'M5 19L19 5M10 5h9v9',
+  pfeilBeide: 'M5 19L19 5M11 5h8v8M5 11v8h8',
+  linieGestrichelt: 'M5 19l3-3M10.5 13.5l3-3M16 8l3-3',
+  liniePunkte: 'M4.3 19a.7 .7 0 1 0 1.4 0a.7 .7 0 1 0-1.4 0M9 14.3a.7 .7 0 1 0 1.4 0a.7 .7 0 1 0-1.4 0M13.6 9.7a.7 .7 0 1 0 1.4 0a.7 .7 0 1 0-1.4 0M18.3 5a.7 .7 0 1 0 1.4 0a.7 .7 0 1 0-1.4 0',
+  // Pfeil umkehren: zwei gegenläufige Pfeile
+  umkehren: 'M4 8h14M14 4l4 4-4 4M20 16H6M10 12l-4 4 4 4',
   rechteck: 'M4 6h16v12H4z',
   ellipse: 'M12 5c5 0 9 3 9 7s-4 7-9 7-9-3-9-7 4-7 9-7z',
   // Ausfüllen: Fläche mit Schraffur
