@@ -8,7 +8,7 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
-## Stift schnell wieder aufgesetzt (iPad) – noch nicht veröffentlicht (18.11.2026)
+## Stift schnell wieder aufgesetzt (iPad) – veröffentlicht (18.11.2026)
 - Rückmeldung der Lehrkraft: Am iPad klappt das Schreiben mit dem Apple Pencil manchmal nicht, vor allem bei kurzem Absetzen und sofortigem Wiederaufsetzen.
 - **Vermutete Ursache:** Safari hält das für einen Doppeltipp und bricht den zweiten Strich ab (`pointercancel`); die Tafel verwarf abgebrochene Striche bisher vollständig.
 - **Behoben:** Berührungen auf den Tafel-Ebenen werden selbst abgefangen (`touchstart`/`touchmove`, nicht im Eingabefeld); ein trotzdem abgebrochener Stiftstrich bleibt stehen (Finger wie bisher verworfen).
