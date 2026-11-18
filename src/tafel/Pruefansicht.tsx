@@ -41,6 +41,8 @@ function Strich({ s }: { s: Strichmessung }) {
   return (
     <dl>
       <Zeile name="Eingabe" wert={`${ZEIGERNAME[s.art]}, ${zahl(s.dauer / 1000, 1)} s`} />
+      <Zeile name="Ende" wert={s.abgebrochen ? 'vom Browser abgebrochen' : 'abgehoben'} auffaellig={s.abgebrochen} />
+      <Zeile name="Abstand zum vorigen" wert={s.seitVorigem === null ? '–' : `${zahl(s.seitVorigem)} ms`} />
       <Zeile name="Druck" wert={`${zahl(s.druckMin, 2)} bis ${zahl(s.druckMax, 2)} – ${s.druckEcht ? 'echter Druck' : 'kein echter Druck'}`} />
       <Zeile name="Größte Berührung" wert={flaeche(s.breiteMax, s.hoeheMax)} />
       <Zeile name="Meldungen" wert={`${zahl(s.meldungenJeSekunde)} je Sekunde (${zahl(s.punkteJeSekunde)} Punkte)`} />
@@ -73,6 +75,8 @@ function Verlauf({ striche, ab }: { striche: Strichmessung[]; ab: number }) {
           <th>Druck</th>
           <th>Berührung</th>
           <th>Lücke</th>
+          <th>Abstand</th>
+          <th>Ende</th>
         </tr>
       </thead>
       <tbody>
@@ -85,6 +89,8 @@ function Verlauf({ striche, ab }: { striche: Strichmessung[]; ab: number }) {
             <td>{s.druckEcht ? 'echt' : 'keiner'}</td>
             <td>{flaeche(s.breiteMax, s.hoeheMax)}</td>
             <td className={s.pauseMax > GRENZE.pause ? 'auffaellig' : undefined}>{zahl(s.pauseMax)} ms</td>
+            <td>{s.seitVorigem === null ? '–' : `${zahl(s.seitVorigem)} ms`}</td>
+            <td className={s.abgebrochen ? 'auffaellig' : undefined}>{s.abgebrochen ? 'abgebrochen' : 'ok'}</td>
           </tr>
         ))}
       </tbody>
@@ -114,7 +120,7 @@ export function Pruefansicht({ elemente }: { elemente: number }) {
       const m = merke(e)
       if (haupt.current === null) {
         haupt.current = e.pointerId
-        messung.lauf = beginne(zeigerart(e.pointerType), m)
+        messung.lauf = beginne(zeigerart(e.pointerType), m, messung.vorigesEnde)
       }
     }
     const bewegt = (e: PointerEvent) => {
@@ -126,9 +132,13 @@ export function Pruefansicht({ elemente }: { elemente: number }) {
       if (!zeiger.current.delete(e.pointerId)) return
       if (e.pointerId === haupt.current) {
         if (messung.lauf) {
-          const s = schliesseAb(messung.lauf, performance.now())
+          const abgebrochen = e.type === 'pointercancel'
+          const jetzt = performance.now()
+          const s = schliesseAb(messung.lauf, jetzt, abgebrochen)
           messung.verlauf = imVerlauf(messung.verlauf, s)
           messung.anzahl = zaehle(messung.anzahl, s.art)
+          if (abgebrochen) messung.abbrueche++
+          messung.vorigesEnde = jetzt
         }
         messung.lauf = null
         haupt.current = null
@@ -198,6 +208,9 @@ export function Pruefansicht({ elemente }: { elemente: number }) {
         <p data-testid="pruef-anzahl">
           Stift {a.stift} · Finger {a.finger} · Maus {a.maus}
           {a.unbekannt ? ` · unbekannt ${a.unbekannt}` : ''}
+        </p>
+        <p data-testid="pruef-abbrueche" className={messung.abbrueche ? 'auffaellig' : undefined}>
+          Vom Browser abgebrochen: {messung.abbrueche}
         </p>
 
         <h3>{letzter ? `Letzter Strich (Nr. ${gesamt})` : 'Letzter Strich'}</h3>

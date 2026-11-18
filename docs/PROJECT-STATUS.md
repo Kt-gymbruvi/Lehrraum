@@ -1,12 +1,20 @@
 # Projektstand – Lehrraum
 
 Stand: 18.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 25 Testdateien, 333 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 25 Testdateien, 337 Tests grün (`npm test`); Build grün (`npm run build`).
 **Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden. **Ein Passwort, ein Schlüsselbund (Etappe B)** ist veröffentlicht (14.11.2026, auch Notenbuch und Startseite). **Tafeln auf allen Geräten (Etappe C)** ist veröffentlicht (14.11.2026, Migration `012_tafeln.sql` ausgeführt).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Stift schnell wieder aufgesetzt (iPad) – noch nicht veröffentlicht (18.11.2026)
+- Rückmeldung der Lehrkraft: Am iPad klappt das Schreiben mit dem Apple Pencil manchmal nicht, vor allem bei kurzem Absetzen und sofortigem Wiederaufsetzen.
+- **Vermutete Ursache:** Safari hält das für einen Doppeltipp und bricht den zweiten Strich ab (`pointercancel`); die Tafel verwarf abgebrochene Striche bisher vollständig.
+- **Behoben:** Berührungen auf den Tafel-Ebenen werden selbst abgefangen (`touchstart`/`touchmove`, nicht im Eingabefeld); ein trotzdem abgebrochener Stiftstrich bleibt stehen (Finger wie bisher verworfen).
+- **Prüfansicht (`#/pruefen`):** zählt „Vom Browser abgebrochen“, je Strich „Ende“ (abgehoben/abgebrochen) und „Abstand zum vorigen“, auch in der Verlaufstabelle.
+- Getestet: `npm test` (337 grün; neu: Abbruch und Abstand in der Messung, Zähler in der Prüfansicht, abgebrochener Stiftstrich bleibt, Fingerstrich nicht, Berührungen auf der Ebene abgefangen, im Eingabefeld nicht), Build.
+- **Nicht geprüft:** am iPad mit Apple Pencil – ob die Abbrüche damit verschwinden, zeigt nur `#/pruefen` am Gerät (Zähler sollte bei 0 bleiben).
 
 ## Gebogene Linien/Pfeile, Einrasten auf 15°, rechte Leiste einspaltig – noch nicht veröffentlicht (18.11.2026) – Datenmodell Version 11
 - Wunsch der Lehrkraft: Vorschläge 1 (gebogener Pfeil) und 4 (Linie im festen Winkel); am iPad war die rechte Leiste zweispaltig und nahm der Tafel zu viel Platz.

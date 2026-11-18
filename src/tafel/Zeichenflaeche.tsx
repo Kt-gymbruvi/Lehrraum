@@ -962,6 +962,9 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
 
   function hoch(e: ReactPointerEvent<HTMLDivElement>, abgebrochen = false) {
     if (e.pointerType === 'pen') letzterStift = Date.now()
+    // Bricht der Browser einen Stiftstrich ab (am iPad z. B. beim schnellen Wiederaufsetzen), gilt, was bis dahin
+    // geschrieben war – sonst verschwände der Strich. Bei Fingern heißt ein Abbruch meist „Geste“: dort verwerfen.
+    if (abgebrochen && e.pointerType === 'pen') abgebrochen = false
     if (!zeiger.current.delete(e.pointerId)) return
     if (kameraOffen.current) sofort() // die zuletzt verschobene Ansicht gilt ab jetzt
     const a = aktiv.current
@@ -1072,6 +1075,24 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     }
     sofort()
   }
+
+  // iPad: Setzt der Stift kurz ab und gleich wieder auf, hält Safari das trotz `touch-action: none` manchmal für
+  // einen Doppeltipp (Zoomen, Text markieren) und bricht den zweiten Strich ab (pointercancel). Die Berührungen
+  // selbst abzufangen verhindert das. Nur auf den Ebenen der Tafel – Eingabefeld und Feld „Tabelle einfügen“
+  // brauchen ihr normales Tippen.
+  useEffect(() => {
+    const el = rahmen.current
+    if (!el) return
+    const halte = (e: TouchEvent) => {
+      if (e.cancelable && e.target instanceof HTMLCanvasElement) e.preventDefault()
+    }
+    el.addEventListener('touchstart', halte, { passive: false })
+    el.addEventListener('touchmove', halte, { passive: false })
+    return () => {
+      el.removeEventListener('touchstart', halte)
+      el.removeEventListener('touchmove', halte)
+    }
+  }, [])
 
   // Mausrad: verschieben; mit Strg (oder Zwei-Finger-Zoom am Trackpad): zoomen
   useEffect(() => {

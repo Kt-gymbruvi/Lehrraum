@@ -54,6 +54,8 @@ export type Lauf = {
   gezeichnet: number
   rechenSumme: number
   rechenMax: number
+  /** Zeit seit dem Abheben des vorigen Strichs (ms); null beim ersten */
+  seitVorigem: number | null
 }
 
 /** Ergebnis eines abgeschlossenen Strichs */
@@ -82,9 +84,14 @@ export type Strichmessung = {
   hoeheMax: number
   /** Rechenzeit für das Einzeichnen des fertigen Strichs (ms); kommt nach dem Abheben dazu */
   einzeichnen: number | null
+  /** Zeit seit dem Abheben des vorigen Strichs (ms); null beim ersten */
+  seitVorigem: number | null
+  /** Hat der Browser den Strich abgebrochen (pointercancel) statt ihn mit dem Abheben zu beenden? */
+  abgebrochen: boolean
 }
 
-export function beginne(art: Zeigerart, m: Meldung): Lauf {
+/** `vorigesEnde`: Zeitpunkt, an dem der vorige Strich endete (null beim ersten) */
+export function beginne(art: Zeigerart, m: Meldung, vorigesEnde: number | null = null): Lauf {
   const lauf: Lauf = {
     art,
     beginn: m.zeit,
@@ -106,6 +113,7 @@ export function beginne(art: Zeigerart, m: Meldung): Lauf {
     gezeichnet: 0,
     rechenSumme: 0,
     rechenMax: 0,
+    seitVorigem: vorigesEnde === null ? null : Math.max(0, m.zeit - vorigesEnde),
   }
   merke(lauf, m)
   return lauf
@@ -152,7 +160,7 @@ export function gezeichnet(lauf: Lauf, dauer: number, neuesBild = true) {
 
 const jeSekunde = (anzahl: number, dauer: number) => (dauer > 0 ? (anzahl * 1000) / dauer : 0)
 
-export function schliesseAb(lauf: Lauf, zeit: number): Strichmessung {
+export function schliesseAb(lauf: Lauf, zeit: number, abgebrochen = false): Strichmessung {
   const dauer = Math.max(0, zeit - lauf.beginn)
   return {
     art: lauf.art,
@@ -173,6 +181,8 @@ export function schliesseAb(lauf: Lauf, zeit: number): Strichmessung {
     breiteMax: lauf.breiteMax,
     hoeheMax: lauf.hoeheMax,
     einzeichnen: null,
+    seitVorigem: lauf.seitVorigem,
+    abgebrochen,
   }
 }
 

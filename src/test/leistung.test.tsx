@@ -168,6 +168,11 @@ describe('Messung – Logik', () => {
     expect(schliesseAb(faust, 30)).toMatchObject({ druckEcht: false, breiteMax: 90, hoeheMax: 110 })
   })
 
+  it('merkt sich den Abstand zum vorigen Strich und ob der Browser ihn abgebrochen hat', () => {
+    expect(schliesseAb(beginne('stift', m(0)), 10)).toMatchObject({ seitVorigem: null, abgebrochen: false })
+    expect(schliesseAb(beginne('stift', m(500), 420), 600, true)).toMatchObject({ seitVorigem: 80, abgebrochen: true })
+  })
+
   it('mittelt die Rechenzeit je Bild; ohne Bild und ohne Wartezeit bleibt der Wert offen', () => {
     const lauf = beginne('maus', m(0, { wartezeit: null }))
     expect(schliesseAb(lauf, 0)).toMatchObject({ rechenMittel: null, wartenMittel: null, meldungenJeSekunde: 0 })
@@ -248,6 +253,24 @@ describe('Prüfansicht', () => {
     expect(screen.queryByRole('button', { name: 'halb' })).not.toBeInTheDocument() // den Schärfe-Versuch gibt es nicht mehr
   })
 
+  it('zählt Striche, die der Browser abgebrochen hat, und zeigt den Abstand zum vorigen', async () => {
+    oeffne('/pruefen')
+    await bereit()
+    expect(screen.getByTestId('pruef-abbrueche')).toHaveTextContent('Vom Browser abgebrochen: 0')
+    ziehe([10, 10], [100, 10], { pointerId: 2, pointerType: 'pen', pressure: 0.5 })
+    const stift = { pointerId: 3, pointerType: 'pen', pressure: 0.5 }
+    fireEvent.pointerDown(flaeche(), { ...stift, clientX: 10, clientY: 60 })
+    fireEvent.pointerMove(flaeche(), { ...stift, clientX: 80, clientY: 60 })
+    fireEvent.pointerCancel(flaeche(), { ...stift, clientX: 80, clientY: 60 })
+    expect(screen.getByTestId('pruef-abbrueche')).toHaveTextContent('Vom Browser abgebrochen: 1')
+    expect(messung.verlauf[0]).toMatchObject({ abgebrochen: true })
+    expect(messung.verlauf[0].seitVorigem).not.toBeNull()
+    expect(messung.verlauf[1]).toMatchObject({ abgebrochen: false, seitVorigem: null })
+    expect(screen.getByLabelText('Prüfansicht')).toHaveTextContent('vom Browser abgebrochen')
+    // Der abgebrochene Stiftstrich ist trotzdem auf der Tafel
+    await waitFor(async () => expect(await gespeichert()).toHaveLength(2))
+  })
+
   it('hört beim Schließen auf zu messen und vergisst die Werte', async () => {
     const { unmount } = oeffne('/pruefen')
     await bereit()
@@ -259,5 +282,44 @@ describe('Prüfansicht', () => {
     expect(messung.aktiv).toBe(false)
     expect(messung.verlauf).toEqual([])
     expect(messung.anzahl).toEqual(KEINE)
+    expect(messung.abbrueche).toBe(0)
+  })
+})
+
+// iPad: Schnelles Wiederaufsetzen des Stifts hielt Safari manchmal für einen Doppeltipp und brach den Strich ab
+describe('Stift schnell wieder aufgesetzt', () => {
+  it('ein vom Browser abgebrochener Stiftstrich bleibt stehen, ein abgebrochener Fingerstrich nicht', async () => {
+    render(<Tafel />)
+    await bereit()
+    const finger = { pointerId: 5, pointerType: 'touch', button: 0, isPrimary: true }
+    fireEvent.pointerDown(flaeche(), { ...finger, clientX: 10, clientY: 110 })
+    fireEvent.pointerMove(flaeche(), { ...finger, clientX: 90, clientY: 110 })
+    fireEvent.pointerCancel(flaeche(), { ...finger, clientX: 90, clientY: 110 })
+
+    const stift = { pointerId: 6, pointerType: 'pen', button: 0, pressure: 0.6 }
+    ziehe([10, 10], [100, 10], stift)
+    fireEvent.pointerDown(flaeche(), { ...stift, clientX: 10, clientY: 50 }) // gleich wieder aufgesetzt …
+    fireEvent.pointerMove(flaeche(), { ...stift, clientX: 60, clientY: 50 })
+    fireEvent.pointerCancel(flaeche(), { ...stift, clientX: 60, clientY: 50 }) // … und vom Browser abgebrochen
+    await waitFor(async () => expect(await gespeichert()).toHaveLength(2))
+    const [, zweiter] = await gespeichert()
+    expect(zweiter.punkte.length).toBeGreaterThanOrEqual(2)
+    // Danach geht es ganz normal weiter
+    ziehe([10, 90], [100, 90], { ...stift, pointerId: 7 })
+    await waitFor(async () => expect(await gespeichert()).toHaveLength(3))
+  })
+
+  it('fängt Berührungen auf den Ebenen der Tafel ab, nicht im Eingabefeld', async () => {
+    render(<Tafel />)
+    await bereit()
+    const ebene = flaeche().querySelector('canvas')!
+    expect(fireEvent.touchStart(ebene, { touches: [{ clientX: 10, clientY: 10 }] })).toBe(false) // abgefangen
+    expect(fireEvent.touchMove(ebene, { touches: [{ clientX: 20, clientY: 10 }] })).toBe(false)
+    fireEvent.click(screen.getByRole('button', { name: 'Text' }))
+    const z = { pointerId: 8, pointerType: 'pen', button: 0, clientX: 200, clientY: 200 }
+    fireEvent.pointerDown(flaeche(), z)
+    fireEvent.pointerUp(flaeche(), z)
+    const feld = flaeche().querySelector('textarea')!
+    expect(fireEvent.touchStart(feld, { touches: [{ clientX: 200, clientY: 200 }] })).toBe(true) // normales Tippen
   })
 })

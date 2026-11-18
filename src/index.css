@@ -1181,7 +1181,8 @@ input {
   font-weight: 700;
   font-variant-numeric: tabular-nums;
 }
-.pruefansicht dd.auffaellig {
+.pruefansicht dd.auffaellig,
+.pruefansicht p.auffaellig {
   color: #b3261e;
 }
 .pruefansicht .knoepfe {

@@ -4,6 +4,11 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-18 – Stift schnell wieder aufgesetzt (iPad)
+- **Berührungen auf den Ebenen der Tafel selbst abfangen** (`touchstart`/`touchmove` mit `preventDefault`, nicht passiv): Am iPad hielt Safari schnelles Absetzen und Wiederaufsetzen des Apple Pencil trotz `touch-action: none` manchmal für einen Doppeltipp und brach den zweiten Strich ab (`pointercancel`). Nur auf den `canvas`-Ebenen, damit Eingabefeld und Feld „Tabelle einfügen“ normal bedienbar bleiben.
+- **Abgebrochener Stiftstrich bleibt stehen:** Der Browser bricht einen Stiftstrich nie auf Wunsch der Lehrkraft ab; was bis dahin geschrieben war, gilt (auch beim Radieren, Ziehen usw.). Bei Fingern heißt ein Abbruch meist „Geste“ – dort wird wie bisher verworfen.
+- **Prüfansicht zählt Abbrüche** und zeigt den Abstand zum vorigen Strich, damit sich die Ursache am Gerät belegen lässt.
+
 ## 2026-11-18 – Gebogene Linien, Einrasten, rechte Leiste (Datenmodell Version 11)
 - **Rechte Leiste immer einspaltig, Knöpfe schrumpfen** statt zwei Spalten: Am iPad nahm die zweite Spalte der Tafel zu viel Breite (Rückmeldung der Lehrkraft). Bei wenig Höhe nur noch Symbole – kleiner als 56 px, ausdrücklich so gewünscht.
 - **Bogen als Punkt auf der Kurve** (nicht als Kontrollpunkt): Der Griff liegt genau dort, wo man die Linie sieht, und Verschieben/Drehen/Strecken behandeln ihn wie die Endpunkte.

@@ -11,16 +11,22 @@ type Zustand = {
   verlauf: Strichmessung[]
   /** Striche je Eingabeart seit dem Öffnen der Prüfansicht */
   anzahl: Record<Zeigerart, number>
+  /** Striche, die der Browser abgebrochen hat (pointercancel) */
+  abbrueche: number
+  /** Wann der vorige Strich endete (für den Abstand zum nächsten) */
+  vorigesEnde: number | null
   /** Wird aufgerufen, wenn sich der Verlauf ändert */
   beiAenderung: (() => void) | null
 }
 
-export const messung: Zustand = { aktiv: false, lauf: null, verlauf: [], anzahl: KEINE, beiAenderung: null }
+export const messung: Zustand = { aktiv: false, lauf: null, verlauf: [], anzahl: KEINE, abbrueche: 0, vorigesEnde: null, beiAenderung: null }
 
 export function setzeZurueck() {
   messung.lauf = null
   messung.verlauf = []
   messung.anzahl = KEINE
+  messung.abbrueche = 0
+  messung.vorigesEnde = null
 }
 
 /** Zeitpunkt für eine Messung – oder 0, wenn nicht gemessen wird */
