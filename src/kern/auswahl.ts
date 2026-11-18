@@ -1,6 +1,6 @@
 // Auswahlrahmen und seine Griffe: wo sie liegen, welcher getroffen ist und wie ein Zug am Griff die Auswahl streckt.
 // Reine Logik in Tafel-Koordinaten; Maße auf dem Bildschirm werden mit dem Zoom umgerechnet.
-import { drehungVon, type Rechteck } from './geometrie.ts'
+import { drehungVon, stichpunkte, type Rechteck } from './geometrie.ts'
 import { normiereWinkel, type Element } from './modell.ts'
 
 /** Abstand zwischen Inhalt und gezeichnetem Auswahlrahmen, in Bildschirm-Pixeln */
@@ -152,4 +152,36 @@ export function skalierung(name: Griffname, inhalt: Rechteck, dx: number, dy: nu
   const sx = rx === 0 ? 1 : Math.max(1 + (rx * dx) / b, Math.min(1, MIN_GROESSE / b))
   const sy = ry === 0 ? 1 : Math.max(1 + (ry * dy) / h, Math.min(1, MIN_GROESSE / h))
   return { ax, ay, sx, sy, gleichmaessig: false }
+}
+
+// ---------- Lasso: Auswahl durch freies Umkreisen ----------
+
+/** Art des Auswahlwerkzeugs: Rechteck aufziehen oder frei umkreisen */
+export const AUSWAHL_ARTEN = ['rechteck', 'lasso'] as const
+export type AuswahlArt = (typeof AUSWAHL_ARTEN)[number]
+
+/** Liegt der Punkt im Vieleck (Gerade-Ungerade-Regel)? Das Vieleck gilt als geschlossen. */
+export function imVieleck(x: number, y: number, vieleck: [number, number][]): boolean {
+  let drin = false
+  for (let i = 0, j = vieleck.length - 1; i < vieleck.length; j = i++) {
+    const [xi, yi] = vieleck[i]
+    const [xj, yj] = vieleck[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) drin = !drin
+  }
+  return drin
+}
+
+/** Anteil der Punkte eines Elements, der im Lasso liegen muss (mehr als dieser), damit es ausgewählt wird */
+export const LASSO_ANTEIL = 0.5
+
+/**
+ * Liegt das Element im Lasso? Es zählt, ob mehr als die Hälfte seiner kennzeichnenden Punkte innen liegt –
+ * so lässt sich ein Wort umkreisen, ohne dass ein Strich, der nur hineinragt, mitkommt.
+ */
+export function imLasso(e: Element, lasso: [number, number][]): boolean {
+  if (lasso.length < 3) return false
+  const punkte = stichpunkte(e)
+  if (!punkte.length) return false
+  const innen = punkte.filter(([x, y]) => imVieleck(x, y, lasso)).length
+  return innen / punkte.length > LASSO_ANTEIL
 }

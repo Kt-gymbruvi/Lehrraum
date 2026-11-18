@@ -1,6 +1,7 @@
-// Einstellungen merken (E1): Werkzeug, Farbe, Stärke, Art und Größe des Radierers sind nach dem Neuladen so wie
+// Einstellungen merken (E1): Werkzeug, Farbe, Stärke, Art und Größe des Radierers, Rechteck oder Lasso sind nach dem Neuladen so wie
 // zuletzt – je Gerät und Browser, für alle Tafeln gemeinsam. (Die eigenen Farbplätze liegen getrennt, siehe farben.ts.)
 // Reine Daten und Prüfung, kein Browser-Speicher.
+import { AUSWAHL_ARTEN, type AuswahlArt } from './auswahl.ts'
 import { begrenzeStaerke, istFarbwert, normiereFarbe } from './farben.ts'
 import { FARBEN, FORMEN, STAERKEN, type Formart, type Zeichenwerkzeug } from './modell.ts'
 import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_STANDARD, type Radierer } from './radieren.ts'
@@ -13,9 +14,10 @@ const WERKZEUG_WERTE: readonly Werkzeug[] = ['auswahl', 'hand', 'stift', 'marker
 export const EINSTELLUNGEN_SCHEMA = 'lehrraum/einstellungen'
 export const EINSTELLUNGEN_VERSION = 1
 
-export type Einstellungen = { werkzeug: Werkzeug; farbe: string; staerke: number; radierer: Radierer }
+/** auswahl: Rechteck oder Lasso (fehlt in älteren gespeicherten Einstellungen – dann Rechteck) */
+export type Einstellungen = { werkzeug: Werkzeug; farbe: string; staerke: number; radierer: Radierer; auswahl: AuswahlArt }
 
-export const STANDARD_EINSTELLUNGEN: Einstellungen = { werkzeug: 'stift', farbe: FARBEN[0].wert, staerke: STAERKEN[1].wert, radierer: RADIERER_STANDARD }
+export const STANDARD_EINSTELLUNGEN: Einstellungen = { werkzeug: 'stift', farbe: FARBEN[0].wert, staerke: STAERKEN[1].wert, radierer: RADIERER_STANDARD, auswahl: 'rechteck' }
 
 /** Mit diesem Werkzeug beginnt die Tafel: Radierer, Laserpointer und Hand werden zum Stift (nach dem Laden will man schreiben) */
 export const startWerkzeug = (w: Werkzeug): Werkzeug => (w === 'radierer' || w === 'laser' || w === 'hand' ? 'stift' : w)
@@ -34,8 +36,9 @@ export function pruefeEinstellungen(roh: unknown): Einstellungen {
     art: RADIERER_ARTEN.some((a) => a.wert === r.art) ? (r.art as Radierer['art']) : s.radierer.art,
     groesse: RADIERER_GROESSEN.some((g) => g.wert === r.groesse) ? (r.groesse as Radierer['groesse']) : s.radierer.groesse,
   }
-  return { werkzeug, farbe, staerke, radierer }
+  const auswahl = AUSWAHL_ARTEN.find((a) => a === x.auswahl) ?? s.auswahl
+  return { werkzeug, farbe, staerke, radierer, auswahl }
 }
 
 /** Zum Speichern: mit Schema und Version */
-export const neueEinstellungen = (e: Einstellungen) => ({ schema: EINSTELLUNGEN_SCHEMA, version: EINSTELLUNGEN_VERSION, werkzeug: e.werkzeug, farbe: e.farbe, staerke: e.staerke, radierer: { art: e.radierer.art, groesse: e.radierer.groesse } })
+export const neueEinstellungen = (e: Einstellungen) => ({ schema: EINSTELLUNGEN_SCHEMA, version: EINSTELLUNGEN_VERSION, werkzeug: e.werkzeug, farbe: e.farbe, staerke: e.staerke, radierer: { art: e.radierer.art, groesse: e.radierer.groesse }, auswahl: e.auswahl })

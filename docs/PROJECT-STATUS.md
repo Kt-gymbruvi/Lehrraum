@@ -1,12 +1,20 @@
 # Projektstand – Lehrraum
 
 Stand: 18.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 25 Testdateien, 323 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 25 Testdateien, 325 Tests grün (`npm test`); Build grün (`npm run build`).
 **Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden. **Ein Passwort, ein Schlüsselbund (Etappe B)** ist veröffentlicht (14.11.2026, auch Notenbuch und Startseite). **Tafeln auf allen Geräten (Etappe C)** ist veröffentlicht (14.11.2026, Migration `012_tafeln.sql` ausgeführt).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
+
+## Lasso-Auswahl und neues Textmarker-Symbol – noch nicht veröffentlicht (18.11.2026)
+- Wunsch der Lehrkraft (Vorschlag 2 für die linke Leiste): frei umfahren statt nur Rechteck aufziehen.
+- **Ort:** im Werkzeug „Auswahl“ wie Art und Größe beim Radierer – die gewählte Auswahl noch einmal antippen öffnet das Feld „Rechteck / Lasso“; der Knopf zeigt dann das Lasso-Symbol. Die Wahl wird je Gerät mit den Einstellungen gemerkt (Feld `auswahl`, fehlt = Rechteck; keine neue Version).
+- **Lasso:** Die Schleife wird geschlossen gezeichnet; ausgewählt wird, was **überwiegend** (mehr als die Hälfte der kennzeichnenden Punkte: Strichpunkte, Ecken/Mitte bei Text, Bild, Tabelle, Kanten bei Formen) innerhalb liegt – ein hineinragender Strich kommt nicht mit. Gruppen werden ganz gewählt, Umschalt nimmt hinzu. Logik `imVieleck`, `imLasso` (`kern/auswahl.ts`), `stichpunkte` (`kern/geometrie.ts`).
+- **Textmarker-Symbol** neu gezeichnet: schräger Stift mit Keilspitze und breitem Strich darunter (deutlicher vom Stift zu unterscheiden).
+- Getestet: `npm test` (325 grün; neu Lasso-Logik und Bedienung: Lasso über das Feld wählen, gemerkt, Schleife um einen Strich wählt nur diesen), Build. Im Browser (Maus, simulierte Stiftbewegung): Feld „Rechteck / Lasso“, Lasso um eine von zwei Linien wählt nur diese, Symbole angesehen.
+- **Nicht geprüft:** Lasso mit Stift und Finger am iPad/SMART Board.
 
 ## Neue Unterrichtswerkzeuge in der rechten Leiste – noch nicht veröffentlicht (18.11.2026)
 - Wunsch der Lehrkraft (aus den Vorschlägen 1, 2, 4, 5, 7, 8): Abdecken, Scheinwerfer, Geometrie, Arbeitsform, Geräuschampel, QR-Code.

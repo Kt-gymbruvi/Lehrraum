@@ -306,6 +306,19 @@ function formStrecken(f: Form): [number, number, number, number][] {
 }
 
 /**
+ * Punkte, an denen man ein Element erkennt – für das Lasso: bei Strichen ihre Punkte, bei Formen Enden und Mitten
+ * der sichtbaren Linien, bei Text, Bild und Tabelle die vier Ecken und die Mitte.
+ */
+export function stichpunkte(e: Element): [number, number][] {
+  if (istKasten(e)) {
+    const ecken = sichtbareEcken(e)
+    return [...ecken, [(ecken[0][0] + ecken[2][0]) / 2, (ecken[0][1] + ecken[2][1]) / 2]]
+  }
+  if (e.art === 'form') return formStrecken(e).flatMap(([ax, ay, bx, by]): [number, number][] => [[ax, ay], [(ax + bx) / 2, (ay + by) / 2], [bx, by]])
+  return e.punkte.map((p): [number, number] => [p[0], p[1]])
+}
+
+/**
  * Berührt das Element das Rechteck (Auswahlrahmen)? Es muss nicht ganz darin liegen. Bei Strichen und Formen
  * zählt die sichtbare Linie – ein Rahmen im leeren Inneren eines Rechtecks berührt es nicht.
  */

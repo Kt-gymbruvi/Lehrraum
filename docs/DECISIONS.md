@@ -4,6 +4,10 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-18 – Lasso-Auswahl
+- **Lasso als zweite Art des Werkzeugs „Auswahl“**, nicht als eigenes Werkzeug: Die linke Leiste bleibt so kurz, und das Muster (gewähltes Werkzeug noch einmal antippen → Feld) kennt man schon vom Radierer.
+- **Überwiegend innen statt berührt:** Beim Rechteck genügt Berühren (schnell viel erwischen); beim Lasso zählt, ob mehr als die Hälfte der kennzeichnenden Punkte innen liegt – sonst käme beim Umkreisen eines Wortes jeder Strich mit, der nur hineinragt. Verworfen: vollständig innen (zu streng bei krakeligen Schleifen).
+
 ## 2026-11-18 – Abdecken, Scheinwerfer, Geometrie, Arbeitsform, Geräuschampel, QR-Code
 - **Arbeitsform, Geräuschampel, QR-Code als Fenster** (wie Uhr und Notiz): verschiebbar, vergrößerbar, mit der Tafel gemerkt. **Abdecken, Scheinwerfer und Geometrie als eigene Ebenen**, nicht als Fenster: Sie gehören zur ganzen Fläche bzw. zur Tafel und haben keine Titelzeile. Sie werden nicht gespeichert – nach dem Neuladen ist die Tafel frei.
 - **Geometrie-Werkzeuge in Tafel-Koordinaten:** Sie wachsen mit dem Zoom wie ein echtes Lineal und messen auf A4-Blättern echte Zentimeter. Verworfen: feste Bildschirmgröße (dann stimmte die Skala nie mit dem Blatt überein).

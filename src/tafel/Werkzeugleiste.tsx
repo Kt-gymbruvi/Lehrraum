@@ -1,10 +1,12 @@
 // Linke Werkzeugleiste der Tafel – bleibt dauerhaft sichtbar. Zwei Knöpfe nebeneinander, damit alles ohne Rollen passt.
 // Zwei Aufklappfelder rechts neben der Leiste:
+//   Auswahl: erneutes Antippen der gewählten Auswahl öffnet Rechteck oder Lasso.
 //   Radierer: erneutes Antippen des gewählten Radierers öffnet Art und Größe.
 //   Mehr: weitere Farben, eigene Farbplätze mit dem Farbwähler des Geräts und ein Regler für die Stärke.
 // Ein Feld schließt sich beim Antippen außerhalb (auch der Tafel), mit Escape und beim Wechsel des Werkzeugs.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
+import type { AuswahlArt } from '../kern/auswahl.ts'
 import { begrenzeStaerke, inLeiste, PALETTE, STAERKE_MAX, STAERKE_MIN, staerkeInLeiste } from '../kern/farben.ts'
 import { FARBEN, STAERKEN } from '../kern/modell.ts'
 import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_RADIUS, type Radierer } from '../kern/radieren.ts'
@@ -20,6 +22,9 @@ type Props = {
   /** Selbst gewählte Farben dieses Geräts (neueste zuerst) */
   eigeneFarben: string[]
   beiRadierer: (r: Radierer) => void
+  /** Auswahl mit Rechteck oder Lasso */
+  auswahlArt: AuswahlArt
+  beiAuswahlArt: (a: AuswahlArt) => void
   kannZurueck: boolean
   kannVor: boolean
   leer: boolean
@@ -55,7 +60,12 @@ export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; tast
   { wert: 'laser', name: 'Laserpointer', symbol: 'laser', taste: 'Z' },
 ]
 
-type Feldart = 'radierer' | 'mehr'
+type Feldart = 'auswahl' | 'radierer' | 'mehr'
+
+const AUSWAHL_WAHL: { wert: AuswahlArt; name: string; symbol: SymbolName; titel: string }[] = [
+  { wert: 'rechteck', name: 'Rechteck', symbol: 'auswahl', titel: 'Rechteck aufziehen: alles, was es berührt, wird ausgewählt' },
+  { wert: 'lasso', name: 'Lasso', symbol: 'lasso', titel: 'Frei umfahren: ausgewählt wird, was überwiegend innerhalb liegt' },
+]
 
 /** Größe des Punktes, der eine Stärke zeigt (wie bei den drei Knöpfen, nach oben begrenzt) */
 const punktGroesse = (s: number) => Math.min(30, s * 1.4 + 2)
@@ -133,12 +143,12 @@ function MehrFeld(p: Props) {
 }
 
 export function Werkzeugleiste(p: Props) {
-  const ausloeser = { radierer: useRef<HTMLButtonElement>(null), mehr: useRef<HTMLButtonElement>(null) }
+  const ausloeser = { auswahl: useRef<HTMLButtonElement>(null), radierer: useRef<HTMLButtonElement>(null), mehr: useRef<HTMLButtonElement>(null) }
   const feldRef = useRef<HTMLDivElement>(null)
   /** Offenes Feld mit seiner Lage (Bildschirm) oder null */
   const [feld, setFeld] = useState<{ art: Feldart; links: number; oben: number } | null>(null)
-  // Das Feld des Radierers gehört zum Radierer: wird ein anderes Werkzeug gewählt, ist es zu
-  const offen = feld && (feld.art !== 'radierer' || p.werkzeug === 'radierer') ? feld : null
+  // Die Felder von Radierer und Auswahl gehören zu ihrem Werkzeug: wird ein anderes gewählt, sind sie zu
+  const offen = feld && (feld.art === 'mehr' || p.werkzeug === feld.art) ? feld : null
   const offeneArt = offen?.art ?? null
 
   useSchliessenDraussen(!!offeneArt, () => [feldRef.current, offeneArt && ausloeser[offeneArt].current], () => setFeld(null))
@@ -153,10 +163,11 @@ export function Werkzeugleiste(p: Props) {
   }
 
   const waehle = (w: Werkzeug) => {
-    if (w === 'radierer' && p.werkzeug === 'radierer') return umschalten('radierer', 240)
-    if (offeneArt === 'radierer' || w !== p.werkzeug) setFeld(null)
+    if ((w === 'radierer' || w === 'auswahl') && p.werkzeug === w) return umschalten(w, w === 'radierer' ? 240 : 140)
+    if (offeneArt === 'radierer' || offeneArt === 'auswahl' || w !== p.werkzeug) setFeld(null)
     p.beiWerkzeug(w)
   }
+  const auswahlName = AUSWAHL_WAHL.find((a) => a.wert === p.auswahlArt)?.name ?? ''
   const artName = RADIERER_ARTEN.find((a) => a.wert === p.radierer.art)?.name ?? ''
   // Farbe oder Stärke außerhalb der Leiste: der Knopf „Mehr“ zeigt sie als Punkt
   const besonders = !inLeiste(p.farbe) || !staerkeInLeiste(p.staerke)
@@ -165,7 +176,21 @@ export function Werkzeugleiste(p: Props) {
     <aside className="werkzeugleiste links" aria-label="Zeichenwerkzeuge">
       <div className="gruppe" role="group" aria-label="Werkzeug">
         {WERKZEUGE.map((w) =>
-          w.wert === 'radierer' ? (
+          w.wert === 'auswahl' ? (
+            <button
+              key={w.wert}
+              ref={ausloeser.auswahl}
+              type="button"
+              className="leisten-knopf hat-feld"
+              aria-pressed={p.werkzeug === w.wert}
+              aria-label={w.name}
+              aria-expanded={offeneArt === 'auswahl'}
+              title={`${w.name}: ${auswahlName} (${w.taste}) – noch einmal antippen: Rechteck oder Lasso`}
+              onClick={() => waehle(w.wert)}
+            >
+              <Symbol name={p.auswahlArt === 'lasso' ? 'lasso' : 'auswahl'} />
+            </button>
+          ) : w.wert === 'radierer' ? (
             <button
               key={w.wert}
               ref={ausloeser.radierer}
@@ -254,11 +279,31 @@ export function Werkzeugleiste(p: Props) {
             ref={feldRef}
             className="aufklappfeld"
             role="dialog"
-            aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : 'Mehr Farben und Stärken'}
+            aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : offen.art === 'auswahl' ? 'Art der Auswahl' : 'Mehr Farben und Stärken'}
             style={{ left: offen.links, top: offen.oben }}
           >
             {offen.art === 'mehr' ? (
               <MehrFeld {...p} />
+            ) : offen.art === 'auswahl' ? (
+              <div className="feld-reihe" role="group" aria-label="Art der Auswahl">
+                {AUSWAHL_WAHL.map((a) => (
+                  <button
+                    key={a.wert}
+                    type="button"
+                    className="leisten-knopf mit-text"
+                    aria-pressed={p.auswahlArt === a.wert}
+                    aria-label={a.name}
+                    title={a.titel}
+                    onClick={() => {
+                      p.beiAuswahlArt(a.wert)
+                      setFeld(null)
+                    }}
+                  >
+                    <Symbol name={a.symbol} />
+                    <span>{a.name}</span>
+                  </button>
+                ))}
+              </div>
             ) : (
               <>
                 <div className="feld-reihe" role="group" aria-label="Art des Radierers">

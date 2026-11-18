@@ -21,9 +21,9 @@ describe('Einstellungen – Logik', () => {
     expect(pruefeEinstellungen(null)).toEqual(STANDARD_EINSTELLUNGEN)
     expect(pruefeEinstellungen({ schema: 'fremd', version: 1, werkzeug: 'marker' })).toEqual(STANDARD_EINSTELLUNGEN)
     expect(pruefeEinstellungen({ schema: EINSTELLUNGEN_SCHEMA, version: 2, werkzeug: 'marker' })).toEqual(STANDARD_EINSTELLUNGEN)
-    const gut = { werkzeug: 'marker' as const, farbe: '#6a1b9a', staerke: 9, radierer: { art: 'element' as const, groesse: 'gross' as const } }
+    const gut = { werkzeug: 'marker' as const, farbe: '#6a1b9a', staerke: 9, radierer: { art: 'element' as const, groesse: 'gross' as const }, auswahl: 'lasso' as const }
     expect(pruefeEinstellungen(neueEinstellungen(gut))).toEqual(gut)
-    expect(pruefeEinstellungen({ schema: EINSTELLUNGEN_SCHEMA, version: 1, werkzeug: 'zauberstab', farbe: 'javascript:', staerke: 500, radierer: { art: 'feuer', groesse: 'klein' } })).toEqual({
+    expect(pruefeEinstellungen({ schema: EINSTELLUNGEN_SCHEMA, version: 1, werkzeug: 'zauberstab', farbe: 'javascript:', staerke: 500, radierer: { art: 'feuer', groesse: 'klein' }, auswahl: 'kreis' })).toEqual({
       ...STANDARD_EINSTELLUNGEN,
       staerke: 30,
       radierer: { art: 'schwamm', groesse: 'klein' },

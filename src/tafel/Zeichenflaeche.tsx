@@ -34,7 +34,7 @@
 //   bricht die Zeile um. Jede geänderte Zelle ist ein Schritt im Verlauf. Ist die Tabelle ausgewählt, lassen sich
 //   die Trennlinien zwischen den Spalten ziehen.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, mitGruppen, nurEcken, skalierung, type Griffname, type Skalierung } from '../kern/auswahl.ts'
+import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, imLasso, mitGruppen, nurEcken, skalierung, type AuswahlArt, type Griffname, type Skalierung } from '../kern/auswahl.ts'
 import { breite, beruehrtRechteck, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
@@ -65,6 +65,8 @@ type Props = {
   staerke: number
   /** Art und Größe des Radierers (fehlt: Schwamm, mittel) */
   radierer?: Radierer
+  /** Auswahl mit Rechteck oder Lasso (fehlt: Rechteck) */
+  auswahlArt?: AuswahlArt
   /** Kennungen der ausgewählten Elemente */
   auswahl: string[]
   beiHinzu: (e: Element) => void
@@ -90,6 +92,8 @@ const FANG_RADIUS = 8
 const DOPPELTIPP_MS = 450
 /** Kürzere Wege (Bildschirm-Pixel) gelten als Antippen, nicht als Ziehen */
 const TIPP_WEG = 4
+/** Abstand der Lasso-Punkte (Bildschirm-Pixel) */
+const LASSO_SCHRITT = 3
 
 const vorschau = (a: Extract<Aktiv, { art: 'skalieren' }>) =>
   a.s ? a.originale.map((e) => skaliert(e, a.s!.ax, a.s!.ay, a.s!.sx, a.s!.sy, a.s!.gleichmaessig)) : a.originale
@@ -107,7 +111,8 @@ type Aktiv =
   /** Drehen um die Mitte (cx, cy) der Auswahl; x/y: Zeiger (Tafel-Koordinaten), basis: bisherige Drehung zum Einrasten */
   | { art: 'drehen'; zeiger: number; cx: number; cy: number; startX: number; startY: number; x: number; y: number; basis: number; originale: Element[]; winkel: number }
   /** Auswahlrahmen aufziehen (Tafel-Koordinaten); dazu: was schon vorher ausgewählt war und bleibt (Umschalt) */
-  | { art: 'rahmen'; zeiger: number; x1: number; y1: number; x2: number; y2: number; dazu: string[] }
+  /** Rechteck aufziehen – oder mit dem Lasso frei umfahren (dann sammelt `lasso` die Punkte) */
+  | { art: 'rahmen'; zeiger: number; x1: number; y1: number; x2: number; y2: number; dazu: string[]; lasso: [number, number][] | null }
   | { art: 'schwenken'; zeiger: number; x: number; y: number }
   | { art: 'geste'; mitteX: number; mitteY: number; abstand: number }
   /** Breite einer Tabellenspalte ziehen: startX in den Koordinaten der Tabelle */
@@ -139,7 +144,7 @@ export const setzeHaltezeit = (ms: number) => {
 const keineGrenze = (k: Kamera) => k
 const KEINE: Instrument[] = []
 
-export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze, instrumente = KEINE }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahlArt = 'rechteck', auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze, instrumente = KEINE }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -155,8 +160,8 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
   /** Eine verschobene Ansicht, die erst mit dem nächsten Bildwechsel weitergemeldet wird */
   const kameraOffen = useRef<Kamera | null>(null)
   // Aktuelle Werte für die Eingabe-Funktionen (die sich sonst bei jedem Zeichnen neu anmelden müssten)
-  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahl, editor, blatt, begrenze, instrumente })
-  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahl, editor, blatt, begrenze, instrumente }
+  const stand = useRef({ elemente, kamera, werkzeug, farbe, staerke, radierer, auswahlArt, auswahl, editor, blatt, begrenze, instrumente })
+  stand.current = { elemente, kamera: kameraOffen.current ?? kamera, werkzeug, farbe, staerke, radierer, auswahlArt, auswahl, editor, blatt, begrenze, instrumente }
   /** Wo Maus oder schwebender Stift gerade ist (Bildschirm) – dort zeigt ein Kreis die Größe des Radierers (beim Laserpointer: ein roter Punkt) */
   const schwebe = useRef<{ x: number; y: number } | null>(null)
   /** Spuren des Laserpointers: nur hier auf der oberen Ebene, nie gespeichert, nicht im Verlauf */
@@ -376,8 +381,21 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       ctx.fillStyle = '#ffffff'
       ctx.fillText(text, x, y)
     }
+    // Lasso, das gerade gezogen wird: geschlossen gezeichnet, damit man sieht, was hineinfällt
+    if (a?.art === 'rahmen' && a.lasso) {
+      ctx.beginPath()
+      a.lasso.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)))
+      ctx.closePath()
+      ctx.fillStyle = 'rgba(29, 95, 209, 0.08)'
+      ctx.fill()
+      ctx.setLineDash([6 / k.zoom, 4 / k.zoom])
+      ctx.lineWidth = 1.5 / k.zoom
+      ctx.strokeStyle = '#1d5fd1'
+      ctx.stroke()
+      ctx.setLineDash([])
+    }
     // Rahmen, der gerade aufgezogen wird
-    if (a?.art === 'rahmen') {
+    else if (a?.art === 'rahmen') {
       const [l, o, re, u] = rechteckAus(a.x1, a.y1, a.x2, a.y2)
       ctx.fillStyle = 'rgba(29, 95, 209, 0.08)'
       ctx.fillRect(l, o, re - l, u - o)
@@ -600,7 +618,7 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
         zeiger.current.delete(e.pointerId)
         const gruppe = mitGruppen(s.elemente, [treffer.id])
         beiAuswahl(s.auswahl.includes(treffer.id) ? s.auswahl.filter((id) => !gruppe.includes(id)) : [...s.auswahl, ...gruppe.filter((id) => !s.auswahl.includes(id))])
-      } else aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: s.auswahl }
+      } else aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: s.auswahl, lasso: s.auswahlArt === 'lasso' ? [[tx, ty]] : null }
       return
     }
     if ((treffer?.art === 'text' || treffer?.art === 'tabelle') && vorher?.id === treffer.id && Date.now() - vorher.zeit < DOPPELTIPP_MS) {
@@ -624,7 +642,7 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       aktiv.current = { art: 'ziehen', zeiger: e.pointerId, startX: tx, startY: ty, originale: s.elemente.filter((el) => ids.includes(el.id)), dx: 0, dy: 0, tipp: treffer }
     } else {
       if (s.auswahl.length) beiAuswahl([])
-      aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: [] }
+      aktiv.current = { art: 'rahmen', zeiger: e.pointerId, x1: tx, y1: ty, x2: tx, y2: ty, dazu: [], lasso: s.auswahlArt === 'lasso' ? [[tx, ty]] : null }
     }
   }
 
@@ -834,6 +852,10 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     } else if (a.art === 'rahmen') {
       a.x2 = tx
       a.y2 = ty
+      if (a.lasso) {
+        const [lx, ly] = a.lasso[a.lasso.length - 1]
+        if (Math.hypot(tx - lx, ty - ly) * k.zoom >= LASSO_SCHRITT) a.lasso.push([tx, ty])
+      }
     } else if (a.art === 'form') {
       a.form.x2 = tx
       a.form.y2 = ty
@@ -951,9 +973,16 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       setVersteckt(new Set())
     }
     if (a.art === 'rahmen' && !abgebrochen) {
-      const weit = Math.hypot(a.x2 - a.x1, a.y2 - a.y1) * k.zoom >= TIPP_WEG
       const r = rechteckAus(a.x1, a.y1, a.x2, a.y2)
-      const beruehrt = weit ? stand.current.elemente.filter((el) => beruehrtRechteck(el, r)).map((el) => el.id) : []
+      let beruehrt: string[]
+      if (a.lasso) {
+        const lasso = a.lasso
+        const weit = lasso.some(([x, y]) => Math.hypot(x - a.x1, y - a.y1) * k.zoom >= TIPP_WEG)
+        beruehrt = weit ? stand.current.elemente.filter((el) => imLasso(el, lasso)).map((el) => el.id) : []
+      } else {
+        const weit = Math.hypot(a.x2 - a.x1, a.y2 - a.y1) * k.zoom >= TIPP_WEG
+        beruehrt = weit ? stand.current.elemente.filter((el) => beruehrtRechteck(el, r)).map((el) => el.id) : []
+      }
       const neu = mitGruppen(stand.current.elemente, beruehrt).filter((id) => !a.dazu.includes(id))
       if (neu.length) beiAuswahl([...a.dazu, ...neu])
     }

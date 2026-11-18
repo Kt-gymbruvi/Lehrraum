@@ -6,7 +6,7 @@ import { AbdeckEbene, ScheinwerferEbene } from '../fenster/Zeigen.tsx'
 import { neuesInstrument, type Instrument, type InstrumentArt } from '../kern/instrumente.ts'
 import { GANZ_ABGEDECKT, SCHEINWERFER_START, type Abdeckung, type Scheinwerfer } from '../kern/zeigen.ts'
 import { einzufuegen, neueAblage, type Ablage } from '../kern/ablage.ts'
-import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe } from '../kern/auswahl.ts'
+import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe, type AuswahlArt } from '../kern/auswahl.ts'
 import { ausfuehrenAuf, entfernenBefehl, inhaltVon, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, textMass, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
@@ -87,6 +87,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   const [farbe, setFarbe] = useState<string>(STANDARD_EINSTELLUNGEN.farbe)
   const [staerke, setStaerke] = useState<number>(STANDARD_EINSTELLUNGEN.staerke)
   const [radierer, setRadierer] = useState<Radierer>(STANDARD_EINSTELLUNGEN.radierer)
+  const [auswahlArt, setAuswahlArt] = useState<AuswahlArt>(STANDARD_EINSTELLUNGEN.auswahl)
   const [eigeneFarben, setEigeneFarben] = useState<string[]>([])
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
@@ -163,8 +164,8 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   const einstellungenDa = useRef(false)
   useEffect(() => {
     if (!einstellungenDa.current) return
-    merkeEinstellungen({ werkzeug, farbe, staerke, radierer }).catch(() => undefined) // misslingt es, startet die Tafel eben wie neu
-  }, [werkzeug, farbe, staerke, radierer])
+    merkeEinstellungen({ werkzeug, farbe, staerke, radierer, auswahl: auswahlArt }).catch(() => undefined) // misslingt es, startet die Tafel eben wie neu
+  }, [werkzeug, farbe, staerke, radierer, auswahlArt])
 
   // ---------- Laden: zuletzt benutzte Tafel oder eine neue ----------
   useEffect(() => {
@@ -187,6 +188,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
         setFarbe(e.farbe)
         setStaerke(e.staerke)
         setRadierer(e.radierer)
+        setAuswahlArt(e.auswahl)
         einstellungenDa.current = true
         const t = gefunden ?? neuesTafelbild()
         if (!gefunden) void merkeFreieTafel(t.id).catch(() => undefined) // neue freie Tafel: gleich festhalten, welche es ist
@@ -894,6 +896,8 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
           staerke={staerke}
           radierer={radierer}
           beiRadierer={setRadierer}
+          auswahlArt={auswahlArt}
+          beiAuswahlArt={setAuswahlArt}
           eigeneFarben={eigeneFarben}
           beiEigeneFarbe={waehleEigeneFarbe}
           kannZurueck={verlauf.zurueck.length > 0}
@@ -935,6 +939,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
               farbe={farbe}
               staerke={staerke}
               radierer={radierer}
+              auswahlArt={auswahlArt}
               auswahl={auswahl}
               beiHinzu={beiHinzu}
               beiRadieren={entferne}

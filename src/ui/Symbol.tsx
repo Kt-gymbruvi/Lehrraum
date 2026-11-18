@@ -2,7 +2,10 @@
 
 const ZEICHNUNGEN = {
   stift: 'M4 20l1-4L16.5 4.5a2.1 2.1 0 0 1 3 3L8 19l-4 1zM14 7l3 3',
-  marker: 'M14 4l6 6-8 8H6v-6zM4 21h16',
+  // Textmarker: schräger Schaft, Keilspitze und darunter ein breiter Strich
+  marker: 'M14.5 3.5l6 6-7 7-6-6zM8.5 11.5l-3 3 4 4 3-3M5.5 14.5L3 19h4.5l2-0.5M3 21.5h8',
+  // Lasso: Schlinge mit Seilende
+  lasso: 'M12 4c4.4 0 8 2.2 8 5s-3.6 5-8 5-8-2.2-8-5 3.6-5 8-5zM7.5 13c-1.5 1.5-1 3.5.5 3.5s2 2-.5 4',
   radierer: 'M7 20h11M5.5 13.5l8-8a2 2 0 0 1 2.8 0l3.2 3.2a2 2 0 0 1 0 2.8L12 19H8.5l-3-3a1.8 1.8 0 0 1 0-2.5zM9.5 9.5l5 5',
   palette: 'M12 3a9 9 0 0 0 0 18c1.1 0 2-.9 2-2 0-.5-.2-1-.5-1.3-.3-.4-.5-.8-.5-1.3 0-1.1.9-2 2-2h2.4A4.6 4.6 0 0 0 21 9.8C21 6 17 3 12 3zM7.5 11.5h.01M9.5 7.5h.01M14.5 7.5h.01M17 11h.01',
   schwamm: 'M5 9h14a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-6a2 2 0 0 1 2-2zM8 13h.01M12 15h.01M16 13h.01M4 5c2.5-1.5 5.5 1.5 8 0s5.5 1.5 8 0',

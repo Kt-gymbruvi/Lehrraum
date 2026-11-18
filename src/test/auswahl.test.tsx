@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { auswahlRahmen, griffBei, griffe, GRIFF_TREFFER, nurEcken, skalierung } from '../kern/auswahl.ts'
+import { auswahlRahmen, griffBei, griffe, GRIFF_TREFFER, imLasso, imVieleck, nurEcken, skalierung } from '../kern/auswahl.ts'
 import { beruehrtRechteck, skaliert, streckeBeruehrt } from '../kern/geometrie.ts'
 import { neueSeite, neuesTafelbild, type Bild, type Form, type Strich, type Text } from '../kern/modell.ts'
-import { ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { ladeEinstellungen, ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
 import { vergissStift } from '../tafel/Zeichenflaeche.tsx'
 
@@ -21,6 +21,24 @@ const form = (id: string, f: Form['form'], mehr: Partial<Form> = {}): Form => ({
 const bild: Bild = { art: 'bild', id: 'b', x: 0, y: 0, b: 200, h: 100, dateiId: 'abcdef12' }
 
 describe('Auswahl – Logik', () => {
+  it('Lasso: Punkt im Vieleck, Element überwiegend innerhalb', () => {
+    const quadrat: [number, number][] = [[0, 0], [100, 0], [100, 100], [0, 100]]
+    expect(imVieleck(50, 50, quadrat)).toBe(true)
+    expect(imVieleck(150, 50, quadrat)).toBe(false)
+    // Hufeisen: die Lücke in der Mitte gehört nicht dazu
+    const hufeisen: [number, number][] = [[0, 0], [100, 0], [100, 100], [70, 100], [70, 30], [30, 30], [30, 100], [0, 100]]
+    expect(imVieleck(50, 60, hufeisen)).toBe(false)
+    expect(imVieleck(15, 60, hufeisen)).toBe(true)
+    const um = (l: number, o: number, r: number, u: number): [number, number][] => [[l, o], [r, o], [r, u], [l, u]]
+    expect(imLasso(strich('s', 50), um(-10, 40, 110, 60))).toBe(true)
+    expect(imLasso(strich('s', 50), um(-10, 40, 40, 60))).toBe(false) // nur ein Ende von zweien zählt nicht als „überwiegend“
+    expect(imLasso(form('r', 'rechteck'), um(290, 290, 410, 410))).toBe(true)
+    expect(imLasso(form('r', 'rechteck'), um(320, 320, 380, 380))).toBe(false) // nur das leere Innere
+    expect(imLasso(text('t'), um(590, 90, 720, 170))).toBe(true)
+    expect(imLasso(text('t'), um(0, 0, 10, 10))).toBe(false)
+    expect(imLasso(strich('s', 50), [[0, 0], [200, 200]])).toBe(false) // zu wenige Punkte: keine Fläche
+  })
+
   it('erkennt, ob eine Strecke ein Rechteck berührt', () => {
     expect(streckeBeruehrt(-10, 5, 30, 5, [0, 0, 10, 10])).toBe(true) // quer hindurch, beide Enden draußen
     expect(streckeBeruehrt(-10, -10, 30, -1, [0, 0, 10, 10])).toBe(false)
@@ -210,5 +228,26 @@ describe('Auswahl – Bedienung', () => {
     await waitFor(async () => expect((await tafel()).kamera).toEqual({ x: 50, y: 20, zoom: 1 }))
     ziehe([100, 300], [200, 300])
     await waitFor(async () => expect(await seite()).toHaveLength(1)) // danach zeichnet der Stift wieder
+  })
+
+  it('Lasso: über die Auswahl wählbar und gemerkt; wählt nur, was es umfährt', async () => {
+    const nutzer = userEvent.setup()
+    await vorlage()
+    render(<Tafel />)
+    await bereit()
+    await nutzer.click(knopf('Auswahl'))
+    await nutzer.click(knopf('Auswahl')) // noch einmal: Rechteck oder Lasso
+    await nutzer.click(screen.getByRole('button', { name: 'Lasso' }))
+    expect(screen.queryByRole('dialog', { name: 'Art der Auswahl' })).not.toBeInTheDocument()
+    expect(knopf('Auswahl').title).toContain('Lasso')
+    await waitFor(async () => expect((await ladeEinstellungen()).auswahl).toBe('lasso'))
+    // Schleife um Strich a (0..100 bei y 50), nicht um Strich b (y 150)
+    const basis = { pointerId: 1, pointerType: 'mouse', button: 0 }
+    const weg: [number, number][] = [[-10, 30], [60, 25], [115, 35], [120, 70], [50, 80], [-15, 70], [-10, 30]]
+    fireEvent.pointerDown(flaeche(), { ...basis, clientX: weg[0][0], clientY: weg[0][1] })
+    for (const [x, y] of weg.slice(1)) fireEvent.pointerMove(flaeche(), { ...basis, clientX: x, clientY: y })
+    fireEvent.pointerUp(flaeche(), { ...basis, clientX: -10, clientY: 30 })
+    await nutzer.keyboard('{Delete}')
+    await waitFor(async () => expect(await ids()).toEqual(['b', 'r', 't']))
   })
 })
