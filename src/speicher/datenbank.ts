@@ -12,7 +12,8 @@ import { neueFarbplaetze, pruefeFarbplaetze } from '../kern/farben.ts'
 import { klassenName, pruefeKlasse, type Klasse } from '../kern/klassen.ts'
 import { neuesTafelbild, pruefeTafel, type Tafelbild } from '../kern/modell.ts'
 
-const NAME = 'lehrraum'
+import { datenbankName, istGast, leereGastDatenbank } from './gast.ts'
+
 const VERSION = 3
 const LETZTE = 'letzte-tafel'
 const FREIE = 'freie-tafel'
@@ -20,8 +21,8 @@ const FREIE = 'freie-tafel'
 let offen: Promise<IDBDatabase> | null = null
 
 function oeffne(): Promise<IDBDatabase> {
-  offen ??= new Promise((ok, fehler) => {
-    const anfrage = indexedDB.open(NAME, VERSION)
+  offen ??= (istGast() ? leereGastDatenbank() : Promise.resolve()).then(() => new Promise<IDBDatabase>((ok, fehler) => {
+    const anfrage = indexedDB.open(datenbankName(), VERSION)
     anfrage.onupgradeneeded = () => {
       const db = anfrage.result
       if (!db.objectStoreNames.contains('tafeln')) db.createObjectStore('tafeln', { keyPath: 'id' })
@@ -41,7 +42,7 @@ function oeffne(): Promise<IDBDatabase> {
       offen = null
       fehler(anfrage.error ?? new Error('Der Speicher dieses Geräts lässt sich nicht öffnen.'))
     }
-  })
+  }))
   return offen
 }
 

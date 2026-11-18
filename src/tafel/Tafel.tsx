@@ -69,7 +69,7 @@ const alsSeite = (s: Seite, i: Inhalt): Seite => ({ id: s.id, ...inhaltVon(i), .
  * Ohne `klasseId` öffnet sich die freie Tafel, sonst die Tafel dieser Klasse (wird beim ersten Öffnen angelegt).
  * `pruefen` blendet die Prüfansicht ein (Messwerte zum Schreiben am Gerät).
  */
-export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string; pruefen?: boolean }) {
+export default function Tafel({ klasseId, pruefen = false, gast = false }: { klasseId?: string; pruefen?: boolean; gast?: boolean }) {
   const [kopf, setKopf] = useState<Pick<Tafelbild, 'schema' | 'version' | 'id' | 'titel'> | null>(null)
   const [buch, setBuch] = useState<Buch>({ seiten: [LEER], nr: 0, verlaeufe: {} })
   const [kamera, setKameraRoh] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
@@ -257,7 +257,7 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const aufgeraeumt = useRef(false)
   abgleichen.current = () => {
     const id = aktuell.current?.id
-    if (!id || abgleichLaeuft.current || offen.current) return
+    if (gast || !id || abgleichLaeuft.current || offen.current) return // Gäste: nie mit dem Server abgleichen
     abgleichLaeuft.current = true
     const vorher = zuletztGeaendert.current
     void (async () => {
@@ -347,12 +347,12 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
   const beiHinzu = useCallback(
     (e: Element) => {
       fuehreAus({ art: 'hinzufuegen', elemente: [e] })
-      if (!dauerhaftGefragt.current) {
+      if (!dauerhaftGefragt.current && !gast) {
         dauerhaftGefragt.current = true
         void bitteUmDauerhaftenSpeicher()
       }
     },
-    [fuehreAus],
+    [fuehreAus, gast],
   )
   const entferne = useCallback(
     (ids: string[]) =>
@@ -811,16 +811,18 @@ export default function Tafel({ klasseId, pruefen = false }: { klasseId?: string
         <a className="kopf-knopf" href="/" aria-label="Zur Startseite Lehrraum" title="Zur Startseite">
           <Symbol name="haus" />
         </a>
-        <a className="kopf-knopf" href="#/klassen" aria-label="Meine Klassen" title="Meine Klassen">
-          <Symbol name="klassen" />
-        </a>
+        {!gast && (
+          <a className="kopf-knopf" href="#/klassen" aria-label="Meine Klassen" title="Meine Klassen">
+            <Symbol name="klassen" />
+          </a>
+        )}
         <h1>{kopf?.titel ?? 'Tafel'}</h1>
         <p
           className={'speicherstand ' + (meldung ? (meldung.fehler ? 'fehler' : 'hinweis') : speicher)}
           role="status"
           title={!meldung && speicher === 'gespeichert' && abgleich === 'fehler' ? abgleichFehler : undefined}
         >
-          {meldung?.text ?? (speicher === 'gespeichert' ? ABGLEICHTEXT[abgleich] : SPEICHERTEXT[speicher])}
+          {meldung?.text ?? (gast ? 'Gast – wird nicht gespeichert' : speicher === 'gespeichert' ? ABGLEICHTEXT[abgleich] : SPEICHERTEXT[speicher])}
         </p>
         <div className="zoom" role="group" aria-label="PDF">
           <button type="button" className="kopf-knopf" aria-label="PDF öffnen" title="PDF öffnen – jede Seite wird eine Tafelseite zum Beschriften" disabled={meldung?.laeuft} onClick={() => pdfWahl.current?.click()}>

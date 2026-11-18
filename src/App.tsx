@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom'
 import Klassen from './klassen/Klassen.tsx'
+import { istGast } from './speicher/gast.ts'
 import Tafel from './tafel/Tafel.tsx'
 
 /**
@@ -10,8 +11,10 @@ function TafelSeite({ pruefen = false }: { pruefen?: boolean }) {
   const [suche] = useSearchParams()
   const klasse = suche.get('klasse')
   const gueltig = klasse && /^[0-9a-f]{8,64}$/.test(klasse) ? klasse : undefined
+  // Gast: freie Tafel ohne Anmeldung, nichts wird gespeichert (keine Klassen)
+  const gast = istGast()
   // key: beim Wechsel der Klasse die Tafel ganz neu aufbauen (eigener Verlauf, eigene Auswahl)
-  return <Tafel key={gueltig ?? 'frei'} klasseId={gueltig} pruefen={pruefen} />
+  return <Tafel key={gast ? 'gast' : (gueltig ?? 'frei')} klasseId={gast ? undefined : gueltig} pruefen={pruefen} gast={gast} />
 }
 
 // „Bibliothek“ und weitere Bereiche kommen als eigene Routen dazu, sobald sie gebaut sind.
