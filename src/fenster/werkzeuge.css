@@ -16,28 +16,34 @@
   color: var(--gewaehlt-text);
   box-shadow: 0 2px 8px rgb(10 45 83 / 0.25);
 }
-/* Nicht genug Höhe für eine Spalte (iPad, kleine Bildschirme): zwei Spalten, damit nichts gerollt werden muss */
-@media (max-height: 58rem) and (min-height: 34.01rem) {
-  .werkzeugleiste.rechts .gruppe {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    justify-items: center;
-    gap: 0.125rem;
-  }
-  .werkzeugleiste.rechts .gruppe > :only-child {
-    grid-column: span 2;
-  }
+/*
+ * Immer genau eine Spalte, damit die Tafel breit bleibt. Wird die Höhe knapp (iPad quer mit Browserleisten),
+ * werden die Knöpfe niedriger; noch knapper: nur noch das Symbol (Name als Hinweis und für Vorleser).
+ * Die Knöpfe schrumpfen mit der Leiste (flex), so passt alles ohne Rollen.
+ */
+.werkzeugleiste.rechts .gruppe {
+  flex-shrink: 1;
+  min-height: 0;
+}
+.werkzeugleiste.rechts .leisten-knopf.mit-text {
+  flex: 0 1 4rem;
+  height: auto;
+  min-height: 2.25rem;
+}
+@media (max-height: 58rem) {
   .werkzeugleiste.rechts .leisten-knopf.mit-text {
+    flex-basis: 3.4rem;
     width: 4.4rem;
-    height: 3.6rem;
-    font-size: 0.64rem;
+    font-size: 0.62rem;
   }
 }
-@media (max-height: 34rem) {
-  .werkzeugleiste.rechts .gruppe {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    justify-items: center;
+@media (max-height: 50rem) {
+  .werkzeugleiste.rechts .leisten-knopf.mit-text {
+    flex-basis: var(--tipp);
+    width: var(--tipp);
+  }
+  .werkzeugleiste.rechts .leisten-knopf.mit-text span {
+    display: none;
   }
 }
 

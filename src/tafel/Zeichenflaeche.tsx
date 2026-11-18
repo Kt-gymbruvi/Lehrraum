@@ -34,8 +34,8 @@
 //   bricht die Zeile um. Jede geänderte Zelle ist ein Schritt im Verlauf. Ist die Tabelle ausgewählt, lassen sich
 //   die Trennlinien zwischen den Spalten ziehen.
 import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
-import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_ZEIGER, griffBei, griffe, imLasso, mitGruppen, nurEcken, skalierung, type AuswahlArt, type Griffname, type Skalierung } from '../kern/auswahl.ts'
-import { breite, beruehrtRechteck, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rechteckAus, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
+import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_TREFFER, GRIFF_ZEIGER, griffBei, griffe, imLasso, mitGruppen, nurEcken, skalierung, type AuswahlArt, type Griffname, type Skalierung } from '../kern/auswahl.ts'
+import { biegeGriff, breite, beruehrtRechteck, gebogen, GERADE_FANG, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rasteRichtung, rechteckAus, richtungsWinkel, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
 import { anKante, fangeKante, type Instrument, type Kante } from '../kern/instrumente.ts'
@@ -101,6 +101,43 @@ const formZusatz = (w: Formart, f: Formwahl): Partial<Form> => ({
   ...(f.linienart !== 'voll' ? { linie: f.linienart } : {}),
   ...(f.beidseitig && w === 'pfeil' ? { beidseitig: true as const } : {}),
 })
+/** Genau eine Linie oder ein Pfeil ausgewählt? Dann hat sie Griffe an den Enden und in der Mitte statt am Rahmen. */
+const linieAllein = (gewaehlt: Element[]): Form | null => {
+  const f = gewaehlt.length === 1 ? gewaehlt[0] : null
+  return f?.art === 'form' && (f.form === 'linie' || f.form === 'pfeil') ? f : null
+}
+type Linienpunkt = 'anfang' | 'ende' | 'mitte'
+/** Die Griffe einer Linie; den in der Mitte nur, wenn daneben noch Platz zum Anfassen und Verschieben bleibt */
+function linienGriffe(f: Form, zoom: number): { punkt: Linienpunkt; x: number; y: number }[] {
+  const g: { punkt: Linienpunkt; x: number; y: number }[] = [
+    { punkt: 'anfang', x: f.x1, y: f.y1 },
+    { punkt: 'ende', x: f.x2, y: f.y2 },
+  ]
+  if (Math.hypot(f.x2 - f.x1, f.y2 - f.y1) * zoom >= 2.5 * GRIFF_TREFFER) {
+    const [bx, by] = biegeGriff(f)
+    g.push({ punkt: 'mitte', x: bx, y: by })
+  }
+  return g
+}
+const linienGriffBei = (f: Form, x: number, y: number, zoom: number): Linienpunkt | null => {
+  let best: { punkt: Linienpunkt; d: number } | null = null
+  for (const g of linienGriffe(f, zoom)) {
+    const d = Math.hypot(x - g.x, y - g.y)
+    if (d <= GRIFF_TREFFER / 2 / zoom && (!best || d < best.d)) best = { punkt: g.punkt, d }
+  }
+  return best?.punkt ?? null
+}
+/** Ein Ende verschieben (Richtung rastet wie beim Zeichnen ein; mit Umschalt immer) – oder in der Mitte biegen */
+function linieGezogen(f: Form, punkt: Linienpunkt, x: number, y: number, zoom: number, immer: boolean): Form {
+  if (punkt === 'mitte') return gebogen(f, x, y, GERADE_FANG / zoom)
+  const gerade = !f.bogen
+  if (punkt === 'ende') {
+    const [x2, y2] = gerade ? rasteRichtung(f.x1, f.y1, x, y, immer) : [x, y]
+    return { ...f, x2, y2 }
+  }
+  const [x1, y1] = gerade ? rasteRichtung(f.x2, f.y2, x, y, immer) : [x, y]
+  return { ...f, x1, y1 }
+}
 /** Abstand der Lasso-Punkte (Bildschirm-Pixel) */
 const LASSO_SCHRITT = 3
 
@@ -123,6 +160,8 @@ type Aktiv =
   /** Rechteck aufziehen – oder mit dem Lasso frei umfahren (dann sammelt `lasso` die Punkte) */
   | { art: 'rahmen'; zeiger: number; x1: number; y1: number; x2: number; y2: number; dazu: string[]; lasso: [number, number][] | null }
   | { art: 'schwenken'; zeiger: number; x: number; y: number }
+  /** Eine Linie oder einen Pfeil am Griff in der Mitte biegen – oder ein Ende verschieben */
+  | { art: 'biegen'; zeiger: number; f: Form; neu: Form; punkt: Linienpunkt }
   | { art: 'geste'; mitteX: number; mitteY: number; abstand: number }
   /** Breite einer Tabellenspalte ziehen: startX in den Koordinaten der Tabelle */
   | { art: 'spalte'; zeiger: number; t: Tabelle; spalte: number; startX: number; breite: number; neu: Tabelle }
@@ -342,7 +381,7 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
           ? vorschau(a)
           : a?.art === 'drehen'
             ? a.originale.map((e) => gedreht(e, a.cx, a.cy, a.winkel))
-            : a?.art === 'spalte'
+            : a?.art === 'spalte' || a?.art === 'biegen'
               ? [a.neu]
               : null
     if (bewegt) aufsBlatt(() => bewegt.forEach((e) => zeichne(ctx, e, true)))
@@ -359,7 +398,8 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       if (!bewegt && s.werkzeug === 'auswahl') {
         const g = GRIFF_GROESSE / k.zoom
         ctx.fillStyle = '#ffffff'
-        for (const griff of griffe(r, k.zoom, nurEcken(gewaehlt))) {
+        const linie = linieAllein(gewaehlt)
+        for (const griff of linie ? [] : griffe(r, k.zoom, nurEcken(gewaehlt))) {
           if (griff.name === 'drehen') {
             // Drehgriff: Kreis über dem Rahmen, mit einer Linie zur oberen Kante
             ctx.beginPath()
@@ -375,16 +415,30 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
           ctx.fillRect(griff.x - g / 2, griff.y - g / 2, g, g)
           ctx.strokeRect(griff.x - g / 2, griff.y - g / 2, g, g)
         }
+        // Eine Linie oder ein Pfeil allein: runde Griffe an den Enden, ein blauer in der Mitte zum Biegen
+        if (linie) {
+          for (const lg of linienGriffe(linie, k.zoom)) {
+            ctx.beginPath()
+            ctx.arc(lg.x, lg.y, g / 2, 0, Math.PI * 2)
+            ctx.fillStyle = lg.punkt === 'mitte' ? '#1d5fd1' : '#ffffff'
+            ctx.fill()
+            ctx.strokeStyle = lg.punkt === 'mitte' ? '#ffffff' : '#1d5fd1'
+            ctx.stroke()
+          }
+        }
       }
     }
-    // Beim Drehen den Winkel neben dem Zeiger anzeigen
-    if (a?.art === 'drehen') {
-      const text = `${Math.round(normiereWinkel(a.basis + a.winkel))}°`
+    // Beim Drehen den Winkel neben dem Zeiger anzeigen – ebenso die Richtung einer Linie oder eines Pfeils beim Zeichnen
+    const winkelMarke = a?.art === 'drehen' ? { text: `${Math.round(normiereWinkel(a.basis + a.winkel))}°`, x: a.x, y: a.y } : null
+    const f = a?.art === 'form' && (a.form.form === 'linie' || a.form.form === 'pfeil') && Math.hypot(a.form.x2 - a.form.x1, a.form.y2 - a.form.y1) * k.zoom >= 12 ? a.form : null
+    const marke = winkelMarke ?? (f ? { text: `${richtungsWinkel(f.x1, f.y1, f.x2, f.y2)}°`, x: f.x2, y: f.y2 } : null)
+    if (marke) {
+      const text = marke.text
       const groesse = 16 / k.zoom
       ctx.font = `600 ${groesse}px ${SCHRIFT}`
       ctx.textBaseline = 'top'
       const breite = ctx.measureText(text).width
-      const [x, y] = [a.x + 20 / k.zoom, a.y + 20 / k.zoom]
+      const [x, y] = [marke.x + 20 / k.zoom, marke.y + 20 / k.zoom]
       ctx.fillStyle = '#1d5fd1'
       ctx.fillRect(x - 6 / k.zoom, y - 4 / k.zoom, breite + 12 / k.zoom, groesse + 8 / k.zoom)
       ctx.fillStyle = '#ffffff'
@@ -424,7 +478,8 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     const inhalt = gesamtRahmen(gewaehlt)
     if (!inhalt) return null
     const r = auswahlRahmen(inhalt, s.kamera.zoom)
-    return { gewaehlt, inhalt, rahmen: r, griffe: griffe(r, s.kamera.zoom, nurEcken(gewaehlt)) }
+    // Eine Linie allein: Griffe an den Enden und in der Mitte statt am Rahmen
+    return { gewaehlt, inhalt, rahmen: r, griffe: linieAllein(gewaehlt) ? [] : griffe(r, s.kamera.zoom, nurEcken(gewaehlt)) }
   }
   useEffect(zeichneOben)
 
@@ -603,6 +658,13 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     const vorher = letzterTipp.current
     letzterTipp.current = null
     const lage = auswahlLage()
+    // Griffe einer einzelnen Linie oder eines Pfeils: Enden verschieben, in der Mitte biegen
+    const linie = lage && !e.shiftKey ? linieAllein(lage.gewaehlt) : null
+    const punkt = linie ? linienGriffBei(linie, tx, ty, zoom) : null
+    if (linie && punkt) {
+      aktiv.current = { art: 'biegen', zeiger: e.pointerId, f: linie, neu: linie, punkt }
+      return
+    }
     const griff = lage && !e.shiftKey ? griffBei(lage.griffe, tx, ty, zoom) : null
     if (griff && lage) {
       if (griff.name === 'drehen') {
@@ -785,7 +847,8 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       const [l, o, r, u] = lage.rahmen
       const eine = lage.gewaehlt.length === 1 && lage.gewaehlt[0].art === 'tabelle' ? lage.gewaehlt[0] : null
       const trenner = !griff && eine ? trennerBei(eine, tx, ty, (FANG_RADIUS * 1.5) / stand.current.kamera.zoom) : null
-      zeiger = griff ? GRIFF_ZEIGER[griff.name] : trenner !== null ? 'col-resize' : tx >= l && tx <= r && ty >= o && ty <= u ? 'move' : ''
+      const linie = linieAllein(lage.gewaehlt)
+      zeiger = linie && linienGriffBei(linie, tx, ty, stand.current.kamera.zoom) ? 'grab' : griff ? GRIFF_ZEIGER[griff.name] : trenner !== null ? 'col-resize' : tx >= l && tx <= r && ty >= o && ty <= u ? 'move' : ''
     }
     if (stand.current.werkzeug === 'laser' && !leer.current) zeiger = 'none' // der rote Punkt ersetzt den Mauszeiger
     if (el.style.cursor !== zeiger) el.style.cursor = zeiger
@@ -855,6 +918,9 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
     } else if (a.art === 'skalieren') {
       if (!a.s) setVersteckt(new Set(a.originale.map((el) => el.id)))
       a.s = skalierung(a.griff, a.inhalt, tx - a.startX, ty - a.startY)
+    } else if (a.art === 'biegen') {
+      if (a.neu === a.f) setVersteckt(new Set([a.f.id]))
+      a.neu = linieGezogen(a.f, a.punkt, tx, ty, k.zoom, e.shiftKey)
     } else if (a.art === 'spalte') {
       if (a.neu === a.t) setVersteckt(new Set([a.t.id]))
       a.neu = mitSpaltenbreite(a.t, a.spalte, a.breite + innen(a.t, tx, ty)[0] - a.startX)
@@ -866,8 +932,10 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
         if (Math.hypot(tx - lx, ty - ly) * k.zoom >= LASSO_SCHRITT) a.lasso.push([tx, ty])
       }
     } else if (a.art === 'form') {
-      a.form.x2 = tx
-      a.form.y2 = ty
+      // Linie und Pfeil: Richtung rastet auf 15°-Schritte ein (mit Umschalt immer)
+      const [x2, y2] = a.form.form === 'linie' || a.form.form === 'pfeil' ? rasteRichtung(a.form.x1, a.form.y1, tx, ty, e.shiftKey) : [tx, ty]
+      a.form.x2 = x2
+      a.form.y2 = y2
     } else if (a.art === 'zeigen') {
       const letzter = a.spur.punkte[a.spur.punkte.length - 1]
       if (Math.hypot(tx - letzter[0], ty - letzter[1]) * k.zoom >= 0.5) a.spur.punkte.push([tx, ty, Date.now()])
@@ -971,6 +1039,13 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
         const neu = vorschau(a)
         neu.forEach(fest)
         beiErsetzen(a.originale, neu)
+      }
+      setVersteckt(new Set())
+    }
+    if (a.art === 'biegen') {
+      if (!abgebrochen && a.neu !== a.f && JSON.stringify(a.neu) !== JSON.stringify(a.f)) {
+        fest(a.neu)
+        beiErsetzen([a.f], [a.neu])
       }
       setVersteckt(new Set())
     }

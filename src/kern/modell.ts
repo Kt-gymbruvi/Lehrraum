@@ -1,4 +1,4 @@
-// Datenmodell der Tafel (Version 10). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 11). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
@@ -8,11 +8,12 @@
 // Version 7 bringt das Element Tabelle, sonst gleich wie Version 6; Version 8 bringt die PDF-Kennung am Bild einer
 // PDF-Seite, sonst gleich wie Version 7 – ältere PDF-Bilder haben keine und werden nicht erraten; Version 9 bringt
 // ausgefüllte Rechtecke, Ellipsen und Dreiecke, sonst gleich wie Version 8 – ältere Formen sind nicht ausgefüllt;
-// Version 10 bringt gestrichelte und gepunktete Formen und Pfeile mit zwei Spitzen, sonst gleich wie Version 9).
+// Version 10 bringt gestrichelte und gepunktete Formen und Pfeile mit zwei Spitzen, sonst gleich wie Version 9;
+// Version 11 bringt gebogene Linien und Pfeile, sonst gleich wie Version 10).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 10
+export const TAFEL_VERSION = 11
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -86,6 +87,8 @@ export type Form = Gemeinsam & {
   linie?: Exclude<Linienart, 'voll'>
   /** Nur Pfeil: auch am Anfang (x1, y1) eine Spitze (fehlt: nur am Ende) */
   beidseitig?: true
+  /** Nur Linie und Pfeil: gebogen – der Punkt der Kurve in ihrer Mitte (fehlt: gerade) */
+  bogen?: [number, number]
 }
 
 export type Bild = Gemeinsam & {
@@ -357,6 +360,7 @@ function pruefeElement(x: unknown): Element | null {
     if (x.gefuellt === true && FUELLBARE_FORMEN.includes(form)) f.gefuellt = true
     if (x.linie === 'gestrichelt' || x.linie === 'gepunktet') f.linie = x.linie
     if (x.beidseitig === true && form === 'pfeil') f.beidseitig = true
+    if ((form === 'linie' || form === 'pfeil') && Array.isArray(x.bogen) && istZahl(x.bogen[0]) && istZahl(x.bogen[1])) f.bogen = [x.bogen[0], x.bogen[1]]
     return f
   }
   return null
@@ -367,7 +371,7 @@ export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x :
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 10.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 11.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -376,7 +380,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8 || roh.version === 9 || roh.version === 10) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8 || roh.version === 9 || roh.version === 10 || roh.version === 11) {
     const ab5 = roh.version >= 5
     const ab6 = roh.version >= 6
     const ids = new Set<string>()

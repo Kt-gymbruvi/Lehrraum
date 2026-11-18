@@ -1,7 +1,7 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { anwenden, ausfuehren, leererVerlauf, rueckgaengig, wiederholen } from '../kern/befehle.ts'
-import { beruehrtRechteck, gesamtRahmen, oberstesBei, pfeilspitze, strichmuster, rahmen, textMass, trifft, verschoben } from '../kern/geometrie.ts'
+import { bogenPunkte, beruehrtRechteck, gebogen, gedreht, gesamtRahmen, kontrollpunkt, rasteRichtung, richtungsWinkel, skaliert, oberstesBei, pfeilspitze, strichmuster, rahmen, textMass, trifft, verschoben } from '../kern/geometrie.ts'
 import { MAX_SEITEN, istFuellbar, neueSeite, neuesTafelbild, pruefeTafel, schriftgroesse, type Element, type Form, type Strich, type Text } from '../kern/modell.ts'
 import { gehe, kopie, seiteDazu, seiteDoppelt, seiteSchieben, seiteWeg, type Buch } from '../kern/seiten.ts'
 import { ladeEinstellungen, ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
@@ -24,7 +24,7 @@ describe('Datenmodell', () => {
   it('wandelt Tafeln der Version 1 (ohne Seiten) in eine Seite um', () => {
     const alt = { schema: 'lehrraum/tafel', version: 1, id: 'alt', titel: 'Alt', elemente: [strich('a'), strich('b')], kamera: { x: 1, y: 2, zoom: 1.5 }, geaendertAm: '2026-11-11T10:00:00.000Z' }
     const t = pruefeTafel(alt)!
-    expect(t.version).toBe(10)
+    expect(t.version).toBe(11)
     expect(t.seiten).toHaveLength(1)
     expect(t.seiten[0].elemente.map((e) => e.id)).toEqual(['a', 'b'])
     expect(t).toMatchObject({ id: 'alt', titel: 'Alt', seiteNr: 0, kamera: { x: 1, y: 2, zoom: 1.5 }, fenster: [] })
@@ -116,7 +116,7 @@ describe('Geometrie von Text und Formen', () => {
     expect(roh({ ...form('r', 'rechteck'), gefuellt: 'ja' })!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt')
     expect(roh({ ...form('l', 'linie'), gefuellt: true })!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt') // Linien haben kein Inneres
     expect(roh(form('r', 'rechteck'), 8)!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt') // ältere Formen bleiben leer
-    expect(roh(form('r', 'rechteck'), 11)).toBeNull() // neuere Fassung: nicht raten
+    expect(roh(form('r', 'rechteck'), 12)).toBeNull() // neuere Fassung: nicht raten
     expect([form('a', 'rechteck'), form('b', 'ellipse'), form('c', 'dreieck'), form('d', 'pfeil')].map(istFuellbar)).toEqual([true, true, true, false])
 
     const r = form('r', 'rechteck', { x2: 200, y2: 200, gefuellt: true })
@@ -320,6 +320,64 @@ describe('Linienart und Pfeilspitzen', () => {
     await nutzer.click(knopf('Rückgängig'))
     await waitFor(async () => expect((await seite())[0]).toMatchObject({ linie: 'gepunktet' }))
   }, 20_000) // viele Schritte in der ganzen Tafel
+})
+
+describe('Winkel einrasten und gebogene Linien', () => {
+  it('rastet nahe an 15°-Schritten ein, sonst nicht; mit Umschalt immer; Winkel wie in Mathe', () => {
+    const [x, y] = rasteRichtung(0, 0, 100, -24) // ca. 13,5° → 15°
+    expect(richtungsWinkel(0, 0, x, y)).toBe(15)
+    expect(Math.hypot(x, y)).toBeCloseTo(Math.hypot(100, -24)) // Länge bleibt
+    expect(rasteRichtung(0, 0, 100, -20)).toEqual([100, -20]) // ca. 11,3°: frei
+    expect(richtungsWinkel(0, 0, ...rasteRichtung(0, 0, 100, -20, true))).toBe(15)
+    expect(rasteRichtung(0, 0, 100, 3)[1]).toBeCloseTo(0) // fast waagerecht → waagerecht
+    expect(richtungsWinkel(0, 0, 0, -10)).toBe(90)
+    expect(richtungsWinkel(0, 0, -10, 0)).toBe(180)
+    expect(richtungsWinkel(0, 0, 0, 10)).toBe(270)
+  })
+
+  it('Kurve durch Anfang, Mitte und Ende; Treffer, Rahmen, Verschieben, Drehen, Strecken nehmen den Bogen mit', () => {
+    const l = form('l', 'linie', { x1: 0, y1: 0, x2: 200, y2: 0, bogen: [100, -50] })
+    const p = bogenPunkte(l, 2)
+    expect(p[1]).toEqual([100, -50])
+    expect(kontrollpunkt(l)).toEqual([100, -100])
+    expect(trifft(l, 100, -50, 3)).toBe(true)
+    expect(trifft(l, 100, 0, 3)).toBe(false) // die Sehne ist nicht die Linie
+    expect(rahmen(l)[1]).toBeCloseTo(-52) // oben bis zur Kurve (mit halber Stärke)
+    expect(verschoben(l, 10, 5).bogen).toEqual([110, -45])
+    expect(skaliert(l, 0, 0, 2, 2, false).bogen).toEqual([200, -100])
+    const d = gedreht(l, 100, 0, 180)
+    expect(d.bogen![0]).toBeCloseTo(100)
+    expect(d.bogen![1]).toBeCloseTo(50)
+    expect(gebogen(l, 100, 3)).not.toHaveProperty('bogen') // nahe an der Geraden: wieder gerade
+    expect(gebogen(form('l', 'linie', { x1: 0, y1: 0, x2: 200, y2: 0 }), 100, 40).bogen).toEqual([100, 40])
+    // Pfeil: die Spitze folgt der Kurve (hier von oben her ins Ende)
+    const [a, b] = pfeilspitze({ ...l, form: 'pfeil' })
+    expect(Math.min(a[1], b[1])).toBeLessThan(-5)
+    // gespeichert nur bei Linie und Pfeil
+    const roh = (f: Record<string, unknown>) => pruefeTafel({ schema: 'lehrraum/tafel', version: 11, id: 't', seiten: [{ id: 's', elemente: [f] }] })!.seiten[0].elemente[0]
+    expect(roh({ ...form('p', 'pfeil'), bogen: [5, 6] })).toMatchObject({ bogen: [5, 6] })
+    expect(roh({ ...form('r', 'rechteck'), bogen: [5, 6] })).not.toHaveProperty('bogen')
+    expect(roh({ ...form('p', 'pfeil'), bogen: ['x', 6] })).not.toHaveProperty('bogen')
+  })
+
+  it('Tafel: Linie rastet beim Zeichnen ein; ausgewählt an der Mitte biegen und am Ende verschieben', async () => {
+    const nutzer = userEvent.setup()
+    render(<Tafel />)
+    await bereit()
+    await nutzer.click(knopf('Linie'))
+    ziehe([20, 100], [320, 107]) // knapp neben waagerecht
+    await waitFor(async () => expect((await seite())[0]).toMatchObject({ form: 'linie', x1: 20, y1: 100, y2: 100 }))
+    await nutzer.click(knopf('Auswahl'))
+    tippe(60, 100)
+    ziehe([170, 100], [170, 40]) // Griff in der Mitte
+    await waitFor(async () => expect((await seite())[0]).toMatchObject({ bogen: [170, 40] }))
+    const vorher = (await seite())[0] as Form
+    ziehe([vorher.x2, vorher.y2], [vorher.x2 + 40, vorher.y2 + 30]) // Griff am Ende
+    await waitFor(async () => expect((await seite())[0]).toMatchObject({ x1: 20, x2: vorher.x2 + 40, y2: vorher.y2 + 30, bogen: [170, 40] }))
+    await nutzer.click(knopf('Rückgängig'))
+    await nutzer.click(knopf('Rückgängig'))
+    await waitFor(async () => expect((await seite())[0]).not.toHaveProperty('bogen'))
+  }, 20_000)
 })
 
 describe('Ausgefüllte Formen auf der Tafel', () => {

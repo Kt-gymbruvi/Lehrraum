@@ -167,7 +167,7 @@ export function gedreht<T extends Element>(e: T, cx: number, cy: number, grad: n
   if (e.art === 'form' && !DREHBARE_FORMEN.includes(e.form)) {
     const [x1, y1] = drehePunkt(e.x1, e.y1, cx, cy, grad)
     const [x2, y2] = drehePunkt(e.x2, e.y2, cx, cy, grad)
-    return { ...e, x1, y1, x2, y2 }
+    return { ...e, x1, y1, x2, y2, ...(e.bogen ? { bogen: drehePunkt(e.bogen[0], e.bogen[1], cx, cy, grad) } : {}) }
   }
   const winkel = normiereWinkel(drehungVon(e) + grad)
   const ohne: Record<string, unknown> = { ...e }
@@ -191,7 +191,7 @@ export function rahmen(e: Element): [number, number, number, number] {
     const w = drehungVon(e)
     if (e.form === 'dreieck') return huelle(dreieckPunkte(e), r)
     // Pfeil: die Spitzen ragen seitlich über die Linie hinaus
-    if (e.form === 'pfeil') return huelle(formStrecken(e).flatMap(([ax, ay, bx, by]): [number, number][] => [[ax, ay], [bx, by]]), r)
+    if (e.form === 'pfeil' || e.bogen) return huelle(formStrecken(e).flatMap(([ax, ay, bx, by]): [number, number][] => [[ax, ay], [bx, by]]), r)
     if (w && e.form === 'rechteck') return huelle(rechteckEcken(e), r)
     if (w && e.form === 'ellipse') {
       const [mx, my] = formMitte(e)
@@ -223,7 +223,10 @@ export function gesamtRahmen(elemente: Element[]): [number, number, number, numb
 
 function trifftForm(f: Form, qx: number, qy: number, r: number): boolean {
   const grenze = r + f.staerke / 2
-  if (f.form === 'linie' || f.form === 'pfeil') return abstandZurStrecke(qx, qy, f.x1, f.y1, f.x2, f.y2) <= grenze
+  if (f.form === 'linie' || f.form === 'pfeil') {
+    if (!f.bogen) return abstandZurStrecke(qx, qy, f.x1, f.y1, f.x2, f.y2) <= grenze
+    return formStrecken(f).some(([ax, ay, bx, by]) => abstandZurStrecke(qx, qy, ax, ay, bx, by) <= grenze)
+  }
   // Den Punkt in die ungedrehte Lage der Form zurückdrehen
   const [fx, fy] = formMitte(f)
   const [x, y] = drehePunkt(qx, qy, fx, fy, -drehungVon(f))
@@ -299,7 +302,12 @@ export function streckeBeruehrt(ax: number, ay: number, bx: number, by: number, 
 
 /** Die sichtbaren Linien einer Form als Strecken [x1, y1, x2, y2] (die Ellipse als Vieleck) */
 function formStrecken(f: Form): [number, number, number, number][] {
-  if (f.form === 'linie') return [[f.x1, f.y1, f.x2, f.y2]]
+  const linie = (): [number, number, number, number][] => {
+    if (!f.bogen) return [[f.x1, f.y1, f.x2, f.y2]]
+    const p = bogenPunkte(f)
+    return p.slice(1).map((q, i) => [p[i][0], p[i][1], q[0], q[1]])
+  }
+  if (f.form === 'linie') return linie()
   if (f.form === 'pfeil') {
     const [a, b] = pfeilspitze(f)
     const spitzen: [number, number, number, number][] = [[a[0], a[1], f.x2, f.y2], [b[0], b[1], f.x2, f.y2]]
@@ -307,7 +315,7 @@ function formStrecken(f: Form): [number, number, number, number][] {
       const [c, d] = pfeilspitze(f, true)
       spitzen.push([c[0], c[1], f.x1, f.y1], [d[0], d[1], f.x1, f.y1])
     }
-    return [[f.x1, f.y1, f.x2, f.y2], ...spitzen]
+    return [...linie(), ...spitzen]
   }
   const ring = (p: [number, number][]) => p.map((a, i) => [...a, ...p[(i + 1) % p.length]] as [number, number, number, number])
   if (f.form === 'rechteck') return ring(rechteckEcken(f))
@@ -380,24 +388,82 @@ export function skaliert<T extends Element>(e: T, ax: number, ay: number, sx: nu
   }
   const staerke = mitStaerke ? klemme(e.staerke * sx, 0.5, 200) : e.staerke
   if (e.art === 'strich') return { ...e, staerke, punkte: e.punkte.map(([px, py, d]) => [x(px), y(py), d]) }
-  return { ...e, staerke, x1: x(e.x1), y1: y(e.y1), x2: x(e.x2), y2: y(e.y2) }
+  return { ...e, staerke, x1: x(e.x1), y1: y(e.y1), x2: x(e.x2), y2: y(e.y2), ...(e.bogen ? { bogen: [x(e.bogen[0]), y(e.bogen[1])] } : {}) }
 }
 
 /** Dasselbe Element (gleiche Kennung), um dx/dy verschoben */
 export function verschoben<T extends Element>(e: T, dx: number, dy: number): T {
   if (e.art === 'strich') return { ...e, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]) }
   if (istKasten(e)) return { ...e, x: e.x + dx, y: e.y + dy }
-  return { ...e, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy }
+  return { ...e, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy, ...(e.bogen ? { bogen: [e.bogen[0] + dx, e.bogen[1] + dy] } : {}) }
 }
 
 /** Die zwei Endpunkte der Pfeilspitze am Ende (x2, y2) – oder am Anfang (x1, y1) bei Pfeilen in beide Richtungen */
 export function pfeilspitze(f: Form, amAnfang = false): [[number, number], [number, number]] {
   const [vx, vy, sx, sy] = amAnfang ? [f.x2, f.y2, f.x1, f.y1] : [f.x1, f.y1, f.x2, f.y2]
-  const winkel = Math.atan2(sy - vy, sx - vx)
+  // Gebogen: die Spitze folgt der Kurve an ihrem Ende (Richtung vom Kontrollpunkt aus)
+  const [rx, ry] = f.bogen ? kontrollpunkt(f) : [vx, vy]
+  const winkel = Math.atan2(sy - ry, sx - rx)
   // Mit zwei Spitzen darf jede nur knapp die halbe Länge einnehmen
   const laenge = Math.min(Math.hypot(sx - vx, sy - vy) * (f.beidseitig ? 0.4 : 0.6), 10 + f.staerke * 3)
   const ecke = (w: number): [number, number] => [sx - laenge * Math.cos(winkel + w), sy - laenge * Math.sin(winkel + w)]
   return [ecke(0.45), ecke(-0.45)]
+}
+
+// ---------- Gebogene Linien und Pfeile ----------
+
+/** Kontrollpunkt der quadratischen Kurve, die durch Anfang, bogen (in der Mitte) und Ende geht */
+export function kontrollpunkt(f: Form): [number, number] {
+  if (!f.bogen) return [(f.x1 + f.x2) / 2, (f.y1 + f.y2) / 2]
+  return [2 * f.bogen[0] - (f.x1 + f.x2) / 2, 2 * f.bogen[1] - (f.y1 + f.y2) / 2]
+}
+
+/** Punkte entlang der gebogenen Linie (Anfang und Ende eingeschlossen) */
+export function bogenPunkte(f: Form, n = 24): [number, number][] {
+  const [cx, cy] = kontrollpunkt(f)
+  return Array.from({ length: n + 1 }, (_, i): [number, number] => {
+    const t = i / n
+    const [a, b, c] = [(1 - t) * (1 - t), 2 * t * (1 - t), t * t]
+    return [a * f.x1 + b * cx + c * f.x2, a * f.y1 + b * cy + c * f.y2]
+  })
+}
+
+/** Wo der Griff zum Biegen sitzt: in der Mitte der Linie bzw. der Kurve */
+export const biegeGriff = (f: Form): [number, number] => f.bogen ?? [(f.x1 + f.x2) / 2, (f.y1 + f.y2) / 2]
+
+/** Abstand (Tafel-Einheiten), unter dem eine fast gerade Linie wieder ganz gerade wird */
+export const GERADE_FANG = 6
+
+/** Dieselbe Linie bzw. derselbe Pfeil, so gebogen, dass die Mitte bei (x, y) liegt – nahe an der Geraden: gerade */
+export function gebogen(f: Form, x: number, y: number, fang = GERADE_FANG): Form {
+  const ohne: Form = { ...f }
+  delete ohne.bogen
+  if (abstandZurStrecke(x, y, f.x1, f.y1, f.x2, f.y2) <= fang) return ohne
+  return { ...ohne, bogen: [x, y] }
+}
+
+/** Linien und Pfeile rasten beim Zeichnen auf Vielfache von 15° ein, wenn sie höchstens 3° daneben liegen */
+export const WINKEL_RASTER = 15
+export const WINKEL_FANG = 3
+
+/**
+ * Endpunkt einer Linie von (x1, y1) nach (x2, y2) mit eingerasteter Richtung: liegt sie nahe an einem Vielfachen
+ * von 15°, zeigt sie genau dorthin (die Länge bleibt). immer (Umschalttaste): immer auf das nächste Vielfache.
+ */
+export function rasteRichtung(x1: number, y1: number, x2: number, y2: number, immer = false): [number, number] {
+  const d = Math.hypot(x2 - x1, y2 - y1)
+  if (d < 1e-9) return [x2, y2]
+  const w = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI
+  const ziel = Math.round(w / WINKEL_RASTER) * WINKEL_RASTER
+  if (!immer && Math.abs(w - ziel) > WINKEL_FANG) return [x2, y2]
+  const r = (ziel * Math.PI) / 180
+  return [x1 + d * Math.cos(r), y1 + d * Math.sin(r)]
+}
+
+/** Richtung einer Linie in ganzen Grad wie im Mathematikunterricht: 0° nach rechts, gegen den Uhrzeigersinn bis 359° */
+export const richtungsWinkel = (x1: number, y1: number, x2: number, y2: number): number => {
+  const w = Math.round((-Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI)
+  return ((w % 360) + 360) % 360
 }
 
 /** Strichmuster für gestrichelte und gepunktete Formen (für setLineDash, mit runden Enden gezeichnet) – leer: durchgezogen */

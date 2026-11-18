@@ -1,5 +1,5 @@
 // Zeichnet Elemente der Tafel auf ein Canvas – für die Zeichenfläche und für den PDF-Export.
-import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, pfeilspitze, rechteckEcken, stiftUmriss, strichmuster, ZEILENHOEHE } from '../kern/geometrie.ts'
+import { breite, dreieckPunkte, drehungVon, pfadAusPunkten, pfadAusUmriss, kontrollpunkt, pfeilspitze, rechteckEcken, stiftUmriss, strichmuster, ZEILENHOEHE } from '../kern/geometrie.ts'
 import { hintergrundMass, MARKER_DECKKRAFT, type Element, type Hintergrund, type Muster, type Seite, type Strich, type Tabelle } from '../kern/modell.ts'
 import { gitter, zellRand } from '../kern/tabelle.ts'
 import { bildquelle } from './bildquellen.ts'
@@ -126,7 +126,10 @@ export function zeichne(ctx: Ctx, e: Element, frisch = false) {
     else if (e.form === 'ellipse') ctx.ellipse((e.x1 + e.x2) / 2, (e.y1 + e.y2) / 2, Math.abs(e.x2 - e.x1) / 2, Math.abs(e.y2 - e.y1) / 2, (drehungVon(e) * Math.PI) / 180, 0, Math.PI * 2)
     else {
       ctx.moveTo(e.x1, e.y1)
-      ctx.lineTo(e.x2, e.y2)
+      if (e.bogen) {
+        const [cx, cy] = kontrollpunkt(e)
+        ctx.quadraticCurveTo(cx, cy, e.x2, e.y2)
+      } else ctx.lineTo(e.x2, e.y2)
     }
     if (e.gefuellt) {
       ctx.fillStyle = e.farbe

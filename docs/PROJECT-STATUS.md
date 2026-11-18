@@ -1,14 +1,23 @@
 # Projektstand – Lehrraum
 
 Stand: 18.11.2026 · live unter https://kt-gymbruvi.github.io/Lehrraum/ (`main` = `origin/main`, zuletzt veröffentlicht am 14.11.2026 mit Seitenformat und Hintergründen, Etappen 1–4) · Repository `Kt-gymbruvi/Lehrraum` (öffentlich), Deploy per GitHub Actions bei Push auf `main`.
-Tests: 25 Testdateien, 330 Tests grün (`npm test`); Build grün (`npm run build`).
+Tests: 25 Testdateien, 333 Tests grün (`npm test`); Build grün (`npm run build`).
 **Klassen mit Namen und Abgleich (SPEC Etappe 3)** ist veröffentlicht (14.11.2026) und bringt **Klasse Version 3**. **Zufall & Gruppen (SPEC Etappe 4)** ist veröffentlicht (14.11.2026). Verbesserter Handballen-Schutz und **PDF als Bild (Etappe A, Datenmodell Version 6)** sind veröffentlicht (14.11.2026): auf jedem Gerät die Seite einmal neu laden. **Tabelle (Etappe D, Datenmodell Version 7)** ist veröffentlicht (14.11.2026): auf jedem Gerät einmal neu laden. **Ein Passwort, ein Schlüsselbund (Etappe B)** ist veröffentlicht (14.11.2026, auch Notenbuch und Startseite). **Tafeln auf allen Geräten (Etappe C)** ist veröffentlicht (14.11.2026, Migration `012_tafeln.sql` ausgeführt).
 **Nach dem Veröffentlichen von Teil 2 und 3 (Datenmodell Version 3):** auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen merken) sind veröffentlicht, am Gerät aber noch nicht geprüft.
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
-## Gestrichelte und gepunktete Formen, Pfeile in beide Richtungen – noch nicht veröffentlicht (18.11.2026) – Datenmodell Version 10
+## Gebogene Linien/Pfeile, Einrasten auf 15°, rechte Leiste einspaltig – noch nicht veröffentlicht (18.11.2026) – Datenmodell Version 11
+- Wunsch der Lehrkraft: Vorschläge 1 (gebogener Pfeil) und 4 (Linie im festen Winkel); am iPad war die rechte Leiste zweispaltig und nahm der Tafel zu viel Platz.
+- **Rechte Leiste immer einspaltig:** Die Knöpfe schrumpfen mit der verfügbaren Höhe (bis 2,25 rem); unter 58 rem Fensterhöhe kleiner beschriftet, unter 50 rem nur noch Symbole (Name als Hinweis und für Vorleser). Im Browser gemessen: bei 1180 × 700 eine Spalte, 62 px breit, Knöpfe 48 px, kein Rollen; bei 1024 × 560 Knöpfe 38 px; bei 1180 × 880 mit Beschriftung, 54 px.
+- **Einrasten:** Linie und Pfeil zeigen beim Zeichnen genau auf ein Vielfaches von 15°, wenn sie höchstens 3° daneben liegen; mit Umschalt immer. Neben dem Ende steht dabei die Richtung in Grad (0° nach rechts, gegen den Uhrzeigersinn).
+- **Linie oder Pfeil allein ausgewählt:** statt der Rahmengriffe runde Griffe an beiden Enden (verschieben, verlängern, drehen – rastet ebenso ein) und ein blauer Griff in der Mitte zum **Biegen** (nur bei Linien, die lang genug sind, damit man sie daneben noch verschieben kann). Zurück zur Geraden: den Griff wieder auf die Sehne ziehen. Die Pfeilspitze folgt der Kurve.
+- **Datenmodell Version 11:** Form mit `bogen` (Punkt der Kurve in der Mitte, nur Linie und Pfeil; gezeichnet als quadratische Kurve). Ältere Tafeln laden unverändert. **Nach dem Veröffentlichen auf jedem Gerät einmal neu laden.**
+- Getestet: `npm test` (333 grün; neu: Einrasten und Winkel, Kurve samt Treffer/Rahmen/Verschieben/Drehen/Strecken/Spitze, Prüfung Version 11, Bedienung: eingerastete Linie, biegen, Ende ziehen, rückgängig), Build. Im Browser (Maus): Linie auf 15° eingerastet, Pfeil gebogen, Ende einer Linie auf waagerecht gezogen, rechte Leiste in drei Fenstergrößen.
+- **Nicht geprüft:** am iPad/SMART Board (Leiste in echter Safari-Höhe, Griffe mit Finger und Stift).
+
+## Gestrichelte und gepunktete Formen, Pfeile in beide Richtungen – veröffentlicht (18.11.2026) – Datenmodell Version 10
 - Wunsch der Lehrkraft: verschiedene Pfeilwerkzeuge, gestrichelte Linie, Pfeil in beide Richtungen.
 - **Werkzeuge:** Linie, Pfeil, Rechteck, Ellipse noch einmal antippen öffnet ein Feld: **Linienart** (durchgezogen, gestrichelt, gepunktet – gilt für alle Formen), beim Pfeil **eine oder beide Spitzen**, bei Rechteck/Ellipse wie bisher die **Füllung**. Das Feld bleibt offen, bis man außerhalb tippt. Die Symbole in der Leiste zeigen die Wahl (gestrichelte Linie, Doppelpfeil, ausgefülltes Rechteck); gemerkt je Gerät (`linienart`, `beidseitig`).
 - **An der Auswahl:** „Linienart“ schaltet ausgewählte Formen der Reihe nach um; bei Pfeilen „Zwei Spitzen“/„Eine Spitze“ und **„Richtung umkehren“** (Spitze ans andere Ende). Alles rückgängig zu machen.

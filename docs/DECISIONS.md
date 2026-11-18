@@ -4,6 +4,12 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-18 – Gebogene Linien, Einrasten, rechte Leiste (Datenmodell Version 11)
+- **Rechte Leiste immer einspaltig, Knöpfe schrumpfen** statt zwei Spalten: Am iPad nahm die zweite Spalte der Tafel zu viel Breite (Rückmeldung der Lehrkraft). Bei wenig Höhe nur noch Symbole – kleiner als 56 px, ausdrücklich so gewünscht.
+- **Bogen als Punkt auf der Kurve** (nicht als Kontrollpunkt): Der Griff liegt genau dort, wo man die Linie sieht, und Verschieben/Drehen/Strecken behandeln ihn wie die Endpunkte.
+- **Griffe an den Enden statt Rahmengriffe** bei einer einzelnen Linie: Rahmengriffe verzerren eine Linie nur indirekt, und ein Seitengriff läge bei einer Kurve auf dem Biegegriff.
+- **Einrasten mit 3° Fang** statt immer: So bleiben schräge Linien frei möglich, und die üblichen Winkel (0°, 15°, 30°, 45°, 90° …) treffen sich ohne Taste – am iPad gibt es keine Umschalttaste.
+
 ## 2026-11-18 – Linienart und Pfeilspitzen (Datenmodell Version 10)
 - **Eigenschaften der Formen statt neuer Werkzeuge:** „Doppelpfeil“ und „gestrichelte Linie“ sind Linie bzw. Pfeil mit einer Eigenschaft, gewählt im Feld des Werkzeugs. Die linke Leiste bleibt so lang wie bisher, und vorhandene Formen lassen sich an der Auswahl umstellen.
 - **Eine Linienart für alle Formen** (wie die Strichstärke): Wer gestrichelt zeichnet, will das meist für mehrere Formen. Verworfen: je Werkzeug eine eigene Linienart (schwer zu durchschauen, welche gerade gilt).
