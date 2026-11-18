@@ -4,6 +4,12 @@ Neue Entscheidungen oben anfügen: Datum, Entscheidung, Grund, verworfene Altern
 Grundsatzentscheidungen zur Plattform stehen in `../Kt-gymbruvi.github.io/docs/DECISIONS.md` (11.11.2026).
 
 
+## 2026-11-18 – Ausgefüllte Formen (Datenmodell Version 9)
+- **Deckend in der Randfarbe** statt durchscheinend: „ausgefüllt“ soll aussehen wie ausgemalt (Mengen, Punkte, Flächen in Skizzen). Wer etwas lesbar markieren will, nimmt den Textmarker.
+- **Neue Version 9** statt stillem Zusatzfeld: Ein Gerät mit älterer Fassung würde die Füllung sonst beim Speichern verlieren; so lehnt es neuere Tafeln beim Abgleich ab, bis es neu geladen ist.
+- **Eine Wahl für Rechteck und Ellipse** im Feld des Werkzeugs (wie Radierer/Auswahl) und ein Knopf an der Auswahl für vorhandene Formen – auch für Dreiecke aus dem Begradigen. Verworfen: eigene Werkzeuge „gefülltes Rechteck“ (linke Leiste würde länger).
+- **Ausgefüllt trifft auch innen** (Auswahl, Radierer), leer nur am Rand – sonst könnte man in einem leeren Rechteck nicht schreiben, ohne es zu treffen.
+
 ## 2026-11-18 – Lasso-Auswahl
 - **Lasso als zweite Art des Werkzeugs „Auswahl“**, nicht als eigenes Werkzeug: Die linke Leiste bleibt so kurz, und das Muster (gewähltes Werkzeug noch einmal antippen → Feld) kennt man schon vom Radierer.
 - **Überwiegend innen statt berührt:** Beim Rechteck genügt Berühren (schnell viel erwischen); beim Lasso zählt, ob mehr als die Hälfte der kennzeichnenden Punkte innen liegt – sonst käme beim Umkreisen eines Wortes jeder Strich mit, der nur hineinragt. Verworfen: vollständig innen (zu streng bei krakeligen Schleifen).

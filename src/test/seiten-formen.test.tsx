@@ -1,10 +1,10 @@
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { anwenden, ausfuehren, leererVerlauf, rueckgaengig, wiederholen } from '../kern/befehle.ts'
-import { gesamtRahmen, oberstesBei, pfeilspitze, rahmen, textMass, trifft, verschoben } from '../kern/geometrie.ts'
-import { MAX_SEITEN, neueSeite, neuesTafelbild, pruefeTafel, schriftgroesse, type Element, type Form, type Strich, type Text } from '../kern/modell.ts'
+import { beruehrtRechteck, gesamtRahmen, oberstesBei, pfeilspitze, rahmen, textMass, trifft, verschoben } from '../kern/geometrie.ts'
+import { MAX_SEITEN, istFuellbar, neueSeite, neuesTafelbild, pruefeTafel, schriftgroesse, type Element, type Form, type Strich, type Text } from '../kern/modell.ts'
 import { gehe, kopie, seiteDazu, seiteDoppelt, seiteSchieben, seiteWeg, type Buch } from '../kern/seiten.ts'
-import { ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
+import { ladeEinstellungen, ladeLetzteTafel, speichereTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
 import { vergissStift } from '../tafel/Zeichenflaeche.tsx'
 
@@ -24,7 +24,7 @@ describe('Datenmodell', () => {
   it('wandelt Tafeln der Version 1 (ohne Seiten) in eine Seite um', () => {
     const alt = { schema: 'lehrraum/tafel', version: 1, id: 'alt', titel: 'Alt', elemente: [strich('a'), strich('b')], kamera: { x: 1, y: 2, zoom: 1.5 }, geaendertAm: '2026-11-11T10:00:00.000Z' }
     const t = pruefeTafel(alt)!
-    expect(t.version).toBe(8)
+    expect(t.version).toBe(9)
     expect(t.seiten).toHaveLength(1)
     expect(t.seiten[0].elemente.map((e) => e.id)).toEqual(['a', 'b'])
     expect(t).toMatchObject({ id: 'alt', titel: 'Alt', seiteNr: 0, kamera: { x: 1, y: 2, zoom: 1.5 }, fenster: [] })
@@ -108,6 +108,28 @@ describe('Geometrie von Text und Formen', () => {
     const e = form('e', 'ellipse', { x2: 200, y2: 100 })
     expect(trifft(e, 200, 50, 3)).toBe(true)
     expect(trifft(e, 100, 50, 3)).toBe(false)
+  })
+
+  it('ausgefüllte Formen: Version 9, Prüfung, Treffer und Rahmen auch im Inneren', () => {
+    const roh = (f: Record<string, unknown>, version = 9) => pruefeTafel({ schema: 'lehrraum/tafel', version, id: 't', seiten: [{ id: 's', elemente: [f] }] })
+    expect(roh(form('r', 'rechteck', { gefuellt: true }))!.seiten[0].elemente[0]).toMatchObject({ gefuellt: true })
+    expect(roh({ ...form('r', 'rechteck'), gefuellt: 'ja' })!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt')
+    expect(roh({ ...form('l', 'linie'), gefuellt: true })!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt') // Linien haben kein Inneres
+    expect(roh(form('r', 'rechteck'), 8)!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt') // ältere Formen bleiben leer
+    expect(roh(form('r', 'rechteck'), 10)).toBeNull() // neuere Fassung: nicht raten
+    expect([form('a', 'rechteck'), form('b', 'ellipse'), form('c', 'dreieck'), form('d', 'pfeil')].map(istFuellbar)).toEqual([true, true, true, false])
+
+    const r = form('r', 'rechteck', { x2: 200, y2: 200, gefuellt: true })
+    expect(trifft(r, 100, 100, 3)).toBe(true) // ausgefüllt: das Innere zählt
+    expect(trifft(r, 260, 100, 3)).toBe(false)
+    const e = form('e', 'ellipse', { x2: 200, y2: 100, gefuellt: true })
+    expect(trifft(e, 100, 50, 3)).toBe(true)
+    expect(trifft(e, 5, 5, 0)).toBe(false) // Ecke außerhalb des Bogens
+    const d = form('d', 'dreieck', { x2: 200, y2: 100, gefuellt: true })
+    expect(trifft(d, 100, 70, 0)).toBe(true)
+    expect(trifft(d, 10, 10, 0)).toBe(false)
+    expect(beruehrtRechteck(r, [90, 90, 110, 110])).toBe(true) // Rahmen ganz im Inneren
+    expect(beruehrtRechteck(form('r', 'rechteck', { x2: 200, y2: 200 }), [90, 90, 110, 110])).toBe(false)
   })
 
   it('trifft Linien, Pfeile und Text; das oberste Element gewinnt', () => {
@@ -241,6 +263,37 @@ describe('Formen und Text auf der Tafel', () => {
     await waitFor(async () => expect(await seite()).toEqual([]))
     await nutzer.click(knopf('Rückgängig'))
     await waitFor(async () => expect(await seite()).toHaveLength(1))
+  })
+})
+
+describe('Ausgefüllte Formen auf der Tafel', () => {
+  it('Rechteck und Ellipse: Umriss oder ausgefüllt wählen (gemerkt); die Auswahl füllt aus und leert wieder', async () => {
+    const nutzer = userEvent.setup()
+    render(<Tafel />)
+    await bereit()
+    await nutzer.click(knopf('Rechteck'))
+    await nutzer.click(knopf('Rechteck')) // noch einmal: Umriss oder ausgefüllt
+    await nutzer.click(screen.getByRole('button', { name: 'Ausgefüllt' }))
+    expect(knopf('Rechteck').title).toContain('ausgefüllt')
+    ziehe([20, 10], [220, 90])
+    await nutzer.click(knopf('Ellipse')) // gilt für beide
+    ziehe([20, 110], [220, 190])
+    await waitFor(async () => expect((await seite()).map((e) => (e as Form).gefuellt)).toEqual([true, true]))
+    await waitFor(async () => expect((await ladeEinstellungen()).gefuellt).toBe(true))
+    await nutzer.click(knopf('Ellipse'))
+    await nutzer.click(screen.getByRole('button', { name: 'Umriss' }))
+    ziehe([20, 210], [220, 290])
+    await waitFor(async () => expect((await seite())[2]).not.toHaveProperty('gefuellt'))
+
+    // Auswahl: Antippen im Inneren trifft die ausgefüllte Form; „Nur Umriss“ und „Ausfüllen“ schalten um
+    await nutzer.click(knopf('Auswahl'))
+    tippe(120, 50)
+    await nutzer.click(knopf('Nur Umriss'))
+    await waitFor(async () => expect((await seite())[0]).not.toHaveProperty('gefuellt'))
+    await nutzer.click(knopf('Ausfüllen'))
+    await waitFor(async () => expect((await seite())[0]).toMatchObject({ gefuellt: true }))
+    await nutzer.click(knopf('Rückgängig'))
+    await waitFor(async () => expect((await seite())[0]).not.toHaveProperty('gefuellt'))
   })
 })
 

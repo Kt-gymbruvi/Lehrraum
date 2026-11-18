@@ -2,6 +2,7 @@
 // Zwei Aufklappfelder rechts neben der Leiste:
 //   Auswahl: erneutes Antippen der gewählten Auswahl öffnet Rechteck oder Lasso.
 //   Radierer: erneutes Antippen des gewählten Radierers öffnet Art und Größe.
+//   Rechteck, Ellipse: erneutes Antippen öffnet Umriss oder Ausgefüllt.
 //   Mehr: weitere Farben, eigene Farbplätze mit dem Farbwähler des Geräts und ein Regler für die Stärke.
 // Ein Feld schließt sich beim Antippen außerhalb (auch der Tafel), mit Escape und beim Wechsel des Werkzeugs.
 import { useEffect, useRef, useState } from 'react'
@@ -25,6 +26,9 @@ type Props = {
   /** Auswahl mit Rechteck oder Lasso */
   auswahlArt: AuswahlArt
   beiAuswahlArt: (a: AuswahlArt) => void
+  /** Neue Rechtecke und Ellipsen ausgefüllt? */
+  gefuellt: boolean
+  beiGefuellt: (g: boolean) => void
   kannZurueck: boolean
   kannVor: boolean
   leer: boolean
@@ -60,7 +64,11 @@ export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; tast
   { wert: 'laser', name: 'Laserpointer', symbol: 'laser', taste: 'Z' },
 ]
 
-type Feldart = 'auswahl' | 'radierer' | 'mehr'
+/** Werkzeuge, deren Feld sich durch erneutes Antippen öffnet – mit der Höhe des Feldes */
+const FELD_HOEHE = { auswahl: 140, radierer: 240, rechteck: 140, ellipse: 140 } as const
+type Werkzeugfeld = keyof typeof FELD_HOEHE
+const hatFeld = (w: Werkzeug): w is Werkzeugfeld => w in FELD_HOEHE
+type Feldart = Werkzeugfeld | 'mehr'
 
 const AUSWAHL_WAHL: { wert: AuswahlArt; name: string; symbol: SymbolName; titel: string }[] = [
   { wert: 'rechteck', name: 'Rechteck', symbol: 'auswahl', titel: 'Rechteck aufziehen: alles, was es berührt, wird ausgewählt' },
@@ -143,11 +151,11 @@ function MehrFeld(p: Props) {
 }
 
 export function Werkzeugleiste(p: Props) {
-  const ausloeser = { auswahl: useRef<HTMLButtonElement>(null), radierer: useRef<HTMLButtonElement>(null), mehr: useRef<HTMLButtonElement>(null) }
+  const ausloeser = { auswahl: useRef<HTMLButtonElement>(null), radierer: useRef<HTMLButtonElement>(null), rechteck: useRef<HTMLButtonElement>(null), ellipse: useRef<HTMLButtonElement>(null), mehr: useRef<HTMLButtonElement>(null) }
   const feldRef = useRef<HTMLDivElement>(null)
   /** Offenes Feld mit seiner Lage (Bildschirm) oder null */
   const [feld, setFeld] = useState<{ art: Feldart; links: number; oben: number } | null>(null)
-  // Die Felder von Radierer und Auswahl gehören zu ihrem Werkzeug: wird ein anderes gewählt, sind sie zu
+  // Die Felder der Werkzeuge gehören zu ihrem Werkzeug: wird ein anderes gewählt, sind sie zu
   const offen = feld && (feld.art === 'mehr' || p.werkzeug === feld.art) ? feld : null
   const offeneArt = offen?.art ?? null
 
@@ -163,8 +171,8 @@ export function Werkzeugleiste(p: Props) {
   }
 
   const waehle = (w: Werkzeug) => {
-    if ((w === 'radierer' || w === 'auswahl') && p.werkzeug === w) return umschalten(w, w === 'radierer' ? 240 : 140)
-    if (offeneArt === 'radierer' || offeneArt === 'auswahl' || w !== p.werkzeug) setFeld(null)
+    if (hatFeld(w) && p.werkzeug === w) return umschalten(w, FELD_HOEHE[w])
+    if ((offeneArt && offeneArt !== 'mehr') || w !== p.werkzeug) setFeld(null)
     p.beiWerkzeug(w)
   }
   const auswahlName = AUSWAHL_WAHL.find((a) => a.wert === p.auswahlArt)?.name ?? ''
@@ -175,49 +183,38 @@ export function Werkzeugleiste(p: Props) {
   return (
     <aside className="werkzeugleiste links" aria-label="Zeichenwerkzeuge">
       <div className="gruppe" role="group" aria-label="Werkzeug">
-        {WERKZEUGE.map((w) =>
-          w.wert === 'auswahl' ? (
+        {WERKZEUGE.map((w) => {
+          const feld = hatFeld(w.wert) ? w.wert : null
+          const symbol = w.wert === 'auswahl' && p.auswahlArt === 'lasso' ? 'lasso' : w.wert === 'radierer' && p.radierer.art === 'schwamm' ? 'schwamm' : w.symbol
+          const voll = p.gefuellt && (w.wert === 'rechteck' || w.wert === 'ellipse')
+          const titel =
+            w.wert === 'auswahl'
+              ? `${w.name}: ${auswahlName} (${w.taste}) – noch einmal antippen: Rechteck oder Lasso`
+              : w.wert === 'radierer'
+                ? `${w.name}: ${artName} (${w.taste}) – noch einmal antippen: Art und Größe`
+                : w.wert === 'rechteck' || w.wert === 'ellipse'
+                  ? `${w.name}${p.gefuellt ? ', ausgefüllt' : ''} (${w.taste}) – noch einmal antippen: Umriss oder ausgefüllt`
+                  : w.wert === 'laser'
+                    ? `${w.name} (${w.taste}) – zeigen, die Spur verschwindet von selbst`
+                    : w.wert === 'tabelle'
+                      ? `${w.name} (${w.taste}) – antippen, Zeilen und Spalten wählen; Zellen antippen zum Schreiben`
+                      : `${w.name} (${w.taste})`
+          return (
             <button
               key={w.wert}
-              ref={ausloeser.auswahl}
+              ref={feld ? ausloeser[feld] : undefined}
               type="button"
-              className="leisten-knopf hat-feld"
+              className={feld ? 'leisten-knopf hat-feld' : 'leisten-knopf'}
               aria-pressed={p.werkzeug === w.wert}
               aria-label={w.name}
-              aria-expanded={offeneArt === 'auswahl'}
-              title={`${w.name}: ${auswahlName} (${w.taste}) – noch einmal antippen: Rechteck oder Lasso`}
+              aria-expanded={feld ? offeneArt === feld : undefined}
+              title={titel}
               onClick={() => waehle(w.wert)}
             >
-              <Symbol name={p.auswahlArt === 'lasso' ? 'lasso' : 'auswahl'} />
+              <Symbol name={symbol} voll={voll} />
             </button>
-          ) : w.wert === 'radierer' ? (
-            <button
-              key={w.wert}
-              ref={ausloeser.radierer}
-              type="button"
-              className="leisten-knopf hat-feld"
-              aria-pressed={p.werkzeug === w.wert}
-              aria-label={w.name}
-              aria-expanded={offeneArt === 'radierer'}
-              title={`${w.name}: ${artName} (${w.taste}) – noch einmal antippen: Art und Größe`}
-              onClick={() => waehle(w.wert)}
-            >
-              <Symbol name={p.radierer.art === 'schwamm' ? 'schwamm' : 'radierer'} />
-            </button>
-          ) : (
-            <button
-              key={w.wert}
-              type="button"
-              className="leisten-knopf"
-              aria-pressed={p.werkzeug === w.wert}
-              aria-label={w.name}
-              title={w.wert === 'laser' ? `${w.name} (${w.taste}) – zeigen, die Spur verschwindet von selbst` : w.wert === 'tabelle' ? `${w.name} (${w.taste}) – antippen, Zeilen und Spalten wählen; Zellen antippen zum Schreiben` : `${w.name} (${w.taste})`}
-              onClick={() => waehle(w.wert)}
-            >
-              <Symbol name={w.symbol} />
-            </button>
-          ),
-        )}
+          )
+        })}
         <button type="button" className="leisten-knopf" aria-label="Bild einfügen" title="Bild einfügen (auch per Einfügen aus der Zwischenablage oder Hineinziehen)" onClick={p.beiBild}>
           <Symbol name="bild" />
         </button>
@@ -279,11 +276,31 @@ export function Werkzeugleiste(p: Props) {
             ref={feldRef}
             className="aufklappfeld"
             role="dialog"
-            aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : offen.art === 'auswahl' ? 'Art der Auswahl' : 'Mehr Farben und Stärken'}
+            aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : offen.art === 'auswahl' ? 'Art der Auswahl' : offen.art === 'mehr' ? 'Mehr Farben und Stärken' : 'Umriss oder ausgefüllt'}
             style={{ left: offen.links, top: offen.oben }}
           >
             {offen.art === 'mehr' ? (
               <MehrFeld {...p} />
+            ) : offen.art === 'rechteck' || offen.art === 'ellipse' ? (
+              <div className="feld-reihe" role="group" aria-label="Füllung">
+                {[false, true].map((g) => (
+                  <button
+                    key={String(g)}
+                    type="button"
+                    className="leisten-knopf mit-text"
+                    aria-pressed={p.gefuellt === g}
+                    aria-label={g ? 'Ausgefüllt' : 'Umriss'}
+                    title={g ? 'Innen mit der Farbe ausgefüllt' : 'Nur der Umriss – innen frei zum Hineinschreiben'}
+                    onClick={() => {
+                      p.beiGefuellt(g)
+                      setFeld(null)
+                    }}
+                  >
+                    <Symbol name={offen.art === 'ellipse' ? 'ellipse' : 'rechteck'} voll={g} />
+                    <span>{g ? 'Ausgefüllt' : 'Umriss'}</span>
+                  </button>
+                ))}
+              </div>
             ) : offen.art === 'auswahl' ? (
               <div className="feld-reihe" role="group" aria-label="Art der Auswahl">
                 {AUSWAHL_WAHL.map((a) => (

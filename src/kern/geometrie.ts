@@ -227,6 +227,7 @@ function trifftForm(f: Form, qx: number, qy: number, r: number): boolean {
   const [x, y] = drehePunkt(qx, qy, fx, fy, -drehungVon(f))
   if (f.form === 'dreieck') {
     const p = dreieckPunkte({ ...f, drehung: 0 })
+    if (f.gefuellt && imDreieck(x, y, p)) return true
     return [0, 1, 2].some((i) => abstandZurStrecke(x, y, p[i][0], p[i][1], p[(i + 1) % 3][0], p[(i + 1) % 3][1]) <= grenze)
   }
   const [l, o, re, u] = [Math.min(f.x1, f.x2), Math.min(f.y1, f.y2), Math.max(f.x1, f.x2), Math.max(f.y1, f.y2)]
@@ -234,12 +235,18 @@ function trifftForm(f: Form, qx: number, qy: number, r: number): boolean {
     // nur der Rand zählt – das Innere bleibt frei, damit man hineinschreiben und dort radieren kann
     const aussen = x >= l - grenze && x <= re + grenze && y >= o - grenze && y <= u + grenze
     const innen = x > l + grenze && x < re - grenze && y > o + grenze && y < u - grenze
-    return aussen && !innen
+    return aussen && (!innen || !!f.gefuellt) // ausgefüllt: auch das Innere
   }
   // Ellipse: Abstand vom Rand näherungsweise über den normierten Radius
   const [mx, my, a, b] = [(l + re) / 2, (o + u) / 2, Math.max(1e-6, (re - l) / 2), Math.max(1e-6, (u - o) / 2)]
   const n = Math.hypot((x - mx) / a, (y - my) / b)
-  return Math.abs(n - 1) * Math.min(a, b) <= grenze
+  return (!!f.gefuellt && n <= 1) || Math.abs(n - 1) * Math.min(a, b) <= grenze
+}
+
+/** Liegt (x, y) im Dreieck p? (Vorzeichen der drei Kreuzprodukte) */
+function imDreieck(x: number, y: number, p: [number, number][]): boolean {
+  const k = [0, 1, 2].map((i) => (p[(i + 1) % 3][0] - p[i][0]) * (y - p[i][1]) - (p[(i + 1) % 3][1] - p[i][1]) * (x - p[i][0]))
+  return k.every((v) => v >= 0) || k.every((v) => v <= 0)
 }
 
 /** Berührt ein Kreis mit Mittelpunkt (x, y) und Radius r das Element? (Radierer und Auswahl) */
@@ -337,6 +344,8 @@ export function beruehrtRechteck(e: Element, r: Rechteck): boolean {
   }
   if (e.art === 'form') {
     const g = erweitert(r, e.staerke / 2)
+    // Ausgefüllt: auch ein Rahmen ganz im Inneren berührt die Form
+    if (e.gefuellt && trifftForm(e, (r[0] + r[2]) / 2, (r[1] + r[3]) / 2, 0)) return true
     return formStrecken(e).some(([ax, ay, bx, by]) => streckeBeruehrt(ax, ay, bx, by, g))
   }
   const g = erweitert(r, breite(e) / 2)

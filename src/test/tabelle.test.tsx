@@ -89,7 +89,7 @@ describe('Tabelle – Logik', () => {
   it('wird gespeichert und geprüft; Unsinn fällt weg', () => {
     const t = { ...mitZelle(t3(), 0, 1, 'Art'), drehung: 30 }
     const tafel = { ...neuesTafelbild(), seiten: [neueSeite([t])] }
-    expect(tafel.version).toBe(8)
+    expect(tafel.version).toBe(9)
     expect(pruefeTafel(JSON.parse(JSON.stringify(tafel)))).toEqual(tafel)
     const roh = (x: object) => pruefeTafel({ ...tafel, seiten: [{ id: 'a', elemente: [{ ...t, ...x }] }] })!.seiten[0].elemente
     expect(roh({ spalten: [] })).toEqual([])

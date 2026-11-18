@@ -134,6 +134,10 @@ export function zeichne(ctx: Ctx, e: Element, frisch = false) {
         ctx.lineTo(b[0], b[1])
       }
     }
+    if (e.gefuellt) {
+      ctx.fillStyle = e.farbe
+      ctx.fill()
+    }
     ctx.stroke()
     return
   }

@@ -30,6 +30,8 @@ const ZEICHNUNGEN = {
   pfeil: 'M5 19L19 5M10 5h9v9',
   rechteck: 'M4 6h16v12H4z',
   ellipse: 'M12 5c5 0 9 3 9 7s-4 7-9 7-9-3-9-7 4-7 9-7z',
+  // Ausfüllen: Fläche mit Schraffur
+  fuellen: 'M4 4h16v16H4zM4 12l8-8M4 20L20 4M12 20l8-8',
   duplizieren: 'M8 8h12v12H8zM16 8V4H4v12h4',
   kopieren: 'M9 3h6v3H9zM9 4.5H6v16h12v-16h-3M9.5 11h5M9.5 15h5',
   einfuegen: 'M9 3h6v3H9zM9 4.5H6v16h12v-16h-3M12 9.5v7M9 13.5l3 3 3-3',
@@ -86,9 +88,10 @@ const ZEICHNUNGEN = {
 
 export type SymbolName = keyof typeof ZEICHNUNGEN
 
-export function Symbol({ name }: { name: SymbolName }) {
+/** voll: die Zeichnung ausgefüllt (z. B. ausgefülltes Rechteck) */
+export function Symbol({ name, voll = false }: { name: SymbolName; voll?: boolean }) {
   return (
-    <svg className="symbol" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
+    <svg className="symbol" viewBox="0 0 24 24" fill={voll ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false">
       <path d={ZEICHNUNGEN[name]} />
     </svg>
   )

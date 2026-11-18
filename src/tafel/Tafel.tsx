@@ -12,7 +12,7 @@ import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, textMass, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import { alsHintergrundBefehl, aufsBlattBefehl, begrenzt, bildHintergrund, bildHintergrundBefehl, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
 import { geaendert, vorlageAus, type Klasse } from '../kern/klassen.ts'
-import { benutzteDateien, MAX_SEITEN, MAX_TEXT, neueId, neuesTafelbild, schriftgroesse, TABELLE_MAX_SPALTEN, TABELLE_MAX_ZEILEN, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tabelle, type Tafelbild } from '../kern/modell.ts'
+import { benutzteDateien, istFuellbar, MAX_SEITEN, MAX_TEXT, neueId, neuesTafelbild, schriftgroesse, TABELLE_MAX_SPALTEN, TABELLE_MAX_ZEILEN, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tabelle, type Tafelbild } from '../kern/modell.ts'
 import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
@@ -88,6 +88,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   const [staerke, setStaerke] = useState<number>(STANDARD_EINSTELLUNGEN.staerke)
   const [radierer, setRadierer] = useState<Radierer>(STANDARD_EINSTELLUNGEN.radierer)
   const [auswahlArt, setAuswahlArt] = useState<AuswahlArt>(STANDARD_EINSTELLUNGEN.auswahl)
+  const [gefuellt, setGefuellt] = useState<boolean>(STANDARD_EINSTELLUNGEN.gefuellt)
   const [eigeneFarben, setEigeneFarben] = useState<string[]>([])
   const [auswahlRoh, setAuswahl] = useState<string[]>([])
   const [speicher, setSpeicher] = useState<Speicherstand>('laedt')
@@ -164,8 +165,8 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   const einstellungenDa = useRef(false)
   useEffect(() => {
     if (!einstellungenDa.current) return
-    merkeEinstellungen({ werkzeug, farbe, staerke, radierer, auswahl: auswahlArt }).catch(() => undefined) // misslingt es, startet die Tafel eben wie neu
-  }, [werkzeug, farbe, staerke, radierer, auswahlArt])
+    merkeEinstellungen({ werkzeug, farbe, staerke, radierer, auswahl: auswahlArt, gefuellt }).catch(() => undefined) // misslingt es, startet die Tafel eben wie neu
+  }, [werkzeug, farbe, staerke, radierer, auswahlArt, gefuellt])
 
   // ---------- Laden: zuletzt benutzte Tafel oder eine neue ----------
   useEffect(() => {
@@ -189,6 +190,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
         setStaerke(e.staerke)
         setRadierer(e.radierer)
         setAuswahlArt(e.auswahl)
+        setGefuellt(e.gefuellt)
         einstellungenDa.current = true
         const t = gefunden ?? neuesTafelbild()
         if (!gefunden) void merkeFreieTafel(t.id).catch(() => undefined) // neue freie Tafel: gleich festhalten, welche es ist
@@ -759,6 +761,16 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
     kamera.x + inhalt[2] * kamera.zoom + AUSWAHL_RAND,
     kamera.y + inhalt[3] * kamera.zoom + AUSWAHL_RAND,
   ]
+  // Ausgewählte Rechtecke, Ellipsen, Dreiecke: ausfüllen oder nur den Umriss lassen (alle zusammen)
+  const fuellbare = gewaehlte.filter(istFuellbar)
+  const alleGefuellt = fuellbare.length > 0 && fuellbare.every((f) => f.gefuellt)
+  const fuelle = () => {
+    const neu = fuellbare.map((f) => {
+      const { gefuellt: _weg, ...rest } = f
+      return alleGefuellt ? rest : { ...rest, gefuellt: true as const }
+    })
+    beiErsetzen(fuellbare, neu)
+  }
   const eineTabelle = gewaehlte.length === 1 && gewaehlte[0].art === 'tabelle' ? gewaehlte[0] : null
   /** Befehle für eine ausgewählte Tabelle; jeder ist ein Schritt im Verlauf (Zeilen und Spalten am Ende) */
   const tabellenKnoepfe = (t: Tabelle): Befehlsknopf[] => {
@@ -804,6 +816,13 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
               setAuswahl([])
             },
           },
+        ]
+      : []),
+    ...(fuellbare.length
+      ? [
+          alleGefuellt
+            ? { name: 'Nur Umriss', symbol: 'rechteck' as const, titel: 'Füllung entfernen – nur der Umriss bleibt', tun: fuelle }
+            : { name: 'Ausfüllen', symbol: 'fuellen' as const, titel: 'Innen mit der Farbe ausfüllen', tun: fuelle },
         ]
       : []),
     ...(eineTabelle ? tabellenKnoepfe(eineTabelle) : []),
@@ -898,6 +917,8 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
           beiRadierer={setRadierer}
           auswahlArt={auswahlArt}
           beiAuswahlArt={setAuswahlArt}
+          gefuellt={gefuellt}
+          beiGefuellt={setGefuellt}
           eigeneFarben={eigeneFarben}
           beiEigeneFarbe={waehleEigeneFarbe}
           kannZurueck={verlauf.zurueck.length > 0}
@@ -940,6 +961,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
               staerke={staerke}
               radierer={radierer}
               auswahlArt={auswahlArt}
+              gefuellt={gefuellt}
               auswahl={auswahl}
               beiHinzu={beiHinzu}
               beiRadieren={entferne}

@@ -1,4 +1,4 @@
-// Datenmodell der Tafel (Version 8). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 9). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
@@ -6,11 +6,12 @@
 // ohne Seitenformat und Muster – sie wird zu „unendlich“ ohne Muster, so dass alte Tafeln genau so bleiben, wie sie waren;
 // bis Version 5 konnte eine PDF-Seite Hintergrund sein – sie wird zu einem Bild-Element auf einer Seite mit eigenem Blattmaß;
 // Version 7 bringt das Element Tabelle, sonst gleich wie Version 6; Version 8 bringt die PDF-Kennung am Bild einer
-// PDF-Seite, sonst gleich wie Version 7 – ältere PDF-Bilder haben keine und werden nicht erraten).
+// PDF-Seite, sonst gleich wie Version 7 – ältere PDF-Bilder haben keine und werden nicht erraten; Version 9 bringt
+// ausgefüllte Rechtecke, Ellipsen und Dreiecke, sonst gleich wie Version 8 – ältere Formen sind nicht ausgefüllt).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 8
+export const TAFEL_VERSION = 9
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -52,6 +53,9 @@ export const FORMEN = ['rechteck', 'ellipse', 'linie', 'pfeil', 'dreieck'] as co
 export type Formart = (typeof FORMEN)[number]
 /** Formen mit eigener Drehung; Linie und Pfeil werden gedreht, indem sich ihre Endpunkte bewegen */
 export const DREHBARE_FORMEN: readonly Formart[] = ['rechteck', 'ellipse', 'dreieck']
+/** Geschlossene Formen, die sich ausfüllen lassen */
+export const FUELLBARE_FORMEN: readonly Formart[] = ['rechteck', 'ellipse', 'dreieck']
+export const istFuellbar = (e: Element): e is Form => e.art === 'form' && FUELLBARE_FORMEN.includes(e.form)
 
 export type Form = Gemeinsam & {
   art: 'form'
@@ -70,6 +74,8 @@ export type Form = Gemeinsam & {
    * fehlt: 0,5). So lässt sich jedes Dreieck darstellen – die längste Seite als Grundseite, gedreht.
    */
   spitze?: number
+  /** Nur Rechteck, Ellipse, Dreieck: innen mit der Farbe ausgefüllt (fehlt: nur der Umriss) */
+  gefuellt?: true
 }
 
 export type Bild = Gemeinsam & {
@@ -338,6 +344,7 @@ function pruefeElement(x: unknown): Element | null {
     if (!form || !istStaerke(x.staerke) || ![x.x1, x.y1, x.x2, x.y2].every(istZahl)) return null
     const f: Form = { art: 'form', id: x.id, form, x1: x.x1 as number, y1: x.y1 as number, x2: x.x2 as number, y2: x.y2 as number, farbe: x.farbe, staerke: x.staerke, ...zusatz(x, DREHBARE_FORMEN.includes(form)) }
     if (form === 'dreieck' && istZahl(x.spitze) && x.spitze !== 0.5) f.spitze = Math.min(1, Math.max(0, x.spitze))
+    if (x.gefuellt === true && FUELLBARE_FORMEN.includes(form)) f.gefuellt = true
     return f
   }
   return null
@@ -348,7 +355,7 @@ export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x :
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 7.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 9.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -357,7 +364,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8 || roh.version === 9) {
     const ab5 = roh.version >= 5
     const ab6 = roh.version >= 6
     const ids = new Set<string>()
