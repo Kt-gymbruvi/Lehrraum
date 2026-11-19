@@ -48,7 +48,7 @@ describe('PDF-Seiten – Logik', () => {
         { id: 'e', elemente: [], hintergrund: hg() }, // eigenes Bild bleibt Hintergrund
       ],
     })!
-    expect(t.version).toBe(11)
+    expect(t.version).toBe(12)
     const [a, b, c, d, e] = t.seiten
     expect(a.hintergrund).toBeUndefined()
     expect(a.blatt).toEqual({ b: 794, h: 1123 })

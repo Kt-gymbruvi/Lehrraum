@@ -3,7 +3,8 @@
 import type { Element, Hintergrund, Muster } from './modell.ts'
 
 export type Befehl =
-  | { art: 'hinzufuegen'; elemente: Element[] }
+  /** stelle: an dieser Stelle der Liste einfügen (fehlt: ganz oben) – gefüllte Flächen liegen unter den Linien */
+  | { art: 'hinzufuegen'; elemente: Element[]; stelle?: number }
   /** stellen: an welcher Stelle der Liste das Element lag (für das Wiederherstellen in gleicher Reihenfolge) */
   | { art: 'entfernen'; eintraege: { stelle: number; element: Element }[] }
   /** Elemente durch geänderte Fassungen mit derselben Kennung ersetzen (verschieben, umfärben, Text ändern) */
@@ -71,7 +72,11 @@ function ordne(elemente: Element[], reihenfolge: string[]): Element[] {
 }
 
 export function anwenden(elemente: Element[], b: Befehl): Element[] {
-  if (b.art === 'hinzufuegen') return [...elemente, ...b.elemente]
+  if (b.art === 'hinzufuegen') {
+    if (b.stelle === undefined) return [...elemente, ...b.elemente]
+    const stelle = Math.min(Math.max(0, b.stelle), elemente.length)
+    return [...elemente.slice(0, stelle), ...b.elemente, ...elemente.slice(stelle)]
+  }
   if (b.art === 'ersetzen') return tausche(elemente, b.nachher)
   if (b.art === 'hintergrund') {
     const weg = new Set((b.entfernt ?? []).map((e) => e.element.id))

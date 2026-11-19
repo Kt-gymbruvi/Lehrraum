@@ -152,6 +152,17 @@ export function zeichne(ctx: Ctx, e: Element, frisch = false) {
     }
     return
   }
+  if (e.flaeche) {
+    // Gefüllte Fläche: Umriss und Löcher (gerade-ungerade), dazu ein schmaler Rand in Farbe, der unter die Linien reicht
+    ctx.beginPath()
+    for (const ring of [e.punkte, ...(e.loecher ?? [])]) vieleck(ctx, ring.map(([x, y]): [number, number] => [x, y]))
+    ctx.fillStyle = e.farbe
+    ctx.fill('evenodd')
+    ctx.strokeStyle = e.farbe
+    ctx.lineWidth = e.staerke
+    ctx.stroke()
+    return
+  }
   let p = frisch ? undefined : pfade.get(e)
   if (!p) {
     p = strichPfad(e)

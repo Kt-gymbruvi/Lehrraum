@@ -140,7 +140,7 @@ export const beginneWischzug = (elemente: Element[]): Wischzug => ({ elemente, h
 export function wischeWeiter(z: Wischzug, ax: number, ay: number, bx: number, by: number, r: number): boolean {
   let geaendert = false
   const neu = z.elemente.flatMap((e): Element[] => {
-    if (e.art !== 'strich') return [e]
+    if (e.art !== 'strich' || e.flaeche) return [e] // eine gefüllte Fläche wird nicht zerschnitten
     const teile = wische(e, ax, ay, bx, by, r)
     if (!teile) return [e]
     geaendert = true

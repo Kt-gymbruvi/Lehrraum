@@ -1030,6 +1030,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
               beiRadieren={entferne}
               beiBefehl={fuehreAus}
               beiErsetzen={beiErsetzen}
+              beiHinweis={(text) => setMeldung({ text, fehler: true })}
               beiAuswahl={setAuswahl}
               beiKamera={setKamera}
               blatt={blatt}

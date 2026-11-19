@@ -37,8 +37,10 @@ import { useEffect, useLayoutEffect, useRef, useState, type PointerEvent as Reac
 import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_TREFFER, GRIFF_ZEIGER, griffBei, griffe, imLasso, mitGruppen, nurEcken, skalierung, type AuswahlArt, type Griffname, type Skalierung } from '../kern/auswahl.ts'
 import { biegeGriff, breite, beruehrtRechteck, gebogen, GERADE_FANG, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rasteRichtung, rechteckAus, richtungsWinkel, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
+import { freieFlaeche, umrissAusMaske } from '../kern/flaeche.ts'
+import { linienRaster } from './fuellraster.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
-import { fuelleBei } from '../kern/fuellen.ts'
+import { formAllein, fuelleFlaeche } from '../kern/fuellen.ts'
 import { anKante, fangeKante, type Instrument, type Kante } from '../kern/instrumente.ts'
 import type { Formwahl, Werkzeug } from '../kern/einstellungen.ts'
 import { kuerze, lebt, punktLeben, type Spur } from '../kern/laser.ts'
@@ -77,6 +79,8 @@ type Props = {
   /** Ein fertiger Wischzug des Schwamms */
   beiBefehl: (b: Befehl) => void
   beiErsetzen: (vorher: Element[], nachher: Element[]) => void
+  /** Kurzer Hinweis an die Lehrkraft (z. B. „Fläche nicht geschlossen“) */
+  beiHinweis?: (text: string) => void
   beiAuswahl: (ids: string[]) => void
   beiKamera: (k: Kamera) => void
   /** Größe des Blatts (Tafel mit festem Format) oder null/fehlt: unendliche Fläche */
@@ -193,7 +197,7 @@ export const setzeHaltezeit = (ms: number) => {
 const keineGrenze = (k: Kamera) => k
 const KEINE: Instrument[] = []
 
-export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahlArt = 'rechteck', formwahl = OHNE_FORMWAHL, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze, instrumente = KEINE }: Props) {
+export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug, farbe, staerke, radierer = RADIERER_STANDARD, auswahlArt = 'rechteck', formwahl = OHNE_FORMWAHL, auswahl, beiHinzu, beiRadieren, beiBefehl, beiErsetzen, beiHinweis, beiAuswahl, beiKamera, blatt = null, begrenze = keineGrenze, instrumente = KEINE }: Props) {
   const rahmen = useRef<HTMLDivElement>(null)
   const unten = useRef<HTMLCanvasElement>(null)
   const oben = useRef<HTMLCanvasElement>(null)
@@ -801,8 +805,25 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       return
     } else if (w === 'fuellen') {
       zeiger.current.delete(e.pointerId)
-      const f = fuelleBei(s.elemente, tx, ty, s.farbe)
-      if (f) beiErsetzen([f.vorher], [f.nachher])
+      const einzeln = formAllein(s.elemente, tx, ty, s.farbe) // eine einzelne Form wird selbst ausgefüllt
+      if (einzeln) {
+        beiErsetzen([einzeln.vorher], [einzeln.nachher])
+        return
+      }
+      // Sonst: die geschlossene Fläche um den Tippunkt aus den sichtbaren Linien ermitteln
+      const el = rahmen.current
+      let ringe: Parameters<typeof fuelleFlaeche>[4] = null
+      if (el) {
+        const [b, h] = [Math.round(el.clientWidth), Math.round(el.clientHeight)]
+        const sperre = linienRaster(s.elemente, s.kamera, b, h)
+        const maske = sperre ? freieFlaeche(sperre, b, h, x, y) : null
+        const u = maske ? umrissAusMaske(maske, b, h) : null
+        const tafel = (r: [number, number][]) => r.map(([px, py]) => zuTafel(s.kamera, px, py))
+        if (u) ringe = { aussen: tafel(u.aussen), loecher: u.loecher.map(tafel) }
+      }
+      const befehl = fuelleFlaeche(s.elemente, tx, ty, s.farbe, ringe, 3 / s.kamera.zoom)
+      if (befehl) beiBefehl(befehl)
+      else beiHinweis?.('Hier lässt sich nichts füllen: Die Fläche ist nicht ganz geschlossen oder reicht über den Bildschirm hinaus.')
       return
     } else if (w === 'text') {
       zeiger.current.delete(e.pointerId)

@@ -1,4 +1,4 @@
-// Datenmodell der Tafel (Version 11). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
+// Datenmodell der Tafel (Version 12). Reine Daten und Funktionen, kein React, kein Browser-Speicher.
 // Jedes gespeicherte Tafelbild trägt schema + version; pruefeTafel() nimmt nur an, was es versteht,
 // und wandelt ältere Fassungen um (Version 1: eine Fläche ohne Seiten → eine Seite; Version 2 hat
 // dieselbe Gestalt wie Version 3, nur ohne Drehung, Gruppen und Dreieck; Version 3 hat dieselbe Gestalt wie
@@ -9,11 +9,12 @@
 // PDF-Seite, sonst gleich wie Version 7 – ältere PDF-Bilder haben keine und werden nicht erraten; Version 9 bringt
 // ausgefüllte Rechtecke, Ellipsen und Dreiecke, sonst gleich wie Version 8 – ältere Formen sind nicht ausgefüllt;
 // Version 10 bringt gestrichelte und gepunktete Formen und Pfeile mit zwei Spitzen, sonst gleich wie Version 9;
-// Version 11 bringt gebogene Linien und Pfeile, sonst gleich wie Version 10).
+// Version 11 bringt gebogene Linien und Pfeile, sonst gleich wie Version 10;
+// Version 12 bringt gefüllte Flächen (ein Strich mit „flaeche“: Vieleck mit Löchern), sonst gleich wie Version 11).
 import { pruefeFenster, type FensterZustand } from './fenster.ts'
 
 export const TAFEL_SCHEMA = 'lehrraum/tafel'
-export const TAFEL_VERSION = 11
+export const TAFEL_VERSION = 12
 
 /** Ein Punkt eines Strichs: x, y in Tafel-Koordinaten, Druck 0..1 */
 export type Punkt = [number, number, number]
@@ -36,6 +37,12 @@ export type Strich = Gemeinsam & {
   /** true: der Druck stammt von einem Stift; false: Maus/Finger, Druck wird aus dem Tempo geschätzt */
   druckEcht: boolean
   punkte: Punkt[]
+  /**
+   * Gefüllte Fläche (Füllwerkzeug, seit Version 12): `punkte` ist der äußere Umriss (geschlossen), `loecher` sind
+   * Inseln darin; `staerke` ist ein schmaler Rand in Farbe, der unter die Linien reicht. Wird nicht als Strich gezeichnet.
+   */
+  flaeche?: true
+  loecher?: Punkt[][]
 }
 
 export type Text = Gemeinsam & {
@@ -299,6 +306,10 @@ export function neuesTafelbild(titel = 'Tafel', format: Format = STANDARD_FORMAT
   }
 }
 
+/** Grenzen einer gefüllten Fläche */
+export const MAX_LOECHER = 40
+export const MAX_RING_PUNKTE = 5000
+
 const istZahl = (x: unknown): x is number => typeof x === 'number' && Number.isFinite(x)
 const istObjekt = (x: unknown): x is Record<string, unknown> => typeof x === 'object' && x !== null && !Array.isArray(x)
 const istFarbe = (x: unknown): x is string => typeof x === 'string' && /^#[0-9a-fA-F]{6}$/.test(x)
@@ -345,7 +356,21 @@ function pruefeElement(x: unknown): Element | null {
       if (!Array.isArray(p) || !istZahl(p[0]) || !istZahl(p[1])) return null
       punkte.push([p[0], p[1], istZahl(p[2]) ? Math.min(1, Math.max(0, p[2])) : 0.5])
     }
-    return { art: 'strich', id: x.id, werkzeug: x.werkzeug, farbe: x.farbe, staerke: x.staerke, druckEcht: x.druckEcht === true, punkte, ...zusatz(x, false) }
+    const s: Strich = { art: 'strich', id: x.id, werkzeug: x.werkzeug, farbe: x.farbe, staerke: x.staerke, druckEcht: x.druckEcht === true, punkte, ...zusatz(x, false) }
+    if (x.flaeche === true && punkte.length >= 3) {
+      s.flaeche = true
+      const loecher = (Array.isArray(x.loecher) ? x.loecher : []).slice(0, MAX_LOECHER).flatMap((l): Punkt[][] => {
+        if (!Array.isArray(l) || l.length < 3 || l.length > MAX_RING_PUNKTE) return []
+        const ring: Punkt[] = []
+        for (const p of l) {
+          if (!Array.isArray(p) || !istZahl(p[0]) || !istZahl(p[1])) return []
+          ring.push([p[0], p[1], 0.5])
+        }
+        return [ring]
+      })
+      if (loecher.length) s.loecher = loecher
+    }
+    return s
   }
   if (x.art === 'text') {
     if (!istZahl(x.x) || !istZahl(x.y) || typeof x.text !== 'string' || !x.text.trim()) return null
@@ -371,7 +396,7 @@ export const pruefeElemente = (x: unknown): Element[] => (Array.isArray(x) ? x :
 
 /**
  * Prüft Daten aus dem Speicher oder aus einer Datei. Liefert ein gültiges Tafelbild (immer in der
- * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 11.
+ * aktuellen Version) oder null. Versteht Version 1 (ohne Seiten), 2 bis 12.
  */
 export function pruefeTafel(roh: unknown): Tafelbild | null {
   if (!istObjekt(roh) || roh.schema !== TAFEL_SCHEMA) return null
@@ -380,7 +405,7 @@ export function pruefeTafel(roh: unknown): Tafelbild | null {
   let seiten: Seite[]
   if (roh.version === 1) {
     seiten = [neueSeite(pruefeElemente(roh.elemente))] // Version 1: alles lag auf einer Fläche
-  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8 || roh.version === 9 || roh.version === 10 || roh.version === 11) {
+  } else if (roh.version === 2 || roh.version === 3 || roh.version === 4 || roh.version === 5 || roh.version === 6 || roh.version === 7 || roh.version === 8 || roh.version === 9 || roh.version === 10 || roh.version === 11 || roh.version === 12) {
     const ab5 = roh.version >= 5
     const ab6 = roh.version >= 6
     const ids = new Set<string>()

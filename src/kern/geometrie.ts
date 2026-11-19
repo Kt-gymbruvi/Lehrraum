@@ -1,6 +1,6 @@
 // Geometrie der Tafel: Kamera (Verschieben, Zoomen), Treffer des Radierers, Umriss eines Strichs als Pfad.
 import { getStroke } from 'perfect-freehand'
-import { DREHBARE_FORMEN, hintergrundMass, MARKER_FAKTOR, normiereWinkel, ZOOM_MAX, ZOOM_MIN, type Bild, type Element, type Form, type Kamera, type Seite, type Strich, type Tabelle, type Text } from './modell.ts'
+import { DREHBARE_FORMEN, hintergrundMass, MARKER_FAKTOR, normiereWinkel, ZOOM_MAX, ZOOM_MIN, type Bild, type Element, type Form, type Kamera, type Punkt, type Seite, type Strich, type Tabelle, type Text } from './modell.ts'
 import { tabellenMass } from './tabelle.ts'
 
 /** Bildschirmpunkt (Pixel in der Zeichenfläche) → Tafel-Koordinaten */
@@ -31,6 +31,7 @@ export function abstandZurStrecke(px: number, py: number, ax: number, ay: number
 
 /** Berührt ein Kreis (Radierer) mit Mittelpunkt (x, y) und Radius r den Strich? */
 export function trifftStrich(s: Strich, x: number, y: number, r: number): boolean {
+  if (s.flaeche && imVieleck(s, x, y)) return true // gefüllte Fläche: auch das Innere (ohne die Löcher)
   const grenze = r + breite(s) / 2
   const p = s.punkte
   if (p.length === 1) return Math.hypot(x - p[0][0], y - p[0][1]) <= grenze
@@ -39,6 +40,20 @@ export function trifftStrich(s: Strich, x: number, y: number, r: number): boolea
   }
   return false
 }
+
+/** Liegt (x, y) in einem Punkt-Ring? (Strahlverfahren) */
+function imRing(ring: readonly (readonly number[])[], x: number, y: number): boolean {
+  let innen = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) innen = !innen
+  }
+  return innen
+}
+
+/** Liegt (x, y) in der gefüllten Fläche – im äußeren Umriss, aber in keinem Loch? */
+export const imVieleck = (s: Strich, x: number, y: number): boolean => imRing(s.punkte, x, y) && !(s.loecher ?? []).some((l) => imRing(l, x, y))
 
 /** Umriss eines Stiftstrichs (Vieleck) – dicker bei mehr Druck. */
 export function stiftUmriss(s: Strich): number[][] {
@@ -163,7 +178,7 @@ function huelle(punkte: [number, number][], rand = 0): Rechteck {
  * Ellipse und Dreieck verschieben ihren Drehpunkt und merken sich den Winkel (0 wird nicht gespeichert).
  */
 export function gedreht<T extends Element>(e: T, cx: number, cy: number, grad: number): T {
-  if (e.art === 'strich') return { ...e, punkte: e.punkte.map(([x, y, d]) => [...drehePunkt(x, y, cx, cy, grad), d]) }
+  if (e.art === 'strich') return { ...e, punkte: e.punkte.map(([x, y, d]) => [...drehePunkt(x, y, cx, cy, grad), d]), ...(e.loecher ? { loecher: e.loecher.map((l) => l.map(([x, y, d]): Punkt => [...drehePunkt(x, y, cx, cy, grad), d])) } : {}) }
   if (e.art === 'form' && !DREHBARE_FORMEN.includes(e.form)) {
     const [x1, y1] = drehePunkt(e.x1, e.y1, cx, cy, grad)
     const [x2, y2] = drehePunkt(e.x2, e.y2, cx, cy, grad)
@@ -399,13 +414,13 @@ export function skaliert<T extends Element>(e: T, ax: number, ay: number, sx: nu
     return { ...e, x: x(e.x), y: ay + (e.y - ay) * sx, groesse: e.groesse * f, spalten: e.spalten.map((b) => b * f) }
   }
   const staerke = mitStaerke ? klemme(e.staerke * sx, 0.5, 200) : e.staerke
-  if (e.art === 'strich') return { ...e, staerke, punkte: e.punkte.map(([px, py, d]) => [x(px), y(py), d]) }
+  if (e.art === 'strich') return { ...e, staerke, punkte: e.punkte.map(([px, py, d]) => [x(px), y(py), d]), ...(e.loecher ? { loecher: e.loecher.map((l) => l.map(([px, py, d]): Punkt => [x(px), y(py), d])) } : {}) }
   return { ...e, staerke, x1: x(e.x1), y1: y(e.y1), x2: x(e.x2), y2: y(e.y2), ...(e.bogen ? { bogen: [x(e.bogen[0]), y(e.bogen[1])] } : {}) }
 }
 
 /** Dasselbe Element (gleiche Kennung), um dx/dy verschoben */
 export function verschoben<T extends Element>(e: T, dx: number, dy: number): T {
-  if (e.art === 'strich') return { ...e, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]) }
+  if (e.art === 'strich') return { ...e, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]), ...(e.loecher ? { loecher: e.loecher.map((l) => l.map(([x, y, d]): Punkt => [x + dx, y + dy, d])) } : {}) }
   if (istKasten(e)) return { ...e, x: e.x + dx, y: e.y + dy }
   return { ...e, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy, ...(e.bogen ? { bogen: [e.bogen[0] + dx, e.bogen[1] + dy] } : {}) }
 }

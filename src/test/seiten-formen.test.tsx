@@ -24,7 +24,7 @@ describe('Datenmodell', () => {
   it('wandelt Tafeln der Version 1 (ohne Seiten) in eine Seite um', () => {
     const alt = { schema: 'lehrraum/tafel', version: 1, id: 'alt', titel: 'Alt', elemente: [strich('a'), strich('b')], kamera: { x: 1, y: 2, zoom: 1.5 }, geaendertAm: '2026-11-11T10:00:00.000Z' }
     const t = pruefeTafel(alt)!
-    expect(t.version).toBe(11)
+    expect(t.version).toBe(12)
     expect(t.seiten).toHaveLength(1)
     expect(t.seiten[0].elemente.map((e) => e.id)).toEqual(['a', 'b'])
     expect(t).toMatchObject({ id: 'alt', titel: 'Alt', seiteNr: 0, kamera: { x: 1, y: 2, zoom: 1.5 }, fenster: [] })
@@ -116,7 +116,7 @@ describe('Geometrie von Text und Formen', () => {
     expect(roh({ ...form('r', 'rechteck'), gefuellt: 'ja' })!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt')
     expect(roh({ ...form('l', 'linie'), gefuellt: true })!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt') // Linien haben kein Inneres
     expect(roh(form('r', 'rechteck'), 8)!.seiten[0].elemente[0]).not.toHaveProperty('gefuellt') // ältere Formen bleiben leer
-    expect(roh(form('r', 'rechteck'), 12)).toBeNull() // neuere Fassung: nicht raten
+    expect(roh(form('r', 'rechteck'), 13)).toBeNull() // neuere Fassung: nicht raten
     expect([form('a', 'rechteck'), form('b', 'ellipse'), form('c', 'dreieck'), form('d', 'pfeil')].map(istFuellbar)).toEqual([true, true, true, false])
 
     const r = form('r', 'rechteck', { x2: 200, y2: 200, gefuellt: true })

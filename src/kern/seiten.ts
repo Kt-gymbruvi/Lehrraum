@@ -2,7 +2,7 @@
 // Hintergrund entfernen. Reine Funktionen.
 import type { Befehl } from './befehle.ts'
 import { gedreht, verschoben } from './geometrie.ts'
-import { hintergrundMass, MAX_SEITEN, neueId, neueSeite, type Element, type Hintergrund, type Muster, type Seite } from './modell.ts'
+import { hintergrundMass, MAX_SEITEN, neueId, neueSeite, type Element, type Hintergrund, type Muster, type Punkt, type Seite } from './modell.ts'
 
 export type Buch = { seiten: Seite[]; nr: number }
 
@@ -24,7 +24,7 @@ export function seiteDazu(b: Buch, vorlage?: { muster?: Muster }): Buch {
 /** Kopie eines Elements mit neuer Kennung, auf Wunsch versetzt */
 export function kopie(e: Element, dx = 0, dy = 0): Element {
   const id = neueId()
-  if (e.art === 'strich') return { ...e, id, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]) }
+  if (e.art === 'strich') return { ...e, id, punkte: e.punkte.map(([x, y, d]) => [x + dx, y + dy, d]), ...(e.loecher ? { loecher: e.loecher.map((l) => l.map(([x, y, d]): Punkt => [x + dx, y + dy, d])) } : {}) }
   if (e.art === 'text' || e.art === 'bild' || e.art === 'tabelle') return { ...e, id, x: e.x + dx, y: e.y + dy }
   return { ...e, id, x1: e.x1 + dx, y1: e.y1 + dy, x2: e.x2 + dx, y2: e.y2 + dy }
 }
