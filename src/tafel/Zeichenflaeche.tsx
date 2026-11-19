@@ -38,6 +38,7 @@ import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_TREFFER, GRI
 import { biegeGriff, breite, beruehrtRechteck, gebogen, GERADE_FANG, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rasteRichtung, rechteckAus, richtungsWinkel, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
+import { fuelleBei } from '../kern/fuellen.ts'
 import { anKante, fangeKante, type Instrument, type Kante } from '../kern/instrumente.ts'
 import type { Formwahl, Werkzeug } from '../kern/einstellungen.ts'
 import { kuerze, lebt, punktLeben, type Spur } from '../kern/laser.ts'
@@ -797,6 +798,11 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
       if (zelleAntippen(tx, ty, fang)) return
       const r = rahmen.current!
       setWahl({ tx, ty, x: Math.max(8, Math.min(x, r.clientWidth - 248)), y: Math.max(8, Math.min(y, r.clientHeight - 168)) })
+      return
+    } else if (w === 'fuellen') {
+      zeiger.current.delete(e.pointerId)
+      const f = fuelleBei(s.elemente, tx, ty, s.farbe)
+      if (f) beiErsetzen([f.vorher], [f.nachher])
       return
     } else if (w === 'text') {
       zeiger.current.delete(e.pointerId)

@@ -12,6 +12,10 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 - Kopfzeile: je ein Knopf links und rechts klappt die Werkzeugleiste ein und aus (`localStorage` „lehrraum-leisten“, je Gerät); eingeklappt wächst die Zeichenfläche in den Platz. In der **unendlichen Tafel** liegt die Fläche immer hinter den schwebenden Leisten (`.tafel-mitte.unendlich`).
 - Fenster sind nie höher als die Tafel (Inhalt rollt im Fenster), schieben sich nach oben, wenn sie wachsen, und lassen sich bis 50 % verkleinern (`SKALA_MIN`). „Zufall & Gruppen“ wird mit Gruppen breiter und hat keine eigene Höhenbegrenzung mehr.
 
+## Füllwerkzeug – 19.11.2026 (nicht veröffentlicht, am Gerät ungeprüft)
+- Neuer Knopf „Füllen“ (Taste F, Farbeimer) in der linken Leiste: Rechteck, Ellipse oder Dreieck antippen füllt sie mit der gewählten Farbe (oberste Fläche an der Stelle, auch das Innere); noch einmal in derselben Farbe antippen nimmt die Füllung weg, eine andere Farbe färbt um. Logik `kern/fuellen.ts` (`fuelleBei`), `imInnern` in `kern/geometrie.ts`; Änderung als Befehl „ersetzen“, also rückgängig machbar. Kein neues Datenformat.
+- Grenze: Eine Form hat nur eine Farbe – Umriss und Füllung wechseln zusammen. Von Hand gezeichnete, geschlossene Striche lassen sich nicht füllen (Pixel-Füllen gibt es nicht).
+
 ## Geometrie-Werkzeuge in der Größe veränderbar – 19.11.2026 (nicht veröffentlicht, am Gerät ungeprüft)
 - Lineal, Geodreieck und Winkelmesser haben einen Größengriff (Lineal: oben rechts, Geodreieck und Winkelmesser: rechte Ecke): Ziehen ändert die Größe um den Nullpunkt, Doppeltippen = Normalgröße, Pfeiltasten/+/− gehen auch; mit zwei Fingern spreizen/zusammenführen. Bereich 40–300 % (`Instrument.skala`, fehlt = 1; nicht gespeichert). Teilstriche wachsen mit – bei geänderter Größe stimmen die Zentimeter also nicht mehr mit dem Papier überein. Winkel bleiben richtig.
 - Alles Übrige war schon in der Größe veränderbar: Striche, Formen, Text, Bilder, Tabellen (Auswahlgriffe), Fenster (Eckgriff), Abdecken (Kanten), Scheinwerfer (Randgriff).

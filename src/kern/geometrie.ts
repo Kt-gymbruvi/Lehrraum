@@ -248,6 +248,18 @@ function trifftForm(f: Form, qx: number, qy: number, r: number): boolean {
   return (!!f.gefuellt && n <= 1) || Math.abs(n - 1) * Math.min(a, b) <= grenze
 }
 
+/** Liegt (x, y) im Inneren (oder auf dem Rand) einer Fläche – Rechteck, Ellipse, Dreieck –, egal ob sie ausgefüllt ist? Für das Füllwerkzeug. */
+export function imInnern(f: Form, qx: number, qy: number): boolean {
+  if (f.form !== 'rechteck' && f.form !== 'ellipse' && f.form !== 'dreieck') return false
+  const [fx, fy] = formMitte(f)
+  const [x, y] = drehePunkt(qx, qy, fx, fy, -drehungVon(f))
+  if (f.form === 'dreieck') return imDreieck(x, y, dreieckPunkte({ ...f, drehung: 0 }))
+  const [l, o, re, u] = [Math.min(f.x1, f.x2), Math.min(f.y1, f.y2), Math.max(f.x1, f.x2), Math.max(f.y1, f.y2)]
+  if (f.form === 'rechteck') return x >= l && x <= re && y >= o && y <= u
+  const [mx, my, a, b] = [(l + re) / 2, (o + u) / 2, Math.max(1e-6, (re - l) / 2), Math.max(1e-6, (u - o) / 2)]
+  return Math.hypot((x - mx) / a, (y - my) / b) <= 1
+}
+
 /** Liegt (x, y) im Dreieck p? (Vorzeichen der drei Kreuzprodukte) */
 function imDreieck(x: number, y: number, p: [number, number][]): boolean {
   const k = [0, 1, 2].map((i) => (p[(i + 1) % 3][0] - p[i][0]) * (y - p[i][1]) - (p[(i + 1) % 3][1] - p[i][1]) * (x - p[i][0]))

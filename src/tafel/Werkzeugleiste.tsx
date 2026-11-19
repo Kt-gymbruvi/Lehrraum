@@ -64,6 +64,7 @@ export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; tast
   { wert: 'pfeil', name: 'Pfeil', symbol: 'pfeil', taste: 'P' },
   { wert: 'rechteck', name: 'Rechteck', symbol: 'rechteck', taste: 'Q' },
   { wert: 'ellipse', name: 'Ellipse', symbol: 'ellipse', taste: 'O' },
+  { wert: 'fuellen', name: 'Füllen', symbol: 'farbeimer', taste: 'F' },
   { wert: 'laser', name: 'Laserpointer', symbol: 'laser', taste: 'Z' },
 ]
 
@@ -268,6 +269,8 @@ export function Werkzeugleiste(p: Props) {
                   ? `${w.name}${formBeschreibung(w.wert, f)} (${w.taste}) – noch einmal antippen: ${istFlaeche ? 'Füllung und ' : ''}Linienart${w.wert === 'pfeil' ? ' und Spitzen' : ''}`
                   : w.wert === 'laser'
                     ? `${w.name} (${w.taste}) – zeigen, die Spur verschwindet von selbst`
+                    : w.wert === 'fuellen'
+                      ? `${w.name} (${w.taste}) – Rechteck, Ellipse oder Dreieck antippen: mit der gewählten Farbe füllen (noch einmal: Füllung weg)`
                     : w.wert === 'tabelle'
                       ? `${w.name} (${w.taste}) – antippen, Zeilen und Spalten wählen; Zellen antippen zum Schreiben`
                       : `${w.name} (${w.taste})`
