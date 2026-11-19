@@ -554,6 +554,25 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   }, [])
 
   const [uebersicht, setUebersicht] = useState(false)
+  // Leisten einklappen: mehr Platz zum Beschriften. Wird je Gerät gemerkt.
+  const [leistenZu, setLeistenZu] = useState<{ links: boolean; rechts: boolean }>(() => {
+    try {
+      const w = JSON.parse(window.localStorage.getItem('lehrraum-leisten') ?? '{}')
+      return { links: w?.links === true, rechts: w?.rechts === true }
+    } catch {
+      return { links: false, rechts: false }
+    }
+  })
+  const schalteLeiste = (seite: 'links' | 'rechts') =>
+    setLeistenZu((alt) => {
+      const neu = { ...alt, [seite]: !alt[seite] }
+      try {
+        window.localStorage.setItem('lehrraum-leisten', JSON.stringify(neu))
+      } catch {
+        /* Speicher gesperrt – dann gilt die Wahl nur bis zum Neuladen */
+      }
+      return neu
+    })
   const uebersichtOffen = useRef(false)
   uebersichtOffen.current = uebersicht
 
@@ -890,6 +909,9 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   return (
     <div className="tafel">
       <header className="tafel-kopf">
+        <button type="button" className="kopf-knopf" aria-label={leistenZu.links ? 'Linke Werkzeugleiste einblenden' : 'Linke Werkzeugleiste einklappen'} aria-pressed={!leistenZu.links} title={leistenZu.links ? 'Werkzeugleiste links einblenden' : 'Werkzeugleiste links einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('links')}>
+          <Symbol name="leisteLinks" />
+        </button>
         <a className="kopf-knopf" href="/" aria-label="Zur Startseite Lehrraum" title="Zur Startseite">
           <Symbol name="haus" />
         </a>
@@ -945,8 +967,11 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
             +
           </button>
         </div>
+        <button type="button" className="kopf-knopf" aria-label={leistenZu.rechts ? 'Rechte Werkzeugleiste einblenden' : 'Rechte Werkzeugleiste einklappen'} aria-pressed={!leistenZu.rechts} title={leistenZu.rechts ? 'Werkzeugleiste rechts einblenden' : 'Werkzeugleiste rechts einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('rechts')}>
+          <Symbol name="leisteRechts" />
+        </button>
       </header>
-      <div className="tafel-mitte">
+      <div className={'tafel-mitte' + (format === 'unendlich' ? ' unendlich' : '') + (leistenZu.links ? ' links-zu' : '') + (leistenZu.rechts ? ' rechts-zu' : '')}>
         <Werkzeugleiste
           werkzeug={werkzeug}
           farbe={farbe}

@@ -8,6 +8,10 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
+## Leisten einklappen, Zufallsfenster ganz sichtbar – 19.11.2026 (nicht veröffentlicht, am Gerät ungeprüft)
+- Kopfzeile: je ein Knopf links und rechts klappt die Werkzeugleiste ein und aus (`localStorage` „lehrraum-leisten“, je Gerät); eingeklappt wächst die Zeichenfläche in den Platz. In der **unendlichen Tafel** liegt die Fläche immer hinter den schwebenden Leisten (`.tafel-mitte.unendlich`).
+- Fenster sind nie höher als die Tafel (Inhalt rollt im Fenster), schieben sich nach oben, wenn sie wachsen, und lassen sich bis 50 % verkleinern (`SKALA_MIN`). „Zufall & Gruppen“ wird mit Gruppen breiter und hat keine eigene Höhenbegrenzung mehr.
+
 ## Stift schnell wieder aufgesetzt (iPad) – veröffentlicht (18.11.2026)
 - Rückmeldung der Lehrkraft: Am iPad klappt das Schreiben mit dem Apple Pencil manchmal nicht, vor allem bei kurzem Absetzen und sofortigem Wiederaufsetzen.
 - **Vermutete Ursache:** Safari hält das für einen Doppeltipp und bricht den zweiten Strich ab (`pointercancel`); die Tafel verwarf abgebrochene Striche bisher vollständig.

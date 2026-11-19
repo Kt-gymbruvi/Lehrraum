@@ -94,7 +94,7 @@ export function aendere(liste: FensterZustand[], id: string, neu: Partial<Omit<F
 }
 
 // ---------- Größe (Eckgriff unten rechts, wie bei Bildern) ----------
-export const SKALA_MIN = 0.75
+export const SKALA_MIN = 0.5
 export const SKALA_MAX = 4
 const rundeSkala = (s: number) => Math.round(s * 100) / 100
 

@@ -73,7 +73,7 @@ export function Zufall({ schueler, beiAnTafel }: Props) {
   const max = Math.max(1, da.length)
 
   return (
-    <div className="zufall">
+    <div className={'zufall' + (ansicht === 'gruppen' && gruppen.length > 0 ? ' mit-gruppen' : '')}>
       <div className="reihe eng zufall-reiter" role="group" aria-label="Ansicht">
         <button type="button" className="f-knopf klein" aria-pressed={ansicht === 'wer'} onClick={() => setAnsicht('wer')}>
           Wer ist dran?

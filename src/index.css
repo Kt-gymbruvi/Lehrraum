@@ -286,6 +286,27 @@ input {
   padding-bottom: max(var(--rand), env(safe-area-inset-bottom));
 }
 
+/* Eingeklappte Leisten: ganz weg, die Zeichenfläche wächst in den Platz (Zustand der Aufklappfelder bleibt erhalten) */
+.tafel-mitte.links-zu > .werkzeugleiste.links,
+.tafel-mitte.rechts-zu > .werkzeugleiste.rechts {
+  display: none;
+}
+/* Unendliche Tafel: die Fläche liegt hinter den Leisten, sie schweben darüber */
+.tafel-mitte.unendlich {
+  position: relative;
+}
+.tafel-mitte.unendlich > .werkzeugleiste {
+  position: absolute;
+  top: var(--rand);
+  max-height: calc(100% - 2 * var(--rand));
+}
+.tafel-mitte.unendlich > .werkzeugleiste.links {
+  left: max(var(--rand), env(safe-area-inset-left));
+}
+.tafel-mitte.unendlich > .werkzeugleiste.rechts {
+  right: max(var(--rand), env(safe-area-inset-right));
+}
+
 /* ---------- Linke Werkzeugleiste ---------- */
 .werkzeugleiste {
   display: flex;
@@ -603,6 +624,9 @@ input {
   position: absolute;
   width: max-content;
   max-width: calc(100% - 1rem);
+  max-height: calc(100% - 1rem); /* nie höher als die Tafel: der Inhalt rollt dann im Fenster */
+  display: flex;
+  flex-direction: column;
   pointer-events: auto;
   border-radius: var(--rund);
   background: var(--leiste);
@@ -661,6 +685,12 @@ input {
 .fenster-inhalt {
   padding: 0 1rem 1rem;
   text-align: center;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+.fenster-inhalt[hidden] {
+  display: none;
 }
 /* Eckgriff unten rechts: klein gezeichnet wie die Griffe an Bildern, 44 px Trefferfläche um die Ecke */
 .fenster-griff {
@@ -851,8 +881,10 @@ input {
   display: grid;
   gap: 0.6rem;
   grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr));
-  max-height: 55vh;
-  overflow-y: auto;
+}
+/* Mit Gruppen wird das Fenster breiter, damit alle ohne Rollen zu sehen sind */
+.zufall.mit-gruppen {
+  width: min(56rem, 92vw);
 }
 .zufall-gruppen > li {
   padding: 0.5rem 0.7rem;
@@ -877,8 +909,6 @@ input {
   display: flex;
   flex-wrap: wrap;
   gap: 0.35rem;
-  max-height: 50vh;
-  overflow-y: auto;
 }
 .zufall-anwesend .f-knopf[aria-pressed='true'] {
   text-decoration: line-through;

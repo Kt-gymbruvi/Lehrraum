@@ -1,7 +1,7 @@
 // Ein Fenster über der Tafel: Titelzeile zum Verschieben, Einklappen, Schließen. Der Inhalt bleibt auch
 // eingeklappt eingebaut (nur versteckt), damit ein laufender Timer weiterläuft. Fenster haben unten rechts
 // einen Eckgriff wie Bilder: Ziehen vergrößert oder verkleinert den Inhalt gleichmäßig (Doppeltippen: zurück auf 100 %).
-import { useRef, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import { begrenze, FENSTERNAMEN, neueSkala, SKALA_MAX, SKALA_MIN, skalaSchritt, type FensterZustand } from '../kern/fenster.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 
@@ -57,7 +57,7 @@ export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiSkala, beiSc
     } catch {
       /* nicht jeder Browser erlaubt das für jeden Zeiger */
     }
-    zug.current = { zeiger: e.pointerId, dx: e.clientX - f.x, dy: e.clientY - f.y }
+    zug.current = { zeiger: e.pointerId, dx: e.clientX - f.x, dy: e.clientY - oben }
   }
   function ziehen(e: ReactPointerEvent<HTMLDivElement>) {
     const z = zug.current
@@ -71,11 +71,28 @@ export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiSkala, beiSc
     if (zug.current?.zeiger === e.pointerId) zug.current = null
   }
 
+  // Wird das Fenster höher (z. B. Gruppen gebildet), schiebt es sich nach oben, damit der untere Rand sichtbar bleibt.
+  // Gespeichert wird die Lage nicht verändert – nur die Anzeige.
+  const [mass, setMass] = useState<{ h: number; platz: number } | null>(null)
+  useLayoutEffect(() => {
+    const el = rahmen.current
+    const flaeche = el?.parentElement
+    if (!el || !flaeche) return
+    const messen = () => setMass((alt) => (alt && alt.h === el.offsetHeight && alt.platz === flaeche.clientHeight ? alt : { h: el.offsetHeight, platz: flaeche.clientHeight }))
+    messen()
+    if (typeof ResizeObserver === 'undefined') return
+    const beobachter = new ResizeObserver(messen)
+    beobachter.observe(el)
+    beobachter.observe(flaeche)
+    return () => beobachter.disconnect()
+  }, [])
+  const oben = mass && mass.h > 0 ? Math.max(4, Math.min(f.y, mass.platz - mass.h - 8)) : f.y
+
   return (
     <section
       ref={rahmen}
       className={`fenster fenster-${f.art}${f.eingeklappt ? ' eingeklappt' : ''}${f.farbe ? ' notiz-' + f.farbe : ''}`}
-      style={{ left: `min(${f.x}px, calc(100% - 3.5rem))`, top: `min(${f.y}px, calc(100% - 3.5rem))` }}
+      style={{ left: `min(${f.x}px, calc(100% - 3.5rem))`, top: `min(${oben}px, calc(100% - 3.5rem))` }}
       aria-label={name}
       onPointerDownCapture={beiVorn}
     >
