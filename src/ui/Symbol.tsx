@@ -64,6 +64,7 @@ const ZEICHNUNGEN = {
   notiz: 'M5 4h14v10l-5 6H5zM14 20v-6h5',
   zufall: 'M4 7h3l10 10h3M4 17h3l3-3M14 10l3-3h3M17 4l3 3-3 3M17 14l3 3-3 3',
   schliessen: 'M6 6l12 12M18 6L6 18',
+  groesse: 'M14 4h6v6M20 4l-7 7M10 20H4v-6M4 20l7-7',
   leisteLinks: 'M4 5h16v14H4zM9 5v14',
   leisteRechts: 'M4 5h16v14H4zM15 5v14',
   einklappen: 'M6 15l6-6 6 6',

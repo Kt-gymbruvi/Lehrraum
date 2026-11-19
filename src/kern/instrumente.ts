@@ -7,8 +7,13 @@ export const INSTRUMENTARTEN = ['lineal', 'geodreieck', 'winkelmesser'] as const
 export type InstrumentArt = (typeof INSTRUMENTARTEN)[number]
 export const INSTRUMENT_NAMEN: Record<InstrumentArt, string> = { lineal: 'Lineal', geodreieck: 'Geodreieck', winkelmesser: 'Winkelmesser' }
 
-/** x, y: Nullpunkt in Tafel-Koordinaten; winkel in Grad, im Uhrzeigersinn (wie CSS rotate) */
-export type Instrument = { art: InstrumentArt; x: number; y: number; winkel: number }
+/** x, y: Nullpunkt in Tafel-Koordinaten; winkel in Grad, im Uhrzeigersinn (wie CSS rotate); skala: Größe (fehlt = 1) */
+export type Instrument = { art: InstrumentArt; x: number; y: number; winkel: number; skala?: number }
+
+export const INSTRUMENT_SKALA_MIN = 0.4
+export const INSTRUMENT_SKALA_MAX = 3
+export const klemmeSkala = (s: number): number => Math.round(Math.min(INSTRUMENT_SKALA_MAX, Math.max(INSTRUMENT_SKALA_MIN, s)) * 100) / 100
+const massstab = (i: Instrument): number => i.skala ?? 1
 
 /** Ein Zentimeter in Tafel-Einheiten (A4 bei 96 Punkten je Zoll, wie die Blattformate) */
 export const CM = 96 / 2.54
@@ -72,7 +77,8 @@ const rad = (g: number) => (g * Math.PI) / 180
 export function zuTafelPunkt(i: Instrument, lx: number, ly: number): P {
   const c = Math.cos(rad(i.winkel))
   const s = Math.sin(rad(i.winkel))
-  return [i.x + lx * c - ly * s, i.y + lx * s + ly * c]
+  const m = massstab(i)
+  return [i.x + m * (lx * c - ly * s), i.y + m * (lx * s + ly * c)]
 }
 
 /** Tafel → lokaler Punkt */
@@ -81,7 +87,8 @@ export function zuLokal(i: Instrument, tx: number, ty: number): P {
   const s = Math.sin(rad(i.winkel))
   const dx = tx - i.x
   const dy = ty - i.y
-  return [dx * c + dy * s, -dx * s + dy * c]
+  const m = massstab(i)
+  return [(dx * c + dy * s) / m, (-dx * s + dy * c) / m]
 }
 
 /** Nächster Punkt auf der Kante (lokal) */
@@ -110,7 +117,7 @@ function aussen(k: Kante, p: P): P {
 export function fangeKante(i: Instrument, tx: number, ty: number, fang: number): Kante | null {
   const [lx, ly] = zuLokal(i, tx, ty)
   let beste: Kante | null = null
-  let besterAbstand = fang
+  let besterAbstand = fang / massstab(i) // gerechnet wird lokal, `fang` gilt in Tafel-Einheiten
   for (const k of kanten(i.art)) {
     const p = aufKanteLokal(k, lx, ly)
     const d = Math.hypot(lx - p[0], ly - p[1])
@@ -130,7 +137,8 @@ export function anKante(i: Instrument, k: Kante, tx: number, ty: number, abstand
   const [lx, ly] = zuLokal(i, tx, ty)
   const p = aufKanteLokal(k, lx, ly)
   const n = aussen(k, p)
-  return zuTafelPunkt(i, p[0] + n[0] * abstand, p[1] + n[1] * abstand)
+  const a = abstand / massstab(i) // der Abstand gilt in Tafel-Einheiten, gerechnet wird lokal
+  return zuTafelPunkt(i, p[0] + n[0] * a, p[1] + n[1] * a)
 }
 
 /** Winkel auf (−180, 180] */
@@ -165,8 +173,16 @@ export function dreheAmGriff(i: Instrument, startWinkel: number, start: P, jetzt
   return { ...i, winkel: rasteWinkel(startWinkel + ((a1 - a0) * 180) / Math.PI) }
 }
 
+/** Größe ändern am Griff: im Verhältnis der Abstände von Nullpunkt zum Zeiger (start = beim Greifen, jetzt = jetzt) */
+export function skaliereAmGriff(i: Instrument, startSkala: number, start: P, jetzt: P): Instrument {
+  const d0 = Math.hypot(start[0] - i.x, start[1] - i.y)
+  if (d0 < 1) return i
+  const d1 = Math.hypot(jetzt[0] - i.x, jetzt[1] - i.y)
+  return { ...i, skala: klemmeSkala(startSkala * (d1 / d0)) }
+}
+
 /**
- * Zwei Finger: Das Werkzeug folgt beiden Fingern (Drehen und Verschieben, keine Größenänderung).
+ * Zwei Finger: Das Werkzeug folgt beiden Fingern (Drehen, Verschieben und Größe – Spreizen vergrößert).
  * start: Werkzeug beim Aufsetzen; a0, b0: Finger beim Aufsetzen; a1, b1: Finger jetzt (alles Tafel-Koordinaten).
  */
 export function folgeZweiFingern(start: Instrument, a0: P, b0: P, a1: P, b1: P): Instrument {
@@ -175,9 +191,15 @@ export function folgeZweiFingern(start: Instrument, a0: P, b0: P, a1: P, b1: P):
   const m1: P = [(a1[0] + b1[0]) / 2, (a1[1] + b1[1]) / 2]
   const c = Math.cos(d)
   const s = Math.sin(d)
-  const vx = start.x - m0[0]
-  const vy = start.y - m0[1]
-  return { ...start, x: m1[0] + vx * c - vy * s, y: m1[1] + vx * s + vy * c, winkel: normiere(start.winkel + (d * 180) / Math.PI) }
+  const abstand0 = Math.hypot(b0[0] - a0[0], b0[1] - a0[1])
+  const abstand1 = Math.hypot(b1[0] - a1[0], b1[1] - a1[1])
+  const alt = massstab(start)
+  const neu = abstand0 > 1 ? klemmeSkala(alt * (abstand1 / abstand0)) : alt
+  const f = neu / alt
+  const vx = (start.x - m0[0]) * f
+  const vy = (start.y - m0[1]) * f
+  const ergebnis = { ...start, x: m1[0] + vx * c - vy * s, y: m1[1] + vx * s + vy * c, winkel: normiere(start.winkel + (d * 180) / Math.PI) }
+  return neu === alt ? ergebnis : { ...ergebnis, skala: neu }
 }
 
 /** Neues Werkzeug mitten in der sichtbaren Fläche (mx, my: Mitte in Tafel-Koordinaten), waagerecht */
@@ -231,8 +253,8 @@ export function teilstriche(art: InstrumentArt): Teilstrich[] {
 }
 
 /** Wo die Griffe liegen (lokal): drehen, schließen, Winkelanzeige */
-export function griffe(art: InstrumentArt): { drehen: P; schliessen: P; winkel: P } {
-  if (art === 'lineal') return { drehen: [(LINEAL_LAENGE - 1.2) * CM, -2.75 * CM], schliessen: [1.2 * CM, -2.75 * CM], winkel: [(LINEAL_LAENGE / 2) * CM, -2.75 * CM] }
-  if (art === 'geodreieck') return { drehen: [0, -6.4 * CM], schliessen: [-1.7 * CM, -2.3 * CM], winkel: [1.7 * CM, -2.3 * CM] }
-  return { drehen: [0, -4.6 * CM], schliessen: [-2.2 * CM, -2 * CM], winkel: [2.2 * CM, -2 * CM] }
+export function griffe(art: InstrumentArt): { drehen: P; schliessen: P; winkel: P; groesse: P } {
+  if (art === 'lineal') return { drehen: [(LINEAL_LAENGE - 1.2) * CM, -2.75 * CM], schliessen: [1.2 * CM, -2.75 * CM], winkel: [(LINEAL_LAENGE / 2) * CM, -2.75 * CM], groesse: [(LINEAL_LAENGE + LINEAL_UEBERSTAND) * CM, -LINEAL_BREITE * CM] }
+  if (art === 'geodreieck') return { drehen: [0, -6.4 * CM], schliessen: [-1.7 * CM, -2.3 * CM], winkel: [1.7 * CM, -2.3 * CM], groesse: [GEO_HALB * CM, 0] }
+  return { drehen: [0, -4.6 * CM], schliessen: [-2.2 * CM, -2 * CM], winkel: [2.2 * CM, -2 * CM], groesse: [WINKELMESSER_RADIUS * CM, 0] }
 }

@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { kurzeAdresse, pruefeAdresse, pruefeFenster, schalte } from '../kern/fenster.ts'
 import { AMPEL_START, farbeFuer, naechsteAmpel, pegel, ZURUECK_MS } from '../kern/geraeusch.ts'
-import { anKante, CM, fangeKante, folgeZweiFingern, kanten, LINEAL_BREITE, neuesInstrument, rasteWinkel, teilstriche, winkelText, zuLokal, zuTafelPunkt, type Instrument } from '../kern/instrumente.ts'
+import { anKante, CM, fangeKante, folgeZweiFingern, INSTRUMENT_SKALA_MAX, INSTRUMENT_SKALA_MIN, kanten, LINEAL_BREITE, neuesInstrument, rasteWinkel, skaliereAmGriff, teilstriche, winkelText, zuLokal, zuTafelPunkt, type Instrument } from '../kern/instrumente.ts'
 import type { Strich } from '../kern/modell.ts'
 import { qrPfad, QR_RAND } from '../kern/qrcode.ts'
 import { ABDECKUNG_MIN, begrenzeScheinwerfer, GANZ_ABGEDECKT, scheinwerferPfad, schiebeKante } from '../kern/zeigen.ts'
@@ -167,6 +167,27 @@ describe('Geometrie-Werkzeuge – Logik', () => {
     const l = zuLokal(neu, t[0], t[1])
     nahe(l[0], 37)
     nahe(l[1], -11)
+  })
+
+  it('Größe: am Griff im Verhältnis der Abstände, begrenzt; Kanten und Anlegen gelten in Tafel-Einheiten', () => {
+    const g = { ...lineal, skala: undefined }
+    const doppelt = skaliereAmGriff(g, 1, [lineal.x + 100, lineal.y], [lineal.x + 200, lineal.y])
+    expect(doppelt.skala).toBe(2)
+    expect(skaliereAmGriff(g, 1, [lineal.x + 100, lineal.y], [lineal.x + 100000, lineal.y]).skala).toBe(INSTRUMENT_SKALA_MAX)
+    expect(skaliereAmGriff(g, 1, [lineal.x + 100, lineal.y], [lineal.x + 1, lineal.y]).skala).toBe(INSTRUMENT_SKALA_MIN)
+    // lokal 100 → Tafel 200 und zurück
+    nahe(zuTafelPunkt(doppelt, 100, 0)[0], lineal.x + 200)
+    nahe(zuLokal(doppelt, lineal.x + 200, lineal.y)[0], 100)
+    // Anlegen: Abstand und Fangbereich bleiben in Tafel-Einheiten (hier: 3 Einheiten unter der Unterkante)
+    const k = fangeKante(doppelt, lineal.x + 150, lineal.y + 10, 20)!
+    expect(k).toEqual(kanten('lineal')[0])
+    expect(fangeKante(doppelt, lineal.x + 150, lineal.y + 30, 20)).toBeNull()
+    nahe(anKante(doppelt, k, lineal.x + 150, lineal.y + 10, 3)[1], lineal.y + 3)
+    // zwei Finger: Spreizen vergrößert um die Mitte der Finger
+    const gross = folgeZweiFingern(g, [0, 0], [100, 0], [0, 0], [200, 0])
+    expect(gross.skala).toBe(2)
+    nahe(gross.winkel, 0)
+    expect(folgeZweiFingern(g, [0, 0], [100, 0], [10, 0], [110, 0]).skala).toBeUndefined() // nur verschoben
   })
 
   it('neue Werkzeuge liegen mitten in der Fläche und haben Teilstriche', () => {
@@ -374,7 +395,7 @@ describe('Abdecken, Scheinwerfer und Geometrie in der Tafel', () => {
       fireEvent.pointerUp(koerper, { pointerId: 5, pointerType: 'mouse', clientX: 340, clientY: 320 })
     })
     expect(lage()).not.toBe(vorher)
-    expect(lage()).toMatch(/rotate\(0\)$/)
+    expect(lage()).toMatch(/rotate\(0\) scale\(1\)$/)
     act(() => {
       fireEvent.pointerDown(koerper, { pointerId: 6, pointerType: 'touch', isPrimary: true, clientX: 200, clientY: 300 })
       fireEvent.pointerDown(koerper, { pointerId: 7, pointerType: 'touch', isPrimary: false, clientX: 400, clientY: 300 })
@@ -382,7 +403,7 @@ describe('Abdecken, Scheinwerfer und Geometrie in der Tafel', () => {
       fireEvent.pointerUp(koerper, { pointerId: 7, pointerType: 'touch' })
       fireEvent.pointerUp(koerper, { pointerId: 6, pointerType: 'touch' })
     })
-    expect(lage()).toMatch(/rotate\(30\)$/)
+    expect(lage()).toMatch(/rotate\(30\) scale\(1\)$/)
     expect(screen.getByRole('slider', { name: 'Lineal drehen' })).toHaveAttribute('aria-valuetext', '−30°')
   })
 })

@@ -9,7 +9,11 @@ import {
   folgeZweiFingern,
   griffe,
   INSTRUMENT_NAMEN,
+  INSTRUMENT_SKALA_MAX,
+  INSTRUMENT_SKALA_MIN,
+  klemmeSkala,
   rasteWinkel,
+  skaliereAmGriff,
   teilstriche,
   umriss,
   verschiebeInstrument,
@@ -24,6 +28,7 @@ import { istHandballen } from './handballen.ts'
 import '../fenster/werkzeuge.css'
 
 type P = [number, number]
+type Modus = 'schieben' | 'drehen' | 'groesse'
 
 /** Teilstriche und Zahlen – ändern sich nie, deshalb nur einmal je Art gezeichnet */
 const Skala = memo(function Skala({ art }: { art: InstrumentArt }) {
@@ -53,7 +58,7 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
   const ebene = useRef<HTMLDivElement>(null)
   /** Finger bzw. Zeiger auf einem Werkzeug: wo sie beim Aufsetzen waren und jetzt sind (Tafel-Koordinaten) */
   const zeiger = useRef(new Map<number, { start: P; jetzt: P }>())
-  const zug = useRef<{ art: InstrumentArt; start: Instrument; drehen: boolean } | null>(null)
+  const zug = useRef<{ art: InstrumentArt; start: Instrument; modus: Modus } | null>(null)
   const stand = useRef({ liste, kamera })
   stand.current = { liste, kamera }
 
@@ -70,7 +75,7 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
     return zuTafel(stand.current.kamera, e.clientX - r.left, e.clientY - r.top)
   }
 
-  function greifen(e: ReactPointerEvent<Element>, i: Instrument, drehen: boolean) {
+  function greifen(e: ReactPointerEvent<Element>, i: Instrument, modus: Modus) {
     if (e.pointerType === 'mouse' && e.button !== 0) return
     if (istHandballen(e.nativeEvent) && !zeiger.current.size) return // aufliegende Hand beim Schreiben: Werkzeug bleibt liegen
     e.preventDefault()
@@ -85,7 +90,7 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
     zeiger.current.set(e.pointerId, { start: p, jetzt: p })
     // Neuer Ausgangspunkt für alle Finger, damit der Wechsel von einem auf zwei Finger nicht springt
     for (const z of zeiger.current.values()) z.start = z.jetzt
-    zug.current = { art: i.art, start: i, drehen: drehen && zeiger.current.size === 1 }
+    zug.current = { art: i.art, start: i, modus: modus !== 'schieben' && zeiger.current.size === 1 ? modus : 'schieben' }
   }
 
   function ziehen(e: ReactPointerEvent<Element>) {
@@ -95,7 +100,8 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
     z.jetzt = tafelPunkt(e)
     const finger = [...zeiger.current.values()]
     let neu: Instrument
-    if (zg.drehen) neu = dreheAmGriff(zg.start, zg.start.winkel, z.start, z.jetzt)
+    if (zg.modus === 'drehen') neu = dreheAmGriff(zg.start, zg.start.winkel, z.start, z.jetzt)
+    else if (zg.modus === 'groesse') neu = skaliereAmGriff(zg.start, zg.start.skala ?? 1, z.start, z.jetzt)
     else if (finger.length >= 2) neu = folgeZweiFingern(zg.start, finger[0].start, finger[1].start, finger[0].jetzt, finger[1].jetzt)
     else neu = verschiebeInstrument(zg.start, z.jetzt[0] - z.start[0], z.jetzt[1] - z.start[1])
     beiAendern(zg.art, neu)
@@ -109,7 +115,7 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
       zug.current = null
       const fertig = stand.current.liste.find((i) => i.art === zg.art)
       // Mit zwei Fingern gedreht: am Ende auf volle 15° einrasten, wenn es knapp daneben liegt
-      if (fertig && !zg.drehen) {
+      if (fertig && zg.modus === 'schieben') {
         const w = rasteWinkel(fertig.winkel)
         if (w !== fertig.winkel) beiAendern(fertig.art, { ...fertig, winkel: w })
       }
@@ -118,7 +124,7 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
     // ein Finger bleibt: von hier aus weiter verschieben
     const jetzt = stand.current.liste.find((i) => i.art === zg.art)
     for (const z of zeiger.current.values()) z.start = z.jetzt
-    if (jetzt) zug.current = { art: zg.art, start: jetzt, drehen: false }
+    if (jetzt) zug.current = { art: zg.art, start: jetzt, modus: 'schieben' }
   }
 
   const k = kamera
@@ -132,20 +138,20 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
       <svg className="instrument-flaeche" aria-hidden="true">
         <g transform={`translate(${k.x} ${k.y}) scale(${k.zoom})`}>
           {liste.map((i) => (
-            <g key={i.art} className={'instrument instrument-' + i.art} transform={`translate(${i.x} ${i.y}) rotate(${i.winkel})`}>
+            <g key={i.art} className={'instrument instrument-' + i.art} transform={`translate(${i.x} ${i.y}) rotate(${i.winkel}) scale(${i.skala ?? 1})`}>
               <path
                 className="instrument-koerper"
                 d={umriss(i.art)}
-                strokeWidth={1.5 / k.zoom}
-                onPointerDown={(e) => greifen(e, i, false)}
+                strokeWidth={1.5 / (k.zoom * (i.skala ?? 1))}
+                onPointerDown={(e) => greifen(e, i, 'schieben')}
                 onPointerMove={ziehen}
                 onPointerUp={loslassen}
                 onPointerCancel={loslassen}
               />
-              <g strokeWidth={1 / k.zoom}>
+              <g strokeWidth={1 / (k.zoom * (i.skala ?? 1))}>
                 <Skala art={i.art} />
               </g>
-              <circle className="nullpunkt" r={4 / k.zoom} />
+              <circle className="nullpunkt" r={4 / (k.zoom * (i.skala ?? 1))} />
             </g>
           ))}
         </g>
@@ -166,7 +172,7 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
               aria-valuetext={winkelText(i.winkel)}
               title="Ziehen: um den Nullpunkt drehen"
               style={bildschirm(i, g.drehen)}
-              onPointerDown={(e) => greifen(e, i, true)}
+              onPointerDown={(e) => greifen(e, i, 'drehen')}
               onPointerMove={ziehen}
               onPointerUp={loslassen}
               onPointerCancel={loslassen}
@@ -179,6 +185,32 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
               }}
             >
               <Symbol name="drehenRechts" />
+            </div>
+            <div
+              className="instrument-griff groesse"
+              role="slider"
+              tabIndex={0}
+              aria-label={`Größe von ${name}`}
+              aria-valuemin={Math.round(INSTRUMENT_SKALA_MIN * 100)}
+              aria-valuemax={Math.round(INSTRUMENT_SKALA_MAX * 100)}
+              aria-valuenow={Math.round((i.skala ?? 1) * 100)}
+              aria-valuetext={`${Math.round((i.skala ?? 1) * 100)} %`}
+              title="Ziehen: Größe ändern – Doppeltippen: Normalgröße"
+              style={bildschirm(i, g.groesse)}
+              onPointerDown={(e) => greifen(e, i, 'groesse')}
+              onPointerMove={ziehen}
+              onPointerUp={loslassen}
+              onPointerCancel={loslassen}
+              onDoubleClick={() => beiAendern(i.art, { ...i, skala: undefined })}
+              onKeyDown={(e) => {
+                const richtung = e.key === 'ArrowUp' || e.key === 'ArrowRight' || e.key === '+' ? 1 : e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === '-' ? -1 : 0
+                if (!richtung) return
+                e.preventDefault()
+                e.stopPropagation()
+                beiAendern(i.art, { ...i, skala: klemmeSkala((i.skala ?? 1) + richtung * 0.1) })
+              }}
+            >
+              <Symbol name="groesse" />
             </div>
             <span className="instrument-winkel" style={bildschirm(i, g.winkel)} aria-hidden="true">
               {winkelText(i.winkel)}
