@@ -306,3 +306,9 @@ Einzelheiten und Abnahmekriterien in `docs/SPEC-zeichenwerkzeuge-und-auswahl.md`
 - **Rückgängig über Befehle** (hinzufügen/entfernen mit Stelle), nicht über Kopien des ganzen Bildes; der Verlauf wird nicht gespeichert.
 - **Speicher:** IndexedDB `lehrraum` (`tafeln`, `einstellungen`), Speichern 0,7 s nach der letzten Änderung und beim Wegschalten. `localStorage` wäre für Tafelbilder zu klein.
 - **Noch keine Anmeldung und kein Supabase:** Die Tafel braucht beides nicht; es kommt mit dem ersten Baustein, der Serverdaten liest (Quiz starten, Phase 5a).
+
+## Schülerseiten per QR-Code (20.11.2026)
+- **Der Sitzungsschlüssel steht im `#`-Teil der Adresse im QR-Code** und geht nie an einen Server. Namensliste und Schülerseiten werden damit auf dem Gerät verschlüsselt (AES-256-GCM, gleiche Hilfen wie `tresor.ts`); der Server sieht nur zufällige Platzkennungen und verschlüsselte Daten.
+- **Die Platzkennung steckt auch im verschlüsselten Inhalt der Seite**, damit der Server keine Seite unter einem fremden Platz unterschieben kann; ein steigender `stand` verhindert, dass ein älterer Stand einen neueren ersetzt.
+- **Schülerseiten und Vorlagen enthalten keine Bilder** (kein Speicherbereich nötig); größer als 2 Mio. Zeichen JSON wird abgewiesen.
+- **Aufbewahrung 48 Stunden** nach Ende, Schüler sehen nur die eigene Seite, die Übersicht der Lehrkraft ruft alle paar Sekunden ab, die Vorlage ist je Freigabe wählbar.
