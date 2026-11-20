@@ -2,10 +2,10 @@
 
 /* Farben wie in gemeinsam/tokens.css der Startseite (dort die Quelle; hier als Kopie für den Build). */
 @theme {
-  --color-navy: #0a2d53;
-  --color-navy-hell: #14407a;
-  --color-navy-dunkel: #061d38;
-  --color-tuerkis: #2cb69c;
+  --color-navy: #0f5c47;
+  --color-navy-hell: #16745a;
+  --color-navy-dunkel: #0a3d30;
+  --color-tuerkis: #ff8a14;
 }
 
 /*
@@ -15,22 +15,22 @@
  */
 :root {
   color-scheme: light;
-  --umgebung: #eef2f7; /* Hintergrund um das Blatt (wie --seite, etwas kühler) */
+  --umgebung: #f3f6f2; /* Hintergrund um das Blatt (wie --seite, etwas kühler) */
   --leiste: #ffffff; /* volle Fläche: Aufklappfelder, Fenster */
   --glas: rgb(255 255 255 / 0.78); /* schwebende Leisten */
-  --leiste-2: rgb(10 45 83 / 0.07); /* Schweben und ruhige Knöpfe */
-  --leiste-3: rgb(10 45 83 / 0.12); /* Drücken */
-  --text: #0a2d53;
-  --text-2: #5a6b85;
-  --linie: rgb(10 45 83 / 0.1); /* Haarlinie */
-  --linie-aus: #b8c3d4; /* gesperrte Knöpfe */
-  --gewaehlt: #0a2d53;
+  --leiste-2: rgb(15 92 71 / 0.07); /* Schweben und ruhige Knöpfe */
+  --leiste-3: rgb(15 92 71 / 0.12); /* Drücken */
+  --text: #0c3d31;
+  --text-2: #5b6f68;
+  --linie: rgb(15 92 71 / 0.1); /* Haarlinie */
+  --linie-aus: #b4c4bb; /* gesperrte Knöpfe */
+  --gewaehlt: #0f5c47;
   --gewaehlt-text: #ffffff;
-  --fokus: #0f7f6c;
+  --fokus: #d96d00;
   --fehler: #c4291f;
-  --schatten: 0 1px 2px rgb(10 45 83 / 0.06), 0 8px 28px rgb(10 45 83 / 0.1);
-  --schatten-hoch: 0 2px 6px rgb(10 45 83 / 0.08), 0 18px 48px rgb(10 45 83 / 0.18);
-  --blatt-schatten: 0 0 0 1px rgb(10 45 83 / 0.06), 0 2px 10px rgb(10 45 83 / 0.06);
+  --schatten: 0 1px 2px rgb(15 92 71 / 0.06), 0 8px 28px rgb(15 92 71 / 0.1);
+  --schatten-hoch: 0 2px 6px rgb(15 92 71 / 0.08), 0 18px 48px rgb(15 92 71 / 0.18);
+  --blatt-schatten: 0 0 0 1px rgb(15 92 71 / 0.06), 0 2px 10px rgb(15 92 71 / 0.06);
   --tupfer-rand: rgb(0 0 0 / 0.12); /* Rand der Farbtupfer */
   --rand: 0.5rem; /* Abstand der schwebenden Leisten zum Rand und zueinander */
   --rund: 1.375rem; /* Ecken der Leisten */
@@ -40,19 +40,19 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-design='hell']) {
     color-scheme: dark;
-    --umgebung: #061a33;
-    --leiste: #10294a;
-    --glas: rgb(16 41 74 / 0.92);
+    --umgebung: #07241c;
+    --leiste: #0d3329;
+    --glas: rgb(13 51 41 / 0.92);
     --tupfer-rand: rgb(255 255 255 / 0.35); /* auch Dunkelblau bleibt sichtbar */
     --leiste-2: rgb(255 255 255 / 0.08);
     --leiste-3: rgb(255 255 255 / 0.14);
     --text: #ffffff;
-    --text-2: #b9c7dc;
+    --text-2: #b6d3c7;
     --linie: rgb(255 255 255 / 0.1);
-    --linie-aus: #3d5a85;
-    --gewaehlt: #2cb69c;
-    --gewaehlt-text: #06241f;
-    --fokus: #6fd3bf;
+    --linie-aus: #3f7d68;
+    --gewaehlt: #ff8a14;
+    --gewaehlt-text: #2b1500;
+    --fokus: #ffb067;
     --fehler: #ffb4ab;
     --schatten: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 28px rgb(0 0 0 / 0.35);
     --schatten-hoch: 0 2px 6px rgb(0 0 0 / 0.35), 0 18px 48px rgb(0 0 0 / 0.5);
@@ -61,19 +61,19 @@
 }
 :root[data-design='dunkel'] {
   color-scheme: dark;
-  --umgebung: #061a33;
-  --leiste: #10294a;
-  --glas: rgb(16 41 74 / 0.92);
+  --umgebung: #07241c;
+  --leiste: #0d3329;
+  --glas: rgb(13 51 41 / 0.92);
   --tupfer-rand: rgb(255 255 255 / 0.35);
   --leiste-2: rgb(255 255 255 / 0.08);
   --leiste-3: rgb(255 255 255 / 0.14);
   --text: #ffffff;
-  --text-2: #b9c7dc;
+  --text-2: #b6d3c7;
   --linie: rgb(255 255 255 / 0.1);
-  --linie-aus: #3d5a85;
-  --gewaehlt: #2cb69c;
-  --gewaehlt-text: #06241f;
-  --fokus: #6fd3bf;
+  --linie-aus: #3f7d68;
+  --gewaehlt: #ff8a14;
+  --gewaehlt-text: #2b1500;
+  --fokus: #ffb067;
   --fehler: #ffb4ab;
   --schatten: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 28px rgb(0 0 0 / 0.35);
   --schatten-hoch: 0 2px 6px rgb(0 0 0 / 0.35), 0 18px 48px rgb(0 0 0 / 0.5);
@@ -361,7 +361,7 @@ input {
 .leisten-knopf[aria-pressed='true']:active:not(:disabled) {
   background: var(--gewaehlt);
   color: var(--gewaehlt-text);
-  box-shadow: 0 2px 8px rgb(10 45 83 / 0.25);
+  box-shadow: 0 2px 8px rgb(15 92 71 / 0.25);
 }
 .leisten-knopf:disabled {
   color: var(--linie-aus);
@@ -491,7 +491,7 @@ input {
 .farb-knopf.klein span {
   width: 1.6rem;
   height: 1.6rem;
-  box-shadow: inset 0 0 0 1px rgb(10 45 83 / 0.25); /* auch Weiß bleibt sichtbar */
+  box-shadow: inset 0 0 0 1px rgb(15 92 71 / 0.25); /* auch Weiß bleibt sichtbar */
 }
 .farb-knopf.farbwahl {
   position: relative;
@@ -956,8 +956,8 @@ input {
   cursor: pointer;
 }
 .notiz-farbe[aria-pressed='true'] {
-  border-color: #0b1f4d;
-  box-shadow: 0 0 0 2px #0b1f4d;
+  border-color: #0f5c47;
+  box-shadow: 0 0 0 2px #0f5c47;
 }
 
 @media (max-height: 34rem) {
@@ -1162,7 +1162,7 @@ input {
   border: 1px solid #cdd5e3;
   border-radius: 1rem;
   background: rgb(255 255 255 / 0.93);
-  color: #0b1f4d;
+  color: #0f5c47;
   font-size: 0.8rem;
   line-height: 1.3;
   box-shadow: 0 6px 24px rgb(6 18 51 / 0.18);
@@ -1226,12 +1226,12 @@ input {
 .pruefansicht .knoepfe .f-knopf {
   min-height: 3.5rem;
   background: #e8ecf3;
-  color: #0b1f4d;
+  color: #0f5c47;
   text-decoration: none;
   pointer-events: auto;
 }
 .pruefansicht .knoepfe .f-knopf[aria-pressed='true'] {
-  background: #0b1f4d;
+  background: #0f5c47;
   color: #ffffff;
 }
 .pruefansicht table.verlauf {
@@ -1367,7 +1367,7 @@ input {
 .segmente button[aria-pressed='true'] {
   background: var(--leiste);
   font-weight: 600;
-  box-shadow: 0 1px 3px rgb(10 45 83 / 0.15);
+  box-shadow: 0 1px 3px rgb(15 92 71 / 0.15);
 }
 .feld-hinweis {
   margin: 0 0.25rem;
