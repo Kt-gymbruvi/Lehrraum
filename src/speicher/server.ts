@@ -165,3 +165,94 @@ export async function loescheDateien(namen: string[]): Promise<void> {
     if (error) throw error
   }
 }
+
+// ---------- Schülerseiten (lr_sitzungen, lr_abgaben): Mitmachen per QR-Code ----------
+// Alles nur verschlüsselt (siehe kern/sitzung.ts); der Server kennt Code, Zeitraum, zufällige Platzkennungen und
+// verschlüsselte Daten – nie Namen oder Zeichnungen. Schüler haben kein Konto und gehen nur über die vier
+// Funktionen unter „Schüler“ weiter (Migration ../Quizzo/supabase/migrations/017_schuelerseiten.sql).
+// Bei lr_abgaben immer die Spalten nennen, nie „*“: Das Geheimnis-Hash der Plätze darf die Lehrkraft nicht lesen.
+export type SitzungInfo = { code: string; beginn: string; ende: string; loeschen_am: string }
+export type SitzungZeile = SitzungInfo & { iv: string; daten: string }
+export type AbgabeStand = { platz: string; belegt: boolean; stand: number; geaendert_am: string }
+export type AbgabeZeile = { stand: number; iv: string | null; daten: string | null }
+
+// ----- Lehrkraft (angemeldet) -----
+/** Legt Freigabe und alle Plätze zusammen an (höchstens 3 Stunden ab jetzt, 60 Plätze). */
+export async function legeSitzungAn(code: string, ende: string, iv: string, daten: string, plaetze: string[]): Promise<void> {
+  const { error } = await db().rpc('lr_sitzung_anlegen', { p_code: code, p_ende: ende, p_iv: iv, p_daten: daten, p_plaetze: plaetze })
+  if (error) throw error
+}
+
+/** Eigene Freigaben, die noch nicht gelöscht sind (ohne Inhalt) */
+export async function ladeMeineSitzungen(): Promise<SitzungInfo[]> {
+  const { data, error } = await db().from('lr_sitzungen').select('code, beginn, ende, loeschen_am').order('beginn', { ascending: false })
+  if (error) throw error
+  return (data ?? []) as SitzungInfo[]
+}
+
+export async function ladeSitzungZeile(code: string): Promise<SitzungZeile | null> {
+  const { data, error } = await db().from('lr_sitzungen').select('code, beginn, ende, loeschen_am, iv, daten').eq('code', code).maybeSingle()
+  if (error) throw error
+  return (data as SitzungZeile | null) ?? null
+}
+
+/** Ändert das Ende (verlängern oder sofort beenden); gelöscht wird 48 Stunden danach. */
+export async function setzeSitzungEnde(code: string, ende: string): Promise<void> {
+  const { error } = await db().rpc('lr_sitzung_zeit', { p_code: code, p_ende: ende })
+  if (error) throw error
+}
+
+/** Löscht die Freigabe samt aller Seiten sofort */
+export async function loescheSitzung(code: string): Promise<void> {
+  const { error } = await db().from('lr_sitzungen').delete().eq('code', code)
+  if (error) throw error
+}
+
+/** Wer ist belegt, welcher Stand liegt vor – klein genug zum Abrufen alle paar Sekunden */
+export async function ladeAbgabeStaende(code: string): Promise<AbgabeStand[]> {
+  const { data, error } = await db().from('lr_abgaben').select('platz, belegt, stand, geaendert_am').eq('code', code)
+  if (error) throw error
+  return (data ?? []) as AbgabeStand[]
+}
+
+export async function ladeAbgabeZeile(code: string, platz: string): Promise<AbgabeZeile | null> {
+  const { data, error } = await db().from('lr_abgaben').select('stand, iv, daten').eq('code', code).eq('platz', platz).maybeSingle()
+  if (error) throw error
+  return (data as AbgabeZeile | null) ?? null
+}
+
+export async function gibPlatzFrei(code: string, platz: string): Promise<void> {
+  const { error } = await db().rpc('lr_platz_freigeben', { p_code: code, p_platz: platz })
+  if (error) throw error
+}
+
+// ----- Schüler (ohne Konto) -----
+export type MitmachenInfo = { iv: string; daten: string; beginn: string; ende: string; plaetze: { platz: string; belegt: boolean }[] }
+
+/** Verschlüsselte Namensliste und Plätze; Fehler „Die Zeit ist um.“ oder „Diese Freigabe gibt es nicht (mehr).“ */
+export async function mitmachenLaden(code: string): Promise<MitmachenInfo> {
+  const { data, error } = await db().rpc('lr_mitmachen_laden', { p_code: code })
+  if (error) throw error
+  return data as MitmachenInfo
+}
+
+/** Belegt einen freien Platz (oder bestätigt den eigenen); false = gehört schon einem anderen Gerät */
+export async function platzBelegen(code: string, platz: string, hash: string): Promise<boolean> {
+  const { data, error } = await db().rpc('lr_platz_belegen', { p_code: code, p_platz: platz, p_hash: hash })
+  if (error) throw error
+  return data === true
+}
+
+/** Die eigene Seite (nach einem Neuladen); null, wenn der Platz einem anderen Gerät gehört */
+export async function abgabeLaden(code: string, platz: string, hash: string): Promise<AbgabeZeile | null> {
+  const { data, error } = await db().rpc('lr_abgabe_laden', { p_code: code, p_platz: platz, p_hash: hash })
+  if (error) throw error
+  return (data as AbgabeZeile | null) ?? null
+}
+
+/** Speichert die eigene Seite; nur ein höherer Stand ersetzt einen niedrigeren. Liefert den Stand auf dem Server. */
+export async function abgabeSpeichern(code: string, platz: string, hash: string, stand: number, iv: string, daten: string): Promise<number> {
+  const { data, error } = await db().rpc('lr_abgabe_speichern', { p_code: code, p_platz: platz, p_hash: hash, p_stand: stand, p_iv: iv, p_daten: daten })
+  if (error) throw error
+  return data as number
+}
