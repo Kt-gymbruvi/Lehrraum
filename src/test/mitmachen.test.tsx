@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
-import { neueSeite, type Seite, type Strich } from '../kern/modell.ts'
-import { neueSitzungsdaten, neuerSitzungsCode, neuerSitzungsSchluessel, oeffneAbgabe, sitzungsSchluessel, verschluesseleAbgabe, verschluesseleSitzung, type Sitzungsdaten } from '../kern/sitzung.ts'
+import { neueSeite, type Bild, type Seite, type Strich } from '../kern/modell.ts'
+import { neueSitzungsdaten, neuerSitzungsCode, neuerSitzungsSchluessel, oeffneAbgabe, oeffneBild, sitzungsSchluessel, verschluesseleAbgabe, verschluesseleBild, verschluesseleSitzung, type Sitzungsdaten } from '../kern/sitzung.ts'
 import Mitmachen from '../schueler/Mitmachen.tsx'
 import { vergissStift } from '../tafel/Zeichenflaeche.tsx'
 
@@ -10,6 +10,8 @@ const laden = vi.fn()
 const belegen = vi.fn()
 const abgabeHolen = vi.fn()
 const senden = vi.fn()
+const bilderHolen = vi.fn()
+const bildAblegen = vi.fn()
 vi.mock('../speicher/server.ts', async (original) => ({
   ...(await original<typeof import('../speicher/server.ts')>()),
   serverVorhanden: () => true,
@@ -17,6 +19,24 @@ vi.mock('../speicher/server.ts', async (original) => ({
   platzBelegen: (...a: unknown[]) => belegen(...a),
   abgabeLaden: (...a: unknown[]) => abgabeHolen(...a),
   abgabeSpeichern: (...a: unknown[]) => senden(...a),
+  bilderLaden: (...a: unknown[]) => bilderHolen(...a),
+  bildSpeichern: (...a: unknown[]) => bildAblegen(...a),
+}))
+
+const probe = vi.hoisted(() => ({ nimmBild: [] as unknown[][], dateien: new Map<string, Blob>() }))
+// Die Testumgebung gibt in IndexedDB gespeicherte Blobs nicht als Blob zurück: Dateien liegen hier in einer Map
+vi.mock('../speicher/dateien.ts', async (original) => ({
+  ...(await original<typeof import('../speicher/dateien.ts')>()),
+  legeDateiAb: async (id: string, daten: Blob) => void probe.dateien.set(id, daten),
+  ladeDatei: async (id: string) => probe.dateien.get(id) ?? null,
+}))
+vi.mock('../tafel/bilder.ts', async (original) => ({
+  ...(await original<typeof import('../tafel/bilder.ts')>()),
+  nimmBild: async (datei: Blob, optionen: unknown) => {
+    probe.nimmBild.push([datei.type, optionen])
+    probe.dateien.set('abcd1234ef', datei)
+    return { dateiId: 'abcd1234ef', b: 800, h: 600 }
+  },
 }))
 
 // jsdom kann nicht zeichnen: Canvas und Path2D durch Attrappen ersetzen (wie in tafel.test.tsx)
@@ -44,11 +64,11 @@ function ziehe(von: [number, number], nach: [number, number]) {
 
 type Aufbau = { code: string; schluesselText: string; daten: Sitzungsdaten; key: CryptoKey }
 /** Richtet den (nachgemachten) Server ein: Sitzung mit Namensliste, optional Vorlage und Ablaufzeit */
-async function sitzung(mehr: { vorlage?: Seite; endeInMin?: number; belegt?: string[] } = {}): Promise<Aufbau> {
+async function sitzung(mehr: { vorlage?: Seite; endeInMin?: number; belegt?: string[]; gaeste?: number } = {}): Promise<Aufbau> {
   const code = neuerSitzungsCode()
   const schluesselText = neuerSitzungsSchluessel()
   const key = await sitzungsSchluessel(schluesselText)
-  const daten = neueSitzungsdaten('10G1', schueler, mehr.vorlage)
+  const daten = neueSitzungsdaten('10G1', schueler, mehr.vorlage, mehr.gaeste)
   const box = await verschluesseleSitzung(key, daten)
   const ende = new Date(Date.now() + (mehr.endeInMin ?? 20) * 60_000).toISOString()
   laden.mockResolvedValue({ ...box, beginn: new Date().toISOString(), ende, plaetze: daten.plaetze.map((p, i) => ({ platz: p.platz, belegt: !!mehr.belegt?.includes(String(i)) })) })
@@ -71,6 +91,12 @@ beforeEach(() => {
   belegen.mockReset()
   abgabeHolen.mockReset()
   senden.mockReset()
+  bilderHolen.mockReset()
+  bildAblegen.mockReset()
+  bilderHolen.mockResolvedValue([])
+  bildAblegen.mockResolvedValue(undefined)
+  probe.nimmBild.length = 0
+  probe.dateien.clear()
   window.localStorage.clear()
   belegen.mockResolvedValue(true)
   abgabeHolen.mockResolvedValue(null)
@@ -132,7 +158,7 @@ describe('Schülerseite: Schreiben', () => {
     expect(screen.getByText(/Anna Adler/)).toBeInTheDocument()
     // keine PDF-, Bild-, Seiten- und Klassenfunktionen
     expect(screen.queryByRole('button', { name: 'PDF öffnen' })).toBeNull()
-    expect(screen.queryByRole('button', { name: 'Bild einfügen' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Bild einfügen' })).toBeInTheDocument() // Schüler dürfen Fotos einfügen
     expect(screen.queryByRole('button', { name: 'Neue Seite anlegen' })).toBeNull()
     expect(screen.queryByRole('link', { name: 'Meine Klassen' })).toBeNull()
     expect(screen.queryByRole('group', { name: 'Seiten' })).toBeNull()
@@ -202,5 +228,104 @@ describe('Schülerseite: Schreiben', () => {
     await screen.findByTestId('zeichenflaeche')
     ziehe([20, 20], [220, 80])
     expect(await screen.findByRole('alert', undefined, { timeout: 5000 })).toHaveTextContent(/Die Zeit ist um/)
+  })
+
+  it('lässt Gäste mitmachen: Gast-Plätze stehen nicht in der Namensliste, ein Knopf nimmt den ersten freien', async () => {
+    const a = await sitzung({ gaeste: 2 })
+    zeige(a)
+    const nutzer = userEvent.setup()
+    await screen.findByRole('heading', { name: '10G1' })
+    expect(screen.queryByRole('button', { name: /^Gast 1/ })).toBeNull()
+    await nutzer.click(screen.getByRole('button', { name: 'Als Gast mitmachen' }))
+    expect(screen.getByText('Du schreibst als Gast 1.')).toBeInTheDocument()
+    await nutzer.click(screen.getByRole('button', { name: 'Ja, los' }))
+    expect(await screen.findByTestId('zeichenflaeche')).toBeInTheDocument()
+    expect(belegen.mock.calls[0][1]).toBe(a.daten.plaetze.find((p) => p.gast)!.platz)
+    expect(screen.getByText(/Gast 1/)).toBeInTheDocument()
+  })
+
+  it('sagt, wenn alle Gast-Plätze vergeben sind', async () => {
+    const a = await sitzung({ gaeste: 2, belegt: ['2', '3'] }) // 2 Namen, dann Gast 1 und Gast 2
+    zeige(a)
+    await screen.findByRole('heading', { name: '10G1' })
+    expect(screen.getByRole('button', { name: 'Als Gast mitmachen' })).toBeDisabled()
+    expect(screen.getByText(/Alle Gast-Plätze sind schon vergeben/)).toBeInTheDocument()
+  })
+
+  it('zeigt ohne Gäste keinen Gast-Knopf', async () => {
+    const a = await sitzung()
+    zeige(a)
+    await screen.findByRole('heading', { name: '10G1' })
+    expect(screen.queryByRole('button', { name: 'Als Gast mitmachen' })).toBeNull()
+  })
+
+  it('lädt ein eingefügtes Foto verschlüsselt hoch, bevor die Seite gesendet wird', async () => {
+    const a = await sitzung()
+    zeige(a)
+    const nutzer = userEvent.setup()
+    await nutzer.click(await screen.findByRole('button', { name: 'Anna Adler' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Ja, das bin ich' }))
+    await screen.findByTestId('zeichenflaeche')
+    const foto = new File([new Uint8Array([1, 2, 3, 4, 5, 250, 251])], 'foto.jpg', { type: 'image/jpeg' })
+    await nutzer.upload(screen.getByLabelText('Bilddatei wählen'), foto)
+    await waitFor(() => expect(bildAblegen).toHaveBeenCalled(), { timeout: 6000 })
+    // Schüler-Fotos werden klein gerechnet
+    expect((probe.nimmBild[0][1] as { kompakt?: boolean }).kompakt).toBe(true)
+    const [code, platz, hash, id, iv, daten] = bildAblegen.mock.calls[0]
+    expect([code, platz]).toEqual([a.code, a.daten.plaetze[0].platz])
+    expect(hash).toMatch(/^[0-9a-f]{64}$/)
+    expect(id).toBe('abcd1234ef')
+    const klar = await oeffneBild(a.key, { iv, daten }, platz, id)
+    expect([...klar!]).toEqual([1, 2, 3, 4, 5, 250, 251])
+    // erst das Foto, dann die Seite – und die Seite nennt nur die Kennung
+    await waitFor(() => expect(senden).toHaveBeenCalled(), { timeout: 6000 })
+    expect(bildAblegen.mock.invocationCallOrder[0]).toBeLessThan(senden.mock.invocationCallOrder[0])
+    const [, , , , siv, sdaten] = senden.mock.calls.at(-1)!
+    const seite = (await oeffneAbgabe(a.key, { iv: siv, daten: sdaten }, platz))!.seite
+    expect(seite.elemente.filter((e) => e.art === 'bild').map((e) => (e as Bild).dateiId)).toEqual(['abcd1234ef'])
+    expect(sdaten).not.toContain('FOTO')
+  })
+
+  it('holt die eigenen Fotos nach einem Neuladen vom Server auf das Gerät', async () => {
+    const a = await sitzung()
+    const platz = a.daten.plaetze[0]
+    window.localStorage.setItem(`lehrraum-mitmachen-${a.code}`, JSON.stringify({ platz: platz.platz, geheimnis: 'geheim' }))
+    const bildElement: Bild = { art: 'bild', id: 'b1', x: 10, y: 10, b: 200, h: 100, dateiId: 'abcd1234ef' }
+    const box = await verschluesseleAbgabe(a.key, platz.platz, neueSeite([bildElement]), 3)
+    abgabeHolen.mockResolvedValue({ stand: 3, ...box })
+    const fotoBox = await verschluesseleBild(a.key, platz.platz, 'abcd1234ef', new Uint8Array([9, 8, 7]))
+    bilderHolen.mockResolvedValue([{ bild: 'abcd1234ef', ...fotoBox }])
+    zeige(a)
+    expect(await screen.findByTestId('zeichenflaeche')).toBeInTheDocument()
+    const blob = probe.dateien.get('abcd1234ef')
+    expect(blob).toBeDefined()
+    expect(blob!.size).toBe(3)
+  })
+
+  it('nimmt nicht mehr als acht Fotos je Seite', async () => {
+    const a = await sitzung()
+    const platz = a.daten.plaetze[0]
+    window.localStorage.setItem(`lehrraum-mitmachen-${a.code}`, JSON.stringify({ platz: platz.platz, geheimnis: 'geheim' }))
+    const bilder = Array.from({ length: 8 }, (_, i): Bild => ({ art: 'bild', id: 'b' + i, x: 10, y: 10, b: 100, h: 100, dateiId: 'abcd12340' + i }))
+    const box = await verschluesseleAbgabe(a.key, platz.platz, neueSeite(bilder), 3)
+    abgabeHolen.mockResolvedValue({ stand: 3, ...box })
+    zeige(a)
+    await screen.findByTestId('zeichenflaeche')
+    const nutzer = userEvent.setup()
+    await nutzer.upload(screen.getByLabelText('Bilddatei wählen'), new File([new Uint8Array([1])], 'x.jpg', { type: 'image/jpeg' }))
+    expect(await screen.findByText('Höchstens 8 Fotos je Seite.')).toBeInTheDocument()
+    expect(probe.nimmBild).toHaveLength(0)
+  })
+
+  it('lässt keine PDF-Dateien zu', async () => {
+    const a = await sitzung()
+    zeige(a)
+    const nutzer = userEvent.setup()
+    await nutzer.click(await screen.findByRole('button', { name: 'Anna Adler' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Ja, das bin ich' }))
+    await screen.findByTestId('zeichenflaeche')
+    fireEvent.change(screen.getByLabelText('Bilddatei wählen'), { target: { files: [new File([new Uint8Array([1])], 'x.pdf', { type: 'application/pdf' })] } })
+    expect(await screen.findByText('Hier gehen nur Fotos und Bilder.')).toBeInTheDocument()
+    expect(probe.nimmBild).toHaveLength(0)
   })
 })

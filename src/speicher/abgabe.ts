@@ -4,7 +4,7 @@ import { verschluesseleAbgabe } from '../kern/sitzung.ts'
 import type { Seite } from '../kern/modell.ts'
 import { abgabeSpeichern } from './server.ts'
 
-export type SendeStand = 'bereit' | 'wartet' | 'sendet' | 'gesendet' | 'fehler' | 'zeit-um' | 'verloren'
+export type SendeStand = 'bereit' | 'wartet' | 'sendet' | 'gesendet' | 'fehler' | 'zeit-um' | 'verloren' | 'fotos'
 
 export type AbgabeSpeicher = {
   /** Neuer Stand der Seite: wird nach kurzer Ruhe gesendet */
@@ -23,6 +23,8 @@ export type AbgabeOptionen = {
   /** Stand, der schon auf dem Server liegt (0 = noch nichts) */
   stand0: number
   beiStand: (s: SendeStand) => void
+  /** Vor dem Senden einer Seite: z. B. neue Fotos hochladen (die Seite nennt nur ihre Kennungen). Ein Fehler bricht das Senden ab. */
+  vorbereiten?: (seite: Seite) => Promise<void>
   /** So lange nach der letzten Änderung warten (ms) */
   ruhe?: number
   /** So lange nach einem Fehler bis zum nächsten Versuch (ms) */
@@ -40,6 +42,7 @@ export function erzeugeAbgabeSpeicher(o: AbgabeOptionen): AbgabeSpeicher {
   let uhr: ReturnType<typeof setTimeout> | null = null
   let laeuft: Promise<void> | null = null
   let aus = false
+  let blockiert = false // Fotos zu viele/zu groß: erst nach einer neuen Änderung wieder versuchen
 
   const plane = (ms: number) => {
     if (uhr) clearTimeout(uhr)
@@ -50,12 +53,13 @@ export function erzeugeAbgabeSpeicher(o: AbgabeOptionen): AbgabeSpeicher {
     if (uhr) clearTimeout(uhr)
     uhr = null
     if (laeuft) return laeuft // läuft schon; danach wird nachgesehen, ob wieder etwas offen ist
-    if (aus || !offen) return
+    if (aus || blockiert || !offen) return
     laeuft = (async () => {
       const seite = offen
       if (!seite) return
       o.beiStand('sendet')
       try {
+        await o.vorbereiten?.(seite)
         stand = Math.max(stand + 1, sekundenStand())
         const box = await verschluesseleAbgabe(o.schluessel, o.platz, seite, stand)
         stand = await abgabeSpeichern(o.code, o.platz, o.hash, stand, box.iv, box.daten)
@@ -69,6 +73,10 @@ export function erzeugeAbgabeSpeicher(o: AbgabeOptionen): AbgabeSpeicher {
         } else if (/anderen Gerät/.test(text)) {
           aus = true
           o.beiStand('verloren')
+        } else if (/Zu viele Fotos|zu groß|zusammen/.test(text)) {
+          // nicht wiederholen: erst eine neue Änderung (z. B. ein Foto weniger) sendet wieder
+          blockiert = true
+          o.beiStand('fotos')
         } else {
           o.beiStand('fehler')
           if (!aus) plane(wiederholung)
@@ -76,7 +84,7 @@ export function erzeugeAbgabeSpeicher(o: AbgabeOptionen): AbgabeSpeicher {
       } finally {
         laeuft = null
       }
-      if (!aus && offen && !uhr) plane(ruhe) // währenddessen kam Neues dazu
+      if (!aus && !blockiert && offen && !uhr) plane(ruhe) // währenddessen kam Neues dazu
     })()
     return laeuft
   }
@@ -85,6 +93,7 @@ export function erzeugeAbgabeSpeicher(o: AbgabeOptionen): AbgabeSpeicher {
     melde(seite) {
       if (aus) return
       offen = seite
+      blockiert = false
       o.beiStand('wartet')
       plane(ruhe)
     },

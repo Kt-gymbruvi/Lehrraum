@@ -14,10 +14,10 @@ const bis = async (bed: () => boolean) => {
   expect(bed()).toBe(true)
 }
 
-async function aufbauen(mehr: { stand0?: number } = {}) {
+async function aufbauen(mehr: { stand0?: number; vorbereiten?: (s: Seite) => Promise<void> } = {}) {
   const schluessel = await sitzungsSchluessel(neuerSitzungsSchluessel())
   const staende: SendeStand[] = []
-  const speicher = erzeugeAbgabeSpeicher({ code: 'c'.repeat(22), platz: 'p1', hash: 'a'.repeat(64), schluessel, stand0: mehr.stand0 ?? 0, beiStand: (s) => staende.push(s), ruhe: 20, wiederholung: 30 })
+  const speicher = erzeugeAbgabeSpeicher({ code: 'c'.repeat(22), platz: 'p1', hash: 'a'.repeat(64), schluessel, stand0: mehr.stand0 ?? 0, beiStand: (s) => staende.push(s), vorbereiten: mehr.vorbereiten, ruhe: 20, wiederholung: 30 })
   return { schluessel, staende, speicher }
 }
 
@@ -107,5 +107,41 @@ describe('Abgabe-Speicher', () => {
     speicher.stoppe()
     await warte(120)
     expect(senden).not.toHaveBeenCalled()
+  })
+
+  it('bereitet vor dem Senden vor (Fotos hochladen) und sendet erst danach', async () => {
+    const reihenfolge: string[] = []
+    senden.mockImplementation(async (_c, _p, _h, stand) => (reihenfolge.push('seite'), stand))
+    const vorbereiten = vi.fn(async () => void reihenfolge.push('fotos'))
+    const { staende, speicher } = await aufbauen({ vorbereiten })
+    speicher.melde(seiteMit('a'))
+    await bis(() => staende.at(-1) === 'gesendet')
+    expect(reihenfolge).toEqual(['fotos', 'seite'])
+    expect(vorbereiten).toHaveBeenCalledTimes(1)
+  })
+
+  it('wiederholt, wenn das Hochladen scheitert, und sendet die Seite erst danach', async () => {
+    senden.mockImplementation(async (_c, _p, _h, stand) => stand)
+    const vorbereiten = vi.fn().mockRejectedValueOnce({ message: 'Failed to fetch' }).mockResolvedValue(undefined)
+    const { staende, speicher } = await aufbauen({ vorbereiten })
+    speicher.melde(seiteMit('a'))
+    await bis(() => staende.at(-1) === 'gesendet')
+    expect(staende).toContain('fehler')
+    expect(vorbereiten).toHaveBeenCalledTimes(2)
+    expect(senden).toHaveBeenCalledTimes(1)
+  })
+
+  it('wiederholt bei zu vielen oder zu großen Fotos nicht von selbst, erst nach einer neuen Änderung', async () => {
+    senden.mockImplementation(async (_c, _p, _h, stand) => stand)
+    const vorbereiten = vi.fn().mockRejectedValueOnce({ message: 'QUIZZO: Zu viele Fotos.' }).mockResolvedValue(undefined)
+    const { staende, speicher } = await aufbauen({ vorbereiten })
+    speicher.melde(seiteMit('a'))
+    await bis(() => staende.at(-1) === 'fotos')
+    await warte(150)
+    expect(vorbereiten).toHaveBeenCalledTimes(1)
+    expect(senden).not.toHaveBeenCalled()
+    speicher.melde(seiteMit('a', 'b')) // z. B. ein Foto weniger
+    await bis(() => staende.at(-1) === 'gesendet')
+    expect(senden).toHaveBeenCalledTimes(1)
   })
 })

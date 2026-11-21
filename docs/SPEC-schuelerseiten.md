@@ -44,11 +44,17 @@ Stand: 20.11.2026 · Entwurf, Entscheidungen der Lehrkraft eingetragen · Etappe
 3. **Live-Ansicht:** Die Übersicht der Lehrkraft ruft alle paar Sekunden ab (kein echtes Streaming).
 4. **Aufgabenblatt:** Je Freigabe wählbar: leere Seite oder aktuelle Tafelseite als nicht veränderbarer Hintergrund.
 
+## Entschieden (21.11.2026, Lehrkraft)
+5. **Übernehmen ist rücknehmbar:** Rückgängig, Wiederholen und Strg+Z nehmen die kopierten Seiten wieder weg, solange danach nichts anderes an den Seiten geändert wurde.
+6. **Aufgabenblatt bleibt eine veränderbare Kopie** (kein gesperrter Hintergrund).
+7. **Fotos:** Schüler dürfen Fotos einfügen (höchstens 8 je Seite). Sie werden klein gerechnet (längste Kante 1600, JPEG, höchstens 1,2 MB), auf dem Gerät mit dem Sitzungsschlüssel verschlüsselt und einzeln hochgeladen (Tabelle `lr_bilder`, Migration 018, höchstens 20 Fotos und 15 Mio. Zeichen je Platz). Die Seite nennt nur die Kennung. Sie liegen in der Datenbank und verschwinden mit dem automatischen Löschen.
+8. **Gäste:** Beim Freigeben wählt die Lehrkraft 0, 2, 5 oder 10 Gast-Plätze (Standard 2). Wer nicht in der Liste steht, tippt „Als Gast mitmachen“ und bekommt den ersten freien Platz („Gast 1“ …). Ungenutzte Gast-Plätze bleiben in der Übersicht unsichtbar. Obergrenze der Plätze: 100.
+
 ## Offene Entscheidungen
 5. **Datenschutz:** Schülerarbeiten (auch verschlüsselt) auf dem Server und Namen im QR-Code-Fluss mit Schulleitung/Datenschutzbeauftragten klären, bevor es im Unterricht läuft.
 6. Missbrauch: Wer den QR-Code fotografiert, kommt hinein. Gegenmaßnahmen: kurze Dauer, belegte Namen, Lehrkraft kann Plätze sperren, Code nur auf dem Beamer.
 
-## Etappen (1 bis 3 gebaut, Migration 017 noch nicht auf dem Server ausgeführt)
+## Etappen (1 bis 4 gebaut, Migration 017 noch nicht auf dem Server ausgeführt)
 1. Kern: Sitzung, Schlüssel, Verschlüsselung von Seite und Namensliste (`src/kern/`, Tests ohne Browser).
 2. Server: Migration, Funktionen, RLS, Löschfunktion; `server.ts` erweitern.
 3. Schülerseite: Einstieg, Namenswahl, Zeichenfläche (abgespeckt), Autospeichern.

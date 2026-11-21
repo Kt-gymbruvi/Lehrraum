@@ -103,7 +103,8 @@ function Geometriewahl({ an, beiInstrument }: { an: InstrumentArt[]; beiInstrume
 /** Rechte Schnellzugriffsleiste – bleibt dauerhaft sichtbar. */
 /** vorne: Knöpfe der Tafel, die oben in der Leiste stehen (z. B. „Hintergrund“) */
 /** klasse: Tafel einer Klasse – nur dann gibt es „Zufall & Gruppen“ */
-export function Schnellleiste({ fenster, beiAendern, vorne, klasse = false, zeigen }: Props & { vorne?: ReactNode; klasse?: boolean; zeigen?: Zeigewerkzeuge }) {
+/** beiMitmachen: Knopf „Mitmachen“ (QR-Code für die Schüler) – nur in der Tafel einer Klasse */
+export function Schnellleiste({ fenster, beiAendern, vorne, klasse = false, zeigen, beiMitmachen }: Props & { vorne?: ReactNode; klasse?: boolean; zeigen?: Zeigewerkzeuge; beiMitmachen?: () => void }) {
   return (
     <aside className="werkzeugleiste rechts" aria-label="Unterrichtswerkzeuge">
       {vorne && <div className="gruppe">{vorne}</div>}
@@ -124,6 +125,14 @@ export function Schnellleiste({ fenster, beiAendern, vorne, klasse = false, zeig
             })}
         </div>
       ))}
+      {klasse && beiMitmachen && (
+        <div className="gruppe">
+          <button type="button" className="leisten-knopf mit-text" aria-label="Mitmachen freigeben" title="Die Klasse schreibt auf eigenen Seiten mit: QR-Code zeigen, Seiten ansehen und übernehmen" onClick={beiMitmachen}>
+            <Symbol name="mitmachen" />
+            <span>Mitmachen</span>
+          </button>
+        </div>
+      )}
       {zeigen && (
         <div className="gruppe">
           <button type="button" className="leisten-knopf mit-text" aria-pressed={zeigen.abdecken} aria-label="Abdecken" title="Tafel abdecken und Stück für Stück aufdecken" onClick={zeigen.beiAbdecken}>

@@ -75,3 +75,159 @@
   font-size: 0.8rem;
   font-weight: 400;
 }
+
+/* ---------- Freigabe (Lehrkraft) ---------- */
+.freigabe {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  overflow: auto;
+  box-sizing: border-box;
+  padding: max(1rem, env(safe-area-inset-top)) 1.25rem max(1.5rem, env(safe-area-inset-bottom));
+  background: var(--umgebung);
+  color: var(--text);
+}
+.freigabe .f-knopf {
+  min-height: 3.5rem;
+}
+.fg-kopf {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+.fg-kopf h1,
+.fg-kopf h2 {
+  flex: 1;
+  margin: 0;
+  font-size: 1.5rem;
+}
+.freigabe h2 {
+  font-size: 1.15rem;
+  margin: 1rem 0 0.5rem;
+}
+.fg-neu {
+  max-width: 40rem;
+}
+.fg-dauern,
+.fg-knoepfe {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  margin: 0.5rem 0 1rem;
+}
+.fg-wahl {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  min-height: 3.5rem;
+  cursor: pointer;
+}
+.fg-wahl input {
+  width: 1.6rem;
+  height: 1.6rem;
+  flex: none;
+}
+.fg-oben {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+  align-items: flex-start;
+  margin-bottom: 1rem;
+}
+.fg-qr {
+  width: min(22rem, 80vw);
+  flex: none;
+  background: #ffffff;
+  border-radius: 1rem;
+  padding: 0.75rem;
+  box-shadow: var(--schatten);
+}
+.fg-qr .qr-bild {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.fg-gross {
+  font-size: 2.5rem;
+  margin: 0;
+}
+.fg-rest.aus {
+  color: var(--fehler);
+}
+.fg-leiste {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.6rem;
+}
+.fg-leiste h2 {
+  flex: 1;
+}
+.fg-raster {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: 0.9rem;
+}
+.fg-kachel {
+  background: var(--leiste);
+  border-radius: 1rem;
+  padding: 0.5rem 0.75rem 0.75rem;
+  box-shadow: var(--schatten);
+}
+.fg-kachel.frei {
+  opacity: 0.6;
+}
+.fg-kachel.schreibt {
+  outline: 2px solid var(--gewaehlt);
+}
+.fg-bild {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 1px solid var(--linie);
+  border-radius: 0.5rem;
+  background: #ffffff;
+  cursor: zoom-in;
+}
+.fg-bild .vorschau-bild {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+.fg-leer {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 297 / 210;
+  border: 1px dashed var(--linie-aus);
+  border-radius: 0.5rem;
+  color: var(--text-2);
+}
+.fg-ende {
+  margin-top: 1rem;
+}
+.fg-gross-ansicht {
+  position: fixed;
+  inset: 0;
+  z-index: 210;
+  overflow: auto;
+  padding: 1rem 1.25rem;
+  background: var(--umgebung);
+}
+.fg-gross-ansicht .vorschau-bild {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  background: #ffffff;
+  box-shadow: var(--schatten);
+}
+.freigabe .klein {
+  font-size: 0.9rem;
+  color: var(--text-2);
+}
+.schueler-gast {
+  margin-top: 1.75rem;
+}

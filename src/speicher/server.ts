@@ -256,3 +256,26 @@ export async function abgabeSpeichern(code: string, platz: string, hash: string,
   if (error) throw error
   return data as number
 }
+
+// ----- Fotos der Schüler (Migration 018): nur verschlüsselt, siehe kern/sitzung.ts -----
+export type BildZeile = { bild: string; iv: string; daten: string }
+
+/** Schüler: legt ein verschlüsseltes Foto ab (einmal je Kennung); Fehler „Zu viele Fotos.“, „Das Foto ist zu groß.“ */
+export async function bildSpeichern(code: string, platz: string, hash: string, bild: string, iv: string, daten: string): Promise<void> {
+  const { error } = await db().rpc('lr_bild_speichern', { p_code: code, p_platz: platz, p_hash: hash, p_bild: bild, p_iv: iv, p_daten: daten })
+  if (error) throw error
+}
+
+/** Schüler: alle eigenen Fotos (nach einem Neuladen) */
+export async function bilderLaden(code: string, platz: string, hash: string): Promise<BildZeile[]> {
+  const { data, error } = await db().rpc('lr_bilder_laden', { p_code: code, p_platz: platz, p_hash: hash })
+  if (error) throw error
+  return (data ?? []) as BildZeile[]
+}
+
+/** Lehrkraft: ein Foto eines Platzes; null, wenn es (noch) nicht da ist */
+export async function ladeBildZeile(code: string, platz: string, bild: string): Promise<BildZeile | null> {
+  const { data, error } = await db().from('lr_bilder').select('bild, iv, daten').eq('code', code).eq('platz', platz).eq('bild', bild).maybeSingle()
+  if (error) throw error
+  return (data as BildZeile | null) ?? null
+}

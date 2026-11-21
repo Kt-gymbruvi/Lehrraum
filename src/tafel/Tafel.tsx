@@ -17,6 +17,7 @@ import { gleichesMuster } from '../kern/muster.ts'
 import type { Radierer } from '../kern/radieren.ts'
 import { istFarbwert, mitEigenerFarbe, normiereFarbe } from '../kern/farben.ts'
 import { drehBefehl, gehe, hintergrundWegBefehl, inReihenfolge, kopiere, pdfSeiten, pdfWeg, seiteDazu, seiteDoppelt, seiteDoppeltBei, seitenDazu, seiteSchieben, seiteVerschieben, seiteWeg, seiteWegBei, type Buch as Seitenfolge } from '../kern/seiten.ts'
+import { Freigabefenster } from '../schueler/Freigabefenster.tsx'
 import { Seitenuebersicht } from './Seitenuebersicht.tsx'
 import { STANDARD_EINSTELLUNGEN, type Formwahl } from '../kern/einstellungen.ts'
 import { mitSchrift, spalteDazu, spalteWeg, zeileDazu, zeileWeg } from '../kern/tabelle.ts'
@@ -24,7 +25,7 @@ import { bitteUmDauerhaftenSpeicher, ladeAblage, ladeKlasse, ladeTafel, speicher
 import { raeumeDateienAuf } from '../speicher/dateien.ts'
 import { gleicheAb } from '../speicher/abgleich.ts'
 import { gleicheTafelAb, kennungFuer, raeumeServerAuf } from '../speicher/tafelabgleich.ts'
-import { istBilddatei, nimmBild } from './bilder.ts'
+import { istBilddatei, nimmBild, SCHUELER_BILD } from './bilder.ts'
 import { exportierePdf, importierePdf, istPdf, kannTeilen, ladeHerunter, pdfName, teile } from './pdf.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 import { Auswahlleiste, type Befehlsknopf } from './Auswahlleiste.tsx'
@@ -89,6 +90,8 @@ export type SchuelerModus = {
   kopfzeile?: ReactNode
   /** Zustand des Sendens für die Kopfzeile */
   speicherText: string
+  /** Höchstzahl Fotos auf der Seite */
+  maxBilder: number
 }
 
 export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false, schueler }: { klasseId?: string; pruefen?: boolean; gast?: boolean; schueler?: SchuelerModus }) {
@@ -415,8 +418,45 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
     [aendereSeite],
   )
   const beiErsetzen = useCallback((vorher: Element[], nachher: Element[]) => fuehreAus({ art: 'ersetzen', vorher, nachher }), [fuehreAus])
-  const zurueck = useCallback(() => aendereSeite(rueckgaengigAuf), [aendereSeite])
-  const vor = useCallback(() => aendereSeite(wiederholenAuf), [aendereSeite])
+  // Seiten übernehmen (Mitmachen) ist ein Schritt im Verlauf der Tafel: Rückgängig nimmt die Seiten wieder weg, Wiederholen bringt
+  // sie zurück. Das gilt, solange danach nichts anderes an den Seiten geändert wurde (dann beginnt der Verlauf der Seiten neu).
+  type SeitenSchritt = { vorher: Seitenfolge; nachher: Seitenfolge }
+  const seitenSchritte = useRef<{ zurueck: SeitenSchritt[]; vor: SeitenSchritt[] }>({ zurueck: [], vor: [] })
+  const bekannteSeiten = useRef<Seite[] | null>(null)
+  const [, seitenSchrittGeaendert] = useState(0)
+  useEffect(() => {
+    if (bekannteSeiten.current && buch.seiten !== bekannteSeiten.current) {
+      bekannteSeiten.current = null
+      seitenSchritte.current = { zurueck: [], vor: [] }
+      seitenSchrittGeaendert((n) => n + 1)
+    }
+  }, [buch.seiten])
+  const zeigeSeiten = (f: Seitenfolge) => {
+    bekannteSeiten.current = f.seiten
+    setAuswahl([])
+    setBuch((alt) => ({ ...alt, seiten: f.seiten, nr: f.nr }))
+    seitenSchrittGeaendert((n) => n + 1)
+  }
+  const zurueck = useCallback(() => {
+    const s = seitenSchritte.current.zurueck.pop()
+    if (!s) return aendereSeite(rueckgaengigAuf)
+    seitenSchritte.current.vor.push(s)
+    zeigeSeiten(s.vorher)
+  }, [aendereSeite]) // eslint-disable-line react-hooks/exhaustive-deps
+  const vor = useCallback(() => {
+    const s = seitenSchritte.current.vor.pop()
+    if (!s) return aendereSeite(wiederholenAuf)
+    seitenSchritte.current.zurueck.push(s)
+    zeigeSeiten(s.nachher)
+  }, [aendereSeite]) // eslint-disable-line react-hooks/exhaustive-deps
+  /** Hängt Seiten hinten an (Mitmachen) – als Schritt, den Rückgängig wieder wegnimmt */
+  const uebernimmSeiten = (neue: Seite[]) => {
+    const vorher: Seitenfolge = { seiten: buch.seiten, nr: buch.nr }
+    const nachher = seitenDazu(vorher, neue)
+    if (nachher.seiten === vorher.seiten) return
+    seitenSchritte.current = { zurueck: [...seitenSchritte.current.zurueck, { vorher, nachher }], vor: [] }
+    zeigeSeiten(nachher)
+  }
 
   const loescheAuswahl = () => {
     entferne(auswahl)
@@ -613,8 +653,9 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       }
       return neu
     })
+  const [freigabeOffen, setFreigabeOffen] = useState(false) // „Mitmachen“ (Schülerseiten per QR-Code)
   const uebersichtOffen = useRef(false)
-  uebersichtOffen.current = uebersicht
+  uebersichtOffen.current = uebersicht || freigabeOffen
 
   // ---------- Seiten ----------
   const blaettern = (tun: (b: Seitenfolge) => Seitenfolge) => {
@@ -640,7 +681,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       const [mx, my] = zuTafel(kamera, b / 2, h / 2)
       let letzte = ''
       for (const [i, datei] of dateien.entries()) {
-        const fertig = await nimmBild(datei)
+        const fertig = await nimmBild(datei, schueler ? SCHUELER_BILD : undefined)
         const [bb, bh] = einpassen(fertig.b, fertig.h, (b * 0.6) / kamera.zoom, (h * 0.6) / kamera.zoom)
         const bild: Bild = { art: 'bild', id: neueId(), x: Math.round(mx - bb / 2 + i * 24), y: Math.round(my - bh / 2 + i * 24), b: bb, h: bh, dateiId: fertig.dateiId }
         beiHinzu(bild)
@@ -687,7 +728,14 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
 
   /** Dateien aus Auswahl, Zwischenablage oder Hineinziehen: Bilder kommen auf die Seite, ein PDF wird zu neuen Seiten. */
   function nimmDateien(dateien: File[]) {
-    if (schueler) return setMeldung({ text: 'Bilder und PDF gibt es hier nicht.', fehler: true })
+    if (schueler) {
+      // Schüler: nur Fotos und Bilder, höchstens `maxBilder` je Seite, klein gerechnet (sie gehen verschlüsselt über den Server)
+      const bilder = dateien.filter(istBilddatei)
+      if (!bilder.length) return setMeldung({ text: 'Hier gehen nur Fotos und Bilder.', fehler: true })
+      const frei = schueler.maxBilder - seite.elemente.filter((e) => e.art === 'bild').length
+      if (frei <= 0) return setMeldung({ text: `Höchstens ${schueler.maxBilder} Fotos je Seite.`, fehler: true })
+      return void fuegeBilderEin(bilder.slice(0, frei))
+    }
     const pdf = dateien.find(istPdf)
     const bilder = dateien.filter(istBilddatei)
     if (pdf) void oeffnePdf(pdf)
@@ -885,7 +933,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       : []),
     { name: 'Ganz nach vorne', symbol: 'ganzVorne', titel: 'Ganz nach vorne – liegt über allem anderen', tun: () => ordne('vorne') },
     { name: 'Ganz nach hinten', symbol: 'ganzHinten', titel: 'Ganz nach hinten – liegt unter allem anderen', tun: () => ordne('hinten') },
-    ...(gewaehlte.length === 1 && gewaehlte[0].art === 'bild'
+    ...(gewaehlte.length === 1 && gewaehlte[0].art === 'bild' && !schueler
       ? [
           {
             name: 'Als Hintergrund',
@@ -972,6 +1020,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
           {meldung?.text ?? (schueler ? schueler.speicherText : gast ? 'Gast – wird nicht gespeichert' : speicher === 'gespeichert' ? ABGLEICHTEXT[abgleich] : SPEICHERTEXT[speicher])}
         </p>
         {schueler?.kopfzeile}
+        <input ref={bildWahl} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden aria-label="Bilddatei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
         {!schueler && (
           <>
         <div className="zoom" role="group" aria-label="PDF">
@@ -1000,7 +1049,6 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
             e.target.value = ''
           }}
         />
-        <input ref={bildWahl} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden aria-label="Bilddatei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
         <Formatwahl format={format} ueberstand={ueberstand} beiFormat={setFormat} beiEinpassen={inhaltEinpassen} />
           </>
         )}
@@ -1034,8 +1082,8 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
           beiFormwahl={setFormwahl}
           eigeneFarben={eigeneFarben}
           beiEigeneFarbe={waehleEigeneFarbe}
-          kannZurueck={verlauf.zurueck.length > 0}
-          kannVor={verlauf.vor.length > 0}
+          kannZurueck={verlauf.zurueck.length > 0 || seitenSchritte.current.zurueck.length > 0}
+          kannVor={verlauf.vor.length > 0 || seitenSchritte.current.vor.length > 0}
           leer={seite.elemente.length === 0}
           gewaehlt={auswahl.length}
           beiWerkzeug={waehleWerkzeug}
@@ -1047,7 +1095,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
           kannEinfuegen={ablage !== null}
           beiEinfuegen={fuegeEin}
           beiLoeschen={loescheAuswahl}
-          beiBild={schueler ? undefined : () => bildWahl.current?.click()}
+          beiBild={() => bildWahl.current?.click()}
         />
         <div className="tafel-spalte">
           <div
@@ -1127,6 +1175,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
           fenster={fenster}
           beiAendern={setFenster}
           klasse={!!klasseId}
+          beiMitmachen={klasseId && klasse ? () => setFreigabeOffen(true) : undefined}
           zeigen={{
             abdecken: abdeckung !== null,
             scheinwerfer: scheinwerfer !== null,
@@ -1154,6 +1203,14 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
         />
         )}
       </div>
+      {freigabeOffen && klasse && (
+        <Freigabefenster
+          klasse={klasse}
+          seite={seite}
+          beiUebernehmen={uebernimmSeiten}
+          beiSchliessen={() => setFreigabeOffen(false)}
+        />
+      )}
       {uebersicht && !schueler && (
         <Seitenuebersicht
           seiten={buch.seiten}

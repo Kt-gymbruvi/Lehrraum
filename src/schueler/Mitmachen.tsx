@@ -3,16 +3,17 @@
 // entschlüsselt, der Server sieht nur Platzkennungen und verschlüsselte Daten (SPEC-schuelerseiten.md).
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { neueId, neueSeite, type Seite } from '../kern/modell.ts'
+import { benutzteDateien, neueId, neueSeite, type Seite } from '../kern/modell.ts'
 import { kopiere } from '../kern/seiten.ts'
-import { geheimnisHash, istSitzungsCode, istSitzungsSchluessel, neuesPlatzGeheimnis, oeffneAbgabe, oeffneSitzung, platzName, restSekunden, sitzungsSchluessel, type Platz, type Sitzungsdaten } from '../kern/sitzung.ts'
+import { MAX_SCHUELER_BILDER, geheimnisHash, istSitzungsCode, istSitzungsSchluessel, neuesPlatzGeheimnis, oeffneAbgabe, oeffneBild, oeffneSitzung, platzName, restSekunden, sitzungsSchluessel, verschluesseleBild, type Platz, type Sitzungsdaten } from '../kern/sitzung.ts'
 import { erzeugeAbgabeSpeicher, type AbgabeSpeicher, type SendeStand } from '../speicher/abgabe.ts'
-import { abgabeLaden, fehlerText, mitmachenLaden, platzBelegen, serverVorhanden } from '../speicher/server.ts'
+import { ladeDatei, legeDateiAb } from '../speicher/dateien.ts'
+import { abgabeLaden, bildSpeichern, bilderLaden, fehlerText, mitmachenLaden, platzBelegen, serverVorhanden } from '../speicher/server.ts'
 import Tafel from '../tafel/Tafel.tsx'
 import './schueler.css'
 
 type Kontext = { schluessel: CryptoKey; daten: Sitzungsdaten; ende: string; belegt: Set<string> }
-type Start = { platz: Platz; geheimnis: string; hash: string; seite: Seite; stand: number }
+type Start = { platz: Platz; geheimnis: string; hash: string; seite: Seite; stand: number; /** Fotos, die schon auf dem Server liegen */ bilder: string[] }
 
 const SPEICHER_TEXT: Record<SendeStand, string> = {
   bereit: 'Bereit',
@@ -22,7 +23,19 @@ const SPEICHER_TEXT: Record<SendeStand, string> = {
   fehler: 'Keine Verbindung – ich versuche es weiter',
   'zeit-um': 'Die Zeit ist um',
   verloren: 'Dieser Name wird auf einem anderen Gerät benutzt',
+  fotos: 'Zu viele oder zu große Fotos – bitte eines entfernen',
 }
+
+/** Bytes eines Blobs (jsdom kennt arrayBuffer() nicht überall) */
+const bytesVon = (b: Blob): Promise<ArrayBuffer> =>
+  typeof b.arrayBuffer === 'function'
+    ? b.arrayBuffer()
+    : new Promise((ok, fehler) => {
+        const l = new FileReader()
+        l.onload = () => ok(l.result as ArrayBuffer)
+        l.onerror = () => fehler(l.error)
+        l.readAsArrayBuffer(b)
+      })
 
 // ---------- Platz auf diesem Gerät merken (nur Platz und Geheimnis, nie Namen oder Inhalte) ----------
 const merkeSchluessel = (code: string) => `lehrraum-mitmachen-${code}`
@@ -77,7 +90,15 @@ export default function Mitmachen() {
       merke(code, platz.platz, geheimnis)
       const zeile = await abgabeLaden(code, platz.platz, hash)
       const alt = zeile?.daten && zeile.iv ? await oeffneAbgabe(k.schluessel, { iv: zeile.iv, daten: zeile.daten }, platz.platz) : null
-      setStart({ platz, geheimnis, hash, seite: alt?.seite ?? startSeite(k.daten), stand: zeile?.stand ?? 0 })
+      // eigene Fotos vom Server auf dieses Gerät holen (der Gerätespeicher der Schülerseite wird bei jedem Start geleert)
+      const bilder: string[] = []
+      for (const b of await bilderLaden(code, platz.platz, hash)) {
+        const bytes = await oeffneBild(k.schluessel, { iv: b.iv, daten: b.daten }, platz.platz, b.bild)
+        if (!bytes) continue
+        await legeDateiAb(b.bild, new Blob([bytes], { type: 'image/jpeg' }))
+        bilder.push(b.bild)
+      }
+      setStart({ platz, geheimnis, hash, seite: alt?.seite ?? startSeite(k.daten), stand: zeile?.stand ?? 0, bilder })
       return true
     },
     [code],
@@ -132,15 +153,17 @@ export default function Mitmachen() {
   if (start && kontext) return <Schreiben code={code} kontext={kontext} start={start} />
   if (!kontext) return <Hinweis titel="Einen Moment …">Die Klasse wird geladen.</Hinweis>
 
+  const gaeste = kontext.daten.plaetze.filter((p) => p.gast)
+  const freierGast = gaeste.find((g) => !kontext.belegt.has(g.platz))
   return (
     <main className="schueler-seite">
       <h1>{kontext.daten.klasse || 'Mitmachen'}</h1>
       {frage ? (
         <section aria-live="polite">
-          <p className="schueler-frage">Bist du {platzName(frage)}?</p>
+          <p className="schueler-frage">{frage.gast ? `Du schreibst als ${platzName(frage)}.` : `Bist du ${platzName(frage)}?`}</p>
           <div className="schueler-knoepfe">
             <button type="button" className="f-knopf haupt" disabled={arbeitet} onClick={() => void bestaetige()}>
-              Ja, das bin ich
+              {frage.gast ? 'Ja, los' : 'Ja, das bin ich'}
             </button>
             <button type="button" className="f-knopf" disabled={arbeitet} onClick={() => setFrage(null)}>
               Zurück
@@ -156,7 +179,9 @@ export default function Mitmachen() {
             </p>
           )}
           <ul className="schueler-namen">
-            {kontext.daten.plaetze.map((p) => {
+            {kontext.daten.plaetze
+              .filter((p) => !p.gast)
+              .map((p) => {
               const belegt = kontext.belegt.has(p.platz)
               return (
                 <li key={p.platz}>
@@ -170,6 +195,15 @@ export default function Mitmachen() {
               )
             })}
           </ul>
+          {gaeste.length > 0 && (
+            <section className="schueler-gast">
+              <p>Dein Name steht nicht in der Liste?</p>
+              <button type="button" className="f-knopf" disabled={!freierGast} onClick={() => (setHinweis(''), freierGast && setFrage(freierGast))}>
+                Als Gast mitmachen
+              </button>
+              {!freierGast && <p className="schueler-hinweis">Alle Gast-Plätze sind schon vergeben. Sag der Lehrkraft Bescheid.</p>}
+            </section>
+          )}
         </>
       )}
     </main>
@@ -206,9 +240,28 @@ function Schreiben({ code, kontext, start }: { code: string; kontext: Kontext; s
   const [sende, setSende] = useState<SendeStand>('bereit')
   const [zeitUm, setZeitUm] = useState(() => restSekunden({ beginn: '', ende: kontext.ende }, new Date()) <= 0)
   const speicher = useRef<AbgabeSpeicher | null>(null)
+  const hochgeladen = useRef(new Set(start.bilder))
 
   useEffect(() => {
-    const s = erzeugeAbgabeSpeicher({ code, platz: start.platz.platz, hash: start.hash, schluessel: kontext.schluessel, stand0: start.stand, beiStand: setSende })
+    const s = erzeugeAbgabeSpeicher({
+      code,
+      platz: start.platz.platz,
+      hash: start.hash,
+      schluessel: kontext.schluessel,
+      stand0: start.stand,
+      beiStand: setSende,
+      // Fotos gehen einzeln und verschlüsselt voraus; die Seite nennt danach nur ihre Kennungen
+      vorbereiten: async (seite) => {
+        for (const id of benutzteDateien([seite])) {
+          if (hochgeladen.current.has(id)) continue
+          const blob = await ladeDatei(id)
+          if (!blob) continue
+          const box = await verschluesseleBild(kontext.schluessel, start.platz.platz, id, await bytesVon(blob))
+          await bildSpeichern(code, start.platz.platz, start.hash, id, box.iv, box.daten)
+          hochgeladen.current.add(id)
+        }
+      },
+    })
     speicher.current = s
     // Beim Verlassen oder Wegschalten sofort senden
     const jetzt = () => void s.sendeJetzt()
@@ -232,6 +285,7 @@ function Schreiben({ code, kontext, start }: { code: string; kontext: Kontext; s
         titel: kontext.daten.klasse || 'Mitmachen',
         beiAenderung: (s) => speicher.current?.melde(s),
         gesperrt: aus,
+        maxBilder: MAX_SCHUELER_BILDER,
         gesperrtText: sende === 'verloren' ? 'Dieser Name wird auf einem anderen Gerät benutzt.' : 'Die Zeit ist um. Deine Seite ist gespeichert.',
         speicherText: zeitUm && sende !== 'verloren' ? 'Die Zeit ist um' : SPEICHER_TEXT[sende],
         kopfzeile: (

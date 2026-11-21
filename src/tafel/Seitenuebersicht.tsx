@@ -34,7 +34,7 @@ function spaeter(tun: () => void) {
   }
 }
 
-function Vorschau({ seite, format }: { seite: Seite; format: Format }) {
+export function Vorschau({ seite, format, breite = VORSCHAU_BREITE }: { seite: Seite; format: Format; breite?: number }) {
   const canvas = useRef<HTMLCanvasElement>(null)
   const blatt = blattVon(format, seite)
   const ausschnitt = seitenMass(seite, blatt)
@@ -45,7 +45,7 @@ function Vorschau({ seite, format }: { seite: Seite; format: Format }) {
       const c = canvas.current
       if (!lebt || !c) return
       const dichte = Math.min(2, window.devicePixelRatio || 1)
-      const massstab = (VORSCHAU_BREITE * dichte) / b
+      const massstab = (breite * dichte) / b
       c.width = Math.round(b * massstab)
       c.height = Math.round(h * massstab)
       const ctx = c.getContext('2d')
@@ -59,9 +59,9 @@ function Vorschau({ seite, format }: { seite: Seite; format: Format }) {
       abbestellen()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Seiten sind unveränderlich: neue Seite = neues Objekt
-  }, [seite, format])
+  }, [seite, format, breite])
   // Vorläufige Größe im richtigen Seitenverhältnis, bis gezeichnet ist (sonst springt das Raster)
-  return <canvas ref={canvas} className="vorschau-bild" width={VORSCHAU_BREITE} height={Math.max(1, Math.round((VORSCHAU_BREITE * h) / b))} aria-hidden="true" />
+  return <canvas ref={canvas} className="vorschau-bild" width={breite} height={Math.max(1, Math.round((breite * h) / b))} aria-hidden="true" />
 }
 
 type Props = {

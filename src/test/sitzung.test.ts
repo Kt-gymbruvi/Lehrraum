@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { MAX_GAESTE, neuePlaetze, oeffneBild, platzZeilen, pruefeAbgabeSeite, verschluesseleBild } from '../kern/sitzung.ts'
 import { neueSeite, type Element, type Strich } from '../kern/modell.ts'
 import {
   AUFBEWAHRUNG_STUNDEN, MAX_DAUER, beendet, geheimnisHash, istNeuerStand, istOffen, liesMitmachen, loeschzeit, mitmachenAdresse,
@@ -177,5 +178,63 @@ describe('Übernehmen auf die Klassentafel', () => {
     expect(beschriftung?.art === 'text' && beschriftung.text).toBe('Anton Adler, 20.11.2026')
     // das Original bleibt unverändert
     expect(original.elemente).toHaveLength(2)
+  })
+})
+
+describe('Gäste und Fotos', () => {
+  const bild = { art: 'bild', id: 'b1', x: 0, y: 0, b: 10, h: 10, dateiId: '0123456789abcdef' } as unknown as Element
+
+  it('legt Gast-Plätze nach den Namen an, mit eigener Kennung', () => {
+    const p = neuePlaetze(schueler, 3)
+    expect(p.map(platzName)).toEqual(['Anton Adler', 'Bea Zander', 'Gast 1', 'Gast 2', 'Gast 3'])
+    expect(p.filter((x) => x.gast)).toHaveLength(3)
+    expect(new Set(p.map((x) => x.platz)).size).toBe(5)
+    expect(neuePlaetze(schueler)).toHaveLength(2)
+  })
+
+  it('begrenzt die Zahl der Gäste', () => {
+    expect(neuePlaetze(schueler, 999).filter((x) => x.gast)).toHaveLength(MAX_GAESTE)
+    expect(neuePlaetze(schueler, -4).filter((x) => x.gast)).toHaveLength(0)
+    expect(neuePlaetze(schueler, NaN).filter((x) => x.gast)).toHaveLength(0)
+  })
+
+  it('behält die Gast-Markierung durch Verschlüsseln und Prüfen', async () => {
+    const schluessel = await sitzungsSchluessel(neuerSitzungsSchluessel())
+    const d = neueSitzungsdaten('10G1', schueler, undefined, 2)
+    const offen = await oeffneSitzung(schluessel, await verschluesseleSitzung(schluessel, d))
+    expect(offen?.plaetze.filter((p) => p.gast).map(platzName)).toEqual(['Gast 1', 'Gast 2'])
+    expect(offen?.plaetze.find((p) => p.vorname === 'Anton')?.gast).toBeUndefined()
+  })
+
+  it('markiert Gäste in der Übersicht', () => {
+    const p = neuePlaetze(schueler, 1)
+    const z = platzZeilen(p, [], new Date())
+    expect(z.map((x) => !!x.gast)).toEqual([false, false, true])
+  })
+
+  it('Seiten der Schüler dürfen Fotos enthalten, die Vorlage nicht', async () => {
+    const seite = neueSeite([strich('s1'), bild])
+    expect(pruefeAbgabeSeite(seite)?.elemente.map((e) => e.art)).toEqual(['strich', 'bild'])
+    expect(pruefeSchuelerSeite(seite)?.elemente.map((e) => e.art)).toEqual(['strich'])
+    const schluessel = await sitzungsSchluessel(neuerSitzungsSchluessel())
+    const box = await verschluesseleAbgabe(schluessel, 'p1', seite, 1)
+    expect((await oeffneAbgabe(schluessel, box, 'p1'))?.seite.elemente.map((e) => e.art)).toEqual(['strich', 'bild'])
+  })
+
+  it('verschlüsselt Fotos an Platz und Kennung gebunden', async () => {
+    const schluessel = await sitzungsSchluessel(neuerSitzungsSchluessel())
+    const bytes = new Uint8Array([0, 1, 2, 3, 250, 255])
+    const box = await verschluesseleBild(schluessel, 'p1', 'abcd1234', bytes)
+    expect(box.daten).not.toContain('AAEC')
+    expect([...(await oeffneBild(schluessel, box, 'p1', 'abcd1234'))!]).toEqual([...bytes])
+    // unter anderem Platz, anderer Kennung oder mit falschem Schlüssel: nicht lesbar
+    expect(await oeffneBild(schluessel, box, 'p2', 'abcd1234')).toBeNull()
+    expect(await oeffneBild(schluessel, box, 'p1', 'abcd9999')).toBeNull()
+    expect(await oeffneBild(await sitzungsSchluessel(neuerSitzungsSchluessel()), box, 'p1', 'abcd1234')).toBeNull()
+  })
+
+  it('weist zu große Fotos ab', async () => {
+    const schluessel = await sitzungsSchluessel(neuerSitzungsSchluessel())
+    await expect(verschluesseleBild(schluessel, 'p1', 'abcd1234', new Uint8Array(2_000_000))).rejects.toThrow(/zu groß/)
   })
 })

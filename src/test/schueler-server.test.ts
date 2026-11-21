@@ -81,4 +81,25 @@ describe('Schülerseiten – Serverzugriff', () => {
     expect(s.fehlerText(fehler)).toBe('Die Zeit ist um.')
     await expect(s.mitmachenLaden(code)).rejects.toBeTruthy()
   })
+
+  it('Fotos: Schüler legen sie verschlüsselt ab und holen sie zurück, die Lehrkraft liest einzelne', async () => {
+    const hash = 'a'.repeat(64)
+    rpc.mockResolvedValueOnce({ data: null, error: null })
+    await s.bildSpeichern(code, 'p1', hash, 'abcd1234', 'ivivivivivivi', 'daten')
+    expect(rpc).toHaveBeenLastCalledWith('lr_bild_speichern', { p_code: code, p_platz: 'p1', p_hash: hash, p_bild: 'abcd1234', p_iv: 'ivivivivivivi', p_daten: 'daten' })
+    rpc.mockResolvedValueOnce({ data: [{ bild: 'abcd1234', iv: 'i', daten: 'd' }], error: null })
+    expect(await s.bilderLaden(code, 'p1', hash)).toHaveLength(1)
+    expect(rpc).toHaveBeenLastCalledWith('lr_bilder_laden', { p_code: code, p_platz: 'p1', p_hash: hash })
+    rpc.mockResolvedValueOnce({ data: null, error: null })
+    expect(await s.bilderLaden(code, 'p1', hash)).toEqual([])
+    await s.ladeBildZeile(code, 'p1', 'abcd1234')
+    const lesen = abfragen.filter((a) => a.tabelle === 'lr_bilder').flatMap((a) => a.aufrufe.filter(([n]) => n === 'select').map(([, args]) => String(args[0])))
+    expect(lesen).toEqual(['bild, iv, daten'])
+  })
+
+  it('Fotos: Fehler wie „Zu viele Fotos.“ kommen deutsch an', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'QUIZZO: Zu viele Fotos.' } })
+    const fehler = await s.bildSpeichern(code, 'p1', 'a'.repeat(64), 'abcd1234', 'ivivivivivivi', 'd').catch((e) => e)
+    expect(s.fehlerText(fehler)).toBe('Zu viele Fotos.')
+  })
 })

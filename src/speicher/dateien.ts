@@ -12,6 +12,12 @@ export async function speichereDatei(daten: Blob): Promise<string> {
   return datei.id
 }
 
+/** Legt eine Datei unter einer vorgegebenen Kennung ab (Fotos der Schüler: die Seite nennt ihre Kennung schon) */
+export async function legeDateiAb(id: string, daten: Blob): Promise<void> {
+  const datei: Datei = { id, typ: daten.type || 'application/octet-stream', daten }
+  await vorgang('dateien', 'readwrite', (s) => s.put(datei))
+}
+
 /** Holt eine fehlende Datei (vom Server) – wird vom Tafel-Abgleich gesetzt */
 let nachladen: ((id: string) => Promise<Datei | null>) | null = null
 export function setzeNachladen(tun: typeof nachladen) {
