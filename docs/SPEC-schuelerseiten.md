@@ -48,7 +48,7 @@ Stand: 20.11.2026 · Entwurf, Entscheidungen der Lehrkraft eingetragen · Etappe
 5. **Datenschutz:** Schülerarbeiten (auch verschlüsselt) auf dem Server und Namen im QR-Code-Fluss mit Schulleitung/Datenschutzbeauftragten klären, bevor es im Unterricht läuft.
 6. Missbrauch: Wer den QR-Code fotografiert, kommt hinein. Gegenmaßnahmen: kurze Dauer, belegte Namen, Lehrkraft kann Plätze sperren, Code nur auf dem Beamer.
 
-## Etappen (1 und 2 gebaut, Migration 017 noch nicht auf dem Server ausgeführt)
+## Etappen (1 bis 3 gebaut, Migration 017 noch nicht auf dem Server ausgeführt)
 1. Kern: Sitzung, Schlüssel, Verschlüsselung von Seite und Namensliste (`src/kern/`, Tests ohne Browser).
 2. Server: Migration, Funktionen, RLS, Löschfunktion; `server.ts` erweitern.
 3. Schülerseite: Einstieg, Namenswahl, Zeichenfläche (abgespeckt), Autospeichern.

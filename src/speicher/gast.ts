@@ -2,10 +2,14 @@
 // Der Gast arbeitet in einer eigenen, kurzlebigen Datenbank („lehrraum-gast“), die beim Start geleert wird –
 // die Tafeln, Klassen und Einstellungen der Lehrkraft auf diesem Gerät bleiben unberührt. Kein Abgleich mit dem Server.
 
-/** Gilt die aktuelle Adresse als Gastmodus? (liest den Hash, damit Speicher und Oberfläche immer übereinstimmen) */
+/**
+ * Gilt die aktuelle Adresse als Gastmodus? (liest den Hash, damit Speicher und Oberfläche immer übereinstimmen)
+ * Auch die Schülerseite (#/mitmachen/…) arbeitet in der Gast-Datenbank: Schüler-Geräte behalten nichts von der Lehrkraft,
+ * und ein Test auf dem Gerät der Lehrkraft berührt deren Tafeln nicht.
+ */
 export function istGast(): boolean {
   try {
-    return /[?&]gast=1(&|$)/.test(window.location.hash)
+    return /[?&]gast=1(&|$)/.test(window.location.hash) || /^#\/?mitmachen\//.test(window.location.hash)
   } catch {
     return false
   }

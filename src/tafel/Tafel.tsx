@@ -1,6 +1,6 @@
 // Die Tafel: Kopfzeile, linke Werkzeugleiste, Zeichenfläche mit Fenstern darüber, rechte Schnellzugriffsleiste,
 // unten die Seiten. Speichert automatisch auf diesem Gerät und stellt beim Öffnen die zuletzt benutzte Tafel wieder her.
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { Fensterebene, Schnellleiste } from '../fenster/Fensterebene.tsx'
 import { AbdeckEbene, ScheinwerferEbene } from '../fenster/Zeigen.tsx'
 import { neuesInstrument, type Instrument, type InstrumentArt } from '../kern/instrumente.ts'
@@ -73,7 +73,28 @@ const alsSeite = (s: Seite, i: Inhalt): Seite => ({ id: s.id, ...inhaltVon(i), .
  * Ohne `klasseId` öffnet sich die freie Tafel, sonst die Tafel dieser Klasse (wird beim ersten Öffnen angelegt).
  * `pruefen` blendet die Prüfansicht ein (Messwerte zum Schreiben am Gerät).
  */
-export default function Tafel({ klasseId, pruefen = false, gast = false }: { klasseId?: string; pruefen?: boolean; gast?: boolean }) {
+/**
+ * Schülermodus (Mitmachen per QR-Code): genau eine Seite, ohne Klassen, Fenster, PDF, Bilder, Seitenleiste und
+ * Abgleich. Nichts wird auf dem Gerät gespeichert; jede Änderung geht an `beiAenderung` (dort wird verschlüsselt gesendet).
+ */
+export type SchuelerModus = {
+  /** Startseite: die eigene gespeicherte Seite oder die Vorlage */
+  seite: Seite
+  titel: string
+  beiAenderung: (seite: Seite) => void
+  /** Zeit um (oder Platz verloren): nichts mehr ändern */
+  gesperrt?: boolean
+  gesperrtText?: string
+  /** Anzeige neben dem Titel, z. B. Restzeit */
+  kopfzeile?: ReactNode
+  /** Zustand des Sendens für die Kopfzeile */
+  speicherText: string
+}
+
+export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false, schueler }: { klasseId?: string; pruefen?: boolean; gast?: boolean; schueler?: SchuelerModus }) {
+  const gast = gastRoh || !!schueler // Schüler arbeiten wie Gäste: nichts bleibt auf dem Gerät, kein Abgleich
+  const schuelerRef = useRef(schueler)
+  schuelerRef.current = schueler
   const [kopf, setKopf] = useState<Pick<Tafelbild, 'schema' | 'version' | 'id' | 'titel'> | null>(null)
   const [buch, setBuch] = useState<Buch>({ seiten: [LEER], nr: 0, verlaeufe: {} })
   const [kamera, setKameraRoh] = useState<Kamera>({ x: 0, y: 0, zoom: 1 })
@@ -170,6 +191,18 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
 
   // ---------- Laden: zuletzt benutzte Tafel oder eine neue ----------
   useEffect(() => {
+    const s = schuelerRef.current
+    if (s) {
+      // Schülerseite: nichts laden, die Seite kommt von außen (Einstellungen bleiben Standard und werden nicht gemerkt)
+      const t = neuesTafelbild(s.titel)
+      setKopf({ schema: t.schema, version: t.version, id: t.id, titel: t.titel })
+      setFormat('a4-quer')
+      const seiten = [s.seite]
+      inhaltStand.current = { seiten, format: 'a4-quer', titel: t.titel, am: '' }
+      setBuch({ seiten, nr: 0, verlaeufe: {} })
+      setSpeicher('gespeichert')
+      return
+    }
     let abgebrochen = false
     // Die zuletzt benutzten Einstellungen kommen zusammen mit der Tafel – so ist alles da, bevor gezeichnet wird
     Promise.all([(klasseId ? oeffneKlassenTafel(klasseId) : ladeFreieTafel()).catch(() => null), ladeEinstellungen().catch(() => STANDARD_EINSTELLUNGEN)])
@@ -253,6 +286,12 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
     aktuell.current = { ...kopf, format, seiten: buch.seiten, seiteNr: buch.nr, kamera, fenster, geaendertAm: inhaltStand.current?.am ?? '' }
     if (!geladen.current) {
       geladen.current = true // der erste Durchlauf ist das Laden selbst, keine Änderung
+      return
+    }
+    if (schuelerRef.current) {
+      // Schülerseite: nur Änderungen am Inhalt gehen hinaus (nicht Ansicht), und nie auf das Gerät
+      if (i && i.seiten === buch.seiten) return // `i` ist der Stand vor diesem Durchlauf: gleiche Seiten = nur die Ansicht hat sich geändert
+      if (buch.seiten[0]) schuelerRef.current.beiAenderung(buch.seiten[0])
       return
     }
     offen.current = true
@@ -344,6 +383,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
   // ---------- Änderungen an der gezeigten Seite ----------
   /** Wendet eine Änderung (Elemente, Hintergrund und Verlauf) auf die gezeigte Seite an. */
   const aendereSeite = useCallback((tun: (inhalt: Inhalt, verlauf: Verlauf) => { inhalt: Inhalt; verlauf: Verlauf }) => {
+    if (schuelerRef.current?.gesperrt) return // Schüler: Zeit um, nichts mehr ändern
     setBuch((alt) => {
       const s = alt.seiten[alt.nr]
       if (!s) return alt
@@ -647,6 +687,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
 
   /** Dateien aus Auswahl, Zwischenablage oder Hineinziehen: Bilder kommen auf die Seite, ein PDF wird zu neuen Seiten. */
   function nimmDateien(dateien: File[]) {
+    if (schueler) return setMeldung({ text: 'Bilder und PDF gibt es hier nicht.', fehler: true })
     const pdf = dateien.find(istPdf)
     const bilder = dateien.filter(istBilddatei)
     if (pdf) void oeffnePdf(pdf)
@@ -912,9 +953,11 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
         <button type="button" className="kopf-knopf" aria-label={leistenZu.links ? 'Linke Werkzeugleiste einblenden' : 'Linke Werkzeugleiste einklappen'} aria-pressed={!leistenZu.links} title={leistenZu.links ? 'Werkzeugleiste links einblenden' : 'Werkzeugleiste links einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('links')}>
           <Symbol name="leisteLinks" />
         </button>
-        <a className="kopf-knopf" href="/" aria-label="Zur Startseite Lehrraum" title="Zur Startseite">
-          <Symbol name="haus" />
-        </a>
+        {!schueler && (
+          <a className="kopf-knopf" href="/" aria-label="Zur Startseite Lehrraum" title="Zur Startseite">
+            <Symbol name="haus" />
+          </a>
+        )}
         {!gast && (
           <a className="kopf-knopf" href="#/klassen" aria-label="Meine Klassen" title="Meine Klassen">
             <Symbol name="klassen" />
@@ -926,8 +969,11 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
           role="status"
           title={!meldung && speicher === 'gespeichert' && abgleich === 'fehler' ? abgleichFehler : undefined}
         >
-          {meldung?.text ?? (gast ? 'Gast – wird nicht gespeichert' : speicher === 'gespeichert' ? ABGLEICHTEXT[abgleich] : SPEICHERTEXT[speicher])}
+          {meldung?.text ?? (schueler ? schueler.speicherText : gast ? 'Gast – wird nicht gespeichert' : speicher === 'gespeichert' ? ABGLEICHTEXT[abgleich] : SPEICHERTEXT[speicher])}
         </p>
+        {schueler?.kopfzeile}
+        {!schueler && (
+          <>
         <div className="zoom" role="group" aria-label="PDF">
           <button type="button" className="kopf-knopf" aria-label="PDF öffnen" title="PDF öffnen – jede Seite wird eine Tafelseite zum Beschriften" disabled={meldung?.laeuft} onClick={() => pdfWahl.current?.click()}>
             <Symbol name="pdfOeffnen" />
@@ -956,6 +1002,8 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
         />
         <input ref={bildWahl} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden aria-label="Bilddatei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
         <Formatwahl format={format} ueberstand={ueberstand} beiFormat={setFormat} beiEinpassen={inhaltEinpassen} />
+          </>
+        )}
         <div className="zoom" role="group" aria-label="Ansicht">
           <button type="button" className="kopf-knopf" aria-label="Verkleinern" onClick={() => zoomen(1 / 1.25)}>
             −
@@ -967,9 +1015,11 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
             +
           </button>
         </div>
-        <button type="button" className="kopf-knopf" aria-label={leistenZu.rechts ? 'Rechte Werkzeugleiste einblenden' : 'Rechte Werkzeugleiste einklappen'} aria-pressed={!leistenZu.rechts} title={leistenZu.rechts ? 'Werkzeugleiste rechts einblenden' : 'Werkzeugleiste rechts einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('rechts')}>
-          <Symbol name="leisteRechts" />
-        </button>
+        {!schueler && (
+          <button type="button" className="kopf-knopf" aria-label={leistenZu.rechts ? 'Rechte Werkzeugleiste einblenden' : 'Rechte Werkzeugleiste einklappen'} aria-pressed={!leistenZu.rechts} title={leistenZu.rechts ? 'Werkzeugleiste rechts einblenden' : 'Werkzeugleiste rechts einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('rechts')}>
+            <Symbol name="leisteRechts" />
+          </button>
+        )}
       </header>
       <div className={'tafel-mitte' + (format === 'unendlich' ? ' unendlich' : '') + (leistenZu.links ? ' links-zu' : '') + (leistenZu.rechts ? ' rechts-zu' : '')}>
         <Werkzeugleiste
@@ -997,7 +1047,7 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
           kannEinfuegen={ablage !== null}
           beiEinfuegen={fuegeEin}
           beiLoeschen={loescheAuswahl}
-          beiBild={() => bildWahl.current?.click()}
+          beiBild={schueler ? undefined : () => bildWahl.current?.click()}
         />
         <div className="tafel-spalte">
           <div
@@ -1041,9 +1091,15 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
             {leistenRahmen && <Auswahlleiste rahmen={leistenRahmen} knoepfe={auswahlKnoepfe} />}
             {abdeckung && <AbdeckEbene wert={abdeckung} beiAendern={setAbdeckung} beiSchliessen={() => setAbdeckung(null)} />}
             {scheinwerfer && <ScheinwerferEbene wert={scheinwerfer} beiAendern={setScheinwerfer} beiSchliessen={() => setScheinwerfer(null)} />}
-            <Fensterebene fenster={fenster} beiAendern={setFenster} schueler={klasseId ? (klasse?.schueler ?? []) : null} beiText={schreibeText} />
+            {!schueler && <Fensterebene fenster={fenster} beiAendern={setFenster} schueler={klasseId ? (klasse?.schueler ?? []) : null} beiText={schreibeText} />}
             {pruefen && <Pruefansicht elemente={seite.elemente.length} />}
+            {schueler?.gesperrt && (
+              <div className="schueler-gesperrt" role="alert">
+                <p>{schueler.gesperrtText ?? 'Die Zeit ist um.'}</p>
+              </div>
+            )}
           </div>
+          {!schueler && (
           <Seitenleiste
             nr={buch.nr}
             anzahl={buch.seiten.length}
@@ -1064,7 +1120,9 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
               setUebersicht(true)
             }}
           />
+          )}
         </div>
+        {!schueler && (
         <Schnellleiste
           fenster={fenster}
           beiAendern={setFenster}
@@ -1094,8 +1152,9 @@ export default function Tafel({ klasseId, pruefen = false, gast = false }: { kla
             />
           }
         />
+        )}
       </div>
-      {uebersicht && (
+      {uebersicht && !schueler && (
         <Seitenuebersicht
           seiten={buch.seiten}
           nr={buch.nr}

@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes, useSearchParams } from 'react-router-dom'
 import Klassen from './klassen/Klassen.tsx'
+import Mitmachen from './schueler/Mitmachen.tsx'
 import { istGast } from './speicher/gast.ts'
 import Tafel from './tafel/Tafel.tsx'
 
@@ -24,6 +25,7 @@ export default function App() {
       <Route path="/tafel" element={<TafelSeite />} />
       <Route path="/pruefen" element={<TafelSeite pruefen />} />
       <Route path="/klassen" element={<Klassen />} />
+      <Route path="/mitmachen/:code/:schluessel" element={<Mitmachen />} />
       <Route path="*" element={<Navigate to="/tafel" replace />} />
     </Routes>
   )

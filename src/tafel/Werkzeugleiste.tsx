@@ -49,7 +49,8 @@ type Props = {
   beiLeeren: () => void
   beiEinfuegen: () => void
   beiLoeschen: () => void
-  beiBild: () => void
+  /** fehlt: kein Bild-Knopf (Schülerseite) */
+  beiBild?: () => void
 }
 
 export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; taste: string }[] = [
@@ -290,9 +291,11 @@ export function Werkzeugleiste(p: Props) {
             </button>
           )
         })}
-        <button type="button" className="leisten-knopf" aria-label="Bild einfügen" title="Bild einfügen (auch per Einfügen aus der Zwischenablage oder Hineinziehen)" onClick={p.beiBild}>
-          <Symbol name="bild" />
-        </button>
+        {p.beiBild && (
+          <button type="button" className="leisten-knopf" aria-label="Bild einfügen" title="Bild einfügen (auch per Einfügen aus der Zwischenablage oder Hineinziehen)" onClick={p.beiBild}>
+            <Symbol name="bild" />
+          </button>
+        )}
       </div>
 
       <div className="gruppe" role="group" aria-label="Farbe">
