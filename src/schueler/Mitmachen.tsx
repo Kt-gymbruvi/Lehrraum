@@ -5,10 +5,10 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { benutzteDateien, neueId, neueSeite, type Seite } from '../kern/modell.ts'
 import { kopiere } from '../kern/seiten.ts'
-import { MAX_SCHUELER_BILDER, geheimnisHash, istSitzungsCode, istSitzungsSchluessel, neuesPlatzGeheimnis, oeffneAbgabe, oeffneBild, oeffneSitzung, platzName, restSekunden, sitzungsSchluessel, verschluesseleBild, type Platz, type Sitzungsdaten } from '../kern/sitzung.ts'
+import { MAX_SCHUELER_BILDER, VORLAGE_PLATZ, bildTyp, geheimnisHash, istSitzungsCode, istSitzungsSchluessel, neuesPlatzGeheimnis, oeffneAbgabe, oeffneBild, oeffneSitzung, platzName, restSekunden, sitzungsSchluessel, verschluesseleBild, type Platz, type Sitzungsdaten } from '../kern/sitzung.ts'
 import { erzeugeAbgabeSpeicher, type AbgabeSpeicher, type SendeStand } from '../speicher/abgabe.ts'
-import { ladeDatei, legeDateiAb } from '../speicher/dateien.ts'
-import { abgabeLaden, bildSpeichern, bilderLaden, fehlerText, mitmachenLaden, platzBelegen, serverVorhanden } from '../speicher/server.ts'
+import { bytesVon, ladeDatei, legeDateiAb } from '../speicher/dateien.ts'
+import { abgabeLaden, bildSpeichern, bilderLaden, fehlerText, mitmachenLaden, platzBelegen, serverVorhanden, vorlageBildLaden } from '../speicher/server.ts'
 import Tafel from '../tafel/Tafel.tsx'
 import './schueler.css'
 
@@ -25,17 +25,6 @@ const SPEICHER_TEXT: Record<SendeStand, string> = {
   verloren: 'Dieser Name wird auf einem anderen Gerät benutzt',
   fotos: 'Zu viele oder zu große Fotos – bitte eines entfernen',
 }
-
-/** Bytes eines Blobs (jsdom kennt arrayBuffer() nicht überall) */
-const bytesVon = (b: Blob): Promise<ArrayBuffer> =>
-  typeof b.arrayBuffer === 'function'
-    ? b.arrayBuffer()
-    : new Promise((ok, fehler) => {
-        const l = new FileReader()
-        l.onload = () => ok(l.result as ArrayBuffer)
-        l.onerror = () => fehler(l.error)
-        l.readAsArrayBuffer(b)
-      })
 
 // ---------- Platz auf diesem Gerät merken (nur Platz und Geheimnis, nie Namen oder Inhalte) ----------
 const merkeSchluessel = (code: string) => `lehrraum-mitmachen-${code}`
@@ -98,7 +87,18 @@ export default function Mitmachen() {
         await legeDateiAb(b.bild, new Blob([bytes], { type: 'image/jpeg' }))
         bilder.push(b.bild)
       }
-      setStart({ platz, geheimnis, hash, seite: alt?.seite ?? startSeite(k.daten), stand: zeile?.stand ?? 0, bilder })
+      const seite = alt?.seite ?? startSeite(k.daten)
+      // Bilder und PDF-Seiten des Aufgabenblatts, soweit die Seite sie (noch) braucht; sie gehören nicht zu den eigenen Fotos
+      const vorlageIds = k.daten.vorlage ? benutzteDateien([k.daten.vorlage]) : new Set<string>()
+      for (const id of benutzteDateien([seite])) {
+        if (!vorlageIds.has(id) || bilder.includes(id)) continue
+        const z = await vorlageBildLaden(code, id)
+        const bytes = z && (await oeffneBild(k.schluessel, { iv: z.iv, daten: z.daten }, VORLAGE_PLATZ, id))
+        if (!bytes) throw new Error('Das Aufgabenblatt konnte nicht vollständig geladen werden. Bitte lade die Seite neu.')
+        await legeDateiAb(id, new Blob([bytes], { type: bildTyp(bytes) }))
+        bilder.push(id) // liegt schon auf dem Server, wird nicht noch einmal hochgeladen
+      }
+      setStart({ platz, geheimnis, hash, seite, stand: zeile?.stand ?? 0, bilder })
       return true
     },
     [code],
@@ -285,7 +285,8 @@ function Schreiben({ code, kontext, start }: { code: string; kontext: Kontext; s
         titel: kontext.daten.klasse || 'Mitmachen',
         beiAenderung: (s) => speicher.current?.melde(s),
         gesperrt: aus,
-        maxBilder: MAX_SCHUELER_BILDER,
+        // Bilder des Aufgabenblatts zählen nicht mit: die acht Fotos sind die eigenen
+        maxBilder: MAX_SCHUELER_BILDER + (kontext.daten.vorlage?.elemente.filter((e) => e.art === 'bild').length ?? 0),
         gesperrtText: sende === 'verloren' ? 'Dieser Name wird auf einem anderen Gerät benutzt.' : 'Die Zeit ist um. Deine Seite ist gespeichert.',
         speicherText: zeitUm && sende !== 'verloren' ? 'Die Zeit ist um' : SPEICHER_TEXT[sende],
         kopfzeile: (

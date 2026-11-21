@@ -102,4 +102,21 @@ describe('Schülerseiten – Serverzugriff', () => {
     const fehler = await s.bildSpeichern(code, 'p1', 'a'.repeat(64), 'abcd1234', 'ivivivivivivi', 'd').catch((e) => e)
     expect(s.fehlerText(fehler)).toBe('Zu viele Fotos.')
   })
+
+  it('Aufgabenblatt: die Lehrkraft legt Bilder ab, Schüler holen sie einzeln', async () => {
+    rpc.mockResolvedValueOnce({ data: null, error: null })
+    await s.vorlageBildSpeichern(code, 'abcd1234', 'ivivivivivivi', 'daten')
+    expect(rpc).toHaveBeenLastCalledWith('lr_vorlagebild_speichern', { p_code: code, p_bild: 'abcd1234', p_iv: 'ivivivivivivi', p_daten: 'daten' })
+    rpc.mockResolvedValueOnce({ data: { bild: 'abcd1234', iv: 'i', daten: 'd' }, error: null })
+    expect((await s.vorlageBildLaden(code, 'abcd1234'))?.daten).toBe('d')
+    expect(rpc).toHaveBeenLastCalledWith('lr_vorlagebild_laden', { p_code: code, p_bild: 'abcd1234' })
+    rpc.mockResolvedValueOnce({ data: null, error: null })
+    expect(await s.vorlageBildLaden(code, 'abcd1234')).toBeNull()
+  })
+
+  it('Aufgabenblatt: Fehler wie „zu viele Bilder“ kommen deutsch an', async () => {
+    rpc.mockResolvedValue({ data: null, error: { message: 'QUIZZO: Das Aufgabenblatt hat zu viele Bilder.' } })
+    const fehler = await s.vorlageBildSpeichern(code, 'abcd1234', 'ivivivivivivi', 'd').catch((x) => x)
+    expect(s.fehlerText(fehler)).toBe('Das Aufgabenblatt hat zu viele Bilder.')
+  })
 })

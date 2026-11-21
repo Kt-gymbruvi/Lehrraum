@@ -279,3 +279,17 @@ export async function ladeBildZeile(code: string, platz: string, bild: string): 
   if (error) throw error
   return (data as BildZeile | null) ?? null
 }
+
+// ----- Bilder des Aufgabenblatts (Migration 019): nur verschlüsselt, siehe kern/sitzung.ts -----
+/** Lehrkraft: legt ein verschlüsseltes Bild des Aufgabenblatts ab; Fehler „Das Aufgabenblatt hat zu viele Bilder.“ */
+export async function vorlageBildSpeichern(code: string, bild: string, iv: string, daten: string): Promise<void> {
+  const { error } = await db().rpc('lr_vorlagebild_speichern', { p_code: code, p_bild: bild, p_iv: iv, p_daten: daten })
+  if (error) throw error
+}
+
+/** Schüler und Lehrkraft: ein Bild des Aufgabenblatts; null, wenn es nicht da ist */
+export async function vorlageBildLaden(code: string, bild: string): Promise<BildZeile | null> {
+  const { data, error } = await db().rpc('lr_vorlagebild_laden', { p_code: code, p_bild: bild })
+  if (error) throw error
+  return (data as BildZeile | null) ?? null
+}

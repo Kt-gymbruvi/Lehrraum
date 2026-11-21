@@ -2,7 +2,7 @@
 // Schüler ansehen, ausgewählte auf die Klassentafel kopieren, den Rest löschen (SPEC-schuelerseiten.md, Etappe 4).
 // Namen und Zeichnungen werden nur auf diesem Gerät entschlüsselt; der Server sieht nur Platzkennungen.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { DAUERN, MAX_GAESTE, beendet, loeschzeit, platzZeilen, restSekunden, seitenFuerKlassentafel, verlaengert, type AbgabeStandZeile } from '../kern/sitzung.ts'
+import { DAUERN, MAX_GAESTE, MAX_VORLAGE_BILDER, beendet, loeschzeit, platzZeilen, restSekunden, seitenFuerKlassentafel, verlaengert, type AbgabeStandZeile } from '../kern/sitzung.ts'
 import { klassenName, type Klasse } from '../kern/klassen.ts'
 import type { Seite } from '../kern/modell.ts'
 import { qrPfad } from '../kern/qrcode.ts'
@@ -258,7 +258,7 @@ export function Freigabefenster({ klasse, seite, beiUebernehmen, beiSchliessen, 
                 <input type="checkbox" checked={mitVorlage} onChange={(e) => setMitVorlage(e.target.checked)} />
                 Die gezeigte Seite als Aufgabenblatt mitschicken
               </label>
-              {mitVorlage && hatBilder && <p className="klein">Bilder und Hintergrundbilder werden nicht mitgeschickt, nur Striche, Texte, Formen und Tabellen.</p>}
+              {mitVorlage && hatBilder && <p className="klein">Bilder und PDF-Seiten gehen verschlüsselt mit (höchstens {MAX_VORLAGE_BILDER} je Freigabe).</p>}
               {mitVorlage && <p className="klein">Die Schüler bekommen eine Kopie, die sie ändern können.</p>}
               <button type="button" className="f-knopf haupt" disabled={arbeitet} onClick={() => void los()}>
                 {arbeitet ? 'Wird angelegt …' : 'QR-Code erzeugen'}

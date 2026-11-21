@@ -1,13 +1,13 @@
 // Freigabe einer Klasse für Schülerseiten, Seite der Lehrkraft: starten, wiederfinden, Seiten der Schüler abrufen.
 // Alles Verschlüsselte wird hier auf dem Gerät ver- und entschlüsselt; der Server sieht nur Code, Zeit und Platzkennungen.
 import {
-  mitmachenAdresse, neueSitzungsdaten, neuerSitzungsCode, neuerSitzungsSchluessel, oeffneAbgabe, oeffneBild, oeffneSitzung, pruefeFreigabeMerk, sitzungsSchluessel, verschluesseleSitzung, zeitraum,
+  MAX_VORLAGE_BILDER, VORLAGE_PLATZ, bildTyp, mitmachenAdresse, neueSitzungsdaten, neuerSitzungsCode, neuerSitzungsSchluessel, oeffneAbgabe, oeffneBild, oeffneSitzung, pruefeFreigabeMerk, sitzungsSchluessel, verschluesseleBild, verschluesseleSitzung, zeitraum,
   type FreigabeMerk, type Sitzungsdaten,
 } from '../kern/sitzung.ts'
 import type { Schueler } from '../kern/klassen.ts'
 import { benutzteDateien, type Seite } from '../kern/modell.ts'
-import { ladeDateiEintrag, legeDateiAb } from './dateien.ts'
-import { ladeAbgabeStaende, ladeAbgabeZeile, ladeBildZeile, ladeSitzungZeile, legeSitzungAn, loescheSitzung, setzeSitzungEnde, type AbgabeStand } from './server.ts'
+import { bytesVon, ladeDatei, ladeDateiEintrag, legeDateiAb } from './dateien.ts'
+import { ladeAbgabeStaende, ladeAbgabeZeile, ladeBildZeile, ladeSitzungZeile, legeSitzungAn, loescheSitzung, setzeSitzungEnde, vorlageBildLaden, vorlageBildSpeichern, type AbgabeStand } from './server.ts'
 
 export type Freigabe = { code: string; schluesselText: string; schluessel: CryptoKey; daten: Sitzungsdaten; beginn: string; ende: string }
 
@@ -49,9 +49,24 @@ export async function starteFreigabe(klasseId: string, klasse: string, schueler:
   const schluessel = await sitzungsSchluessel(schluesselText)
   const daten = neueSitzungsdaten(klasse, schueler, vorlage, gaeste)
   if (!daten.plaetze.length) throw new Error('Die Klasse hat noch keine Namen.')
+  // Bilder und PDF-Seiten des Aufgabenblatts: zuerst alle verschlüsseln (so scheitert zu Große schon vor dem Anlegen)
+  const dateiIds = daten.vorlage ? [...benutzteDateien([daten.vorlage])] : []
+  if (dateiIds.length > MAX_VORLAGE_BILDER) throw new Error(`Das Aufgabenblatt hat zu viele Bilder (höchstens ${MAX_VORLAGE_BILDER}).`)
+  const bilder: { id: string; iv: string; daten: string }[] = []
+  for (const id of dateiIds) {
+    const blob = await ladeDatei(id)
+    if (!blob) throw new Error('Ein Bild des Aufgabenblatts ist auf diesem Gerät nicht verfügbar.')
+    bilder.push({ id, ...(await verschluesseleBild(schluessel, VORLAGE_PLATZ, id, await bytesVon(blob))) })
+  }
   const z = zeitraum(new Date(), minuten)
   const box = await verschluesseleSitzung(schluessel, daten)
   await legeSitzungAn(code, z.ende, box.iv, box.daten, daten.plaetze.map((p) => p.platz))
+  try {
+    for (const b of bilder) await vorlageBildSpeichern(code, b.id, b.iv, b.daten)
+  } catch (fehler) {
+    await loescheSitzung(code).catch(() => undefined) // lieber keine Freigabe als eine mit unvollständigem Aufgabenblatt
+    throw fehler
+  }
   merkeFreigabe(klasseId, { code, schluessel: schluesselText })
   return { code, schluesselText, schluessel, daten, beginn: z.beginn, ende: z.ende }
 }
@@ -86,15 +101,18 @@ export type AbgabeCache = Map<string, { stand: number; seite: Seite }>
 /** Legt die Fotos einer Schülerseite im Gerätespeicher ab (entschlüsselt). true, wenn noch eines fehlt. */
 async function holeFotos(f: Freigabe, platz: string, seite: Seite): Promise<boolean> {
   let fehlt = false
+  const vorlageIds = f.daten.vorlage ? benutzteDateien([f.daten.vorlage]) : new Set<string>()
   for (const id of benutzteDateien([seite])) {
     if (await ladeDateiEintrag(id)) continue
-    const z = await ladeBildZeile(f.code, platz, id)
-    const bytes = z && (await oeffneBild(f.schluessel, { iv: z.iv, daten: z.daten }, platz, id))
+    // Bild des Aufgabenblatts, das hier nicht mehr liegt (etwa weil die Seite inzwischen gelöscht wurde): vom Server
+    const vorlage = vorlageIds.has(id)
+    const z = vorlage ? await vorlageBildLaden(f.code, id) : await ladeBildZeile(f.code, platz, id)
+    const bytes = z && (await oeffneBild(f.schluessel, { iv: z.iv, daten: z.daten }, vorlage ? VORLAGE_PLATZ : platz, id))
     if (!bytes) {
       fehlt = true
       continue
     }
-    await legeDateiAb(id, new Blob([bytes], { type: 'image/jpeg' }))
+    await legeDateiAb(id, new Blob([bytes], { type: bildTyp(bytes) }))
   }
   return fehlt
 }

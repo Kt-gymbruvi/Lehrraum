@@ -50,6 +50,9 @@ Stand: 20.11.2026 · Entwurf, Entscheidungen der Lehrkraft eingetragen · Etappe
 7. **Fotos:** Schüler dürfen Fotos einfügen (höchstens 8 je Seite). Sie werden klein gerechnet (längste Kante 1600, JPEG, höchstens 1,2 MB), auf dem Gerät mit dem Sitzungsschlüssel verschlüsselt und einzeln hochgeladen (Tabelle `lr_bilder`, Migration 018, höchstens 20 Fotos und 15 Mio. Zeichen je Platz). Die Seite nennt nur die Kennung. Sie liegen in der Datenbank und verschwinden mit dem automatischen Löschen.
 8. **Gäste:** Beim Freigeben wählt die Lehrkraft 0, 2, 5 oder 10 Gast-Plätze (Standard 2). Wer nicht in der Liste steht, tippt „Als Gast mitmachen“ und bekommt den ersten freien Platz („Gast 1“ …). Ungenutzte Gast-Plätze bleiben in der Übersicht unsichtbar. Obergrenze der Plätze: 100.
 
+## Entschieden (21.11.2026, Lehrkraft, später am Tag)
+9. **Aufgabenblatt mit Bildern und PDF-Seiten:** Bilder, Hintergrundbild und importierte PDF-Seiten gehen mit. Sie werden auf dem Gerät der Lehrkraft mit dem Sitzungsschlüssel verschlüsselt (fester „Platz“ `vorlage`) und in `lr_vorlagebilder` abgelegt (Migration 019, höchstens 12 Bilder, 2,5 Mio. Zeichen je Bild, 20 Mio. zusammen). Schüler holen sie beim Start einzeln, laden sie nicht erneut hoch und zählen sie nicht zu ihren 8 Fotos. Scheitert das Hochladen, wird die Freigabe wieder gelöscht.
+
 ## Offene Entscheidungen
 5. **Datenschutz:** Schülerarbeiten (auch verschlüsselt) auf dem Server und Namen im QR-Code-Fluss mit Schulleitung/Datenschutzbeauftragten klären, bevor es im Unterricht läuft.
 6. Missbrauch: Wer den QR-Code fotografiert, kommt hinein. Gegenmaßnahmen: kurze Dauer, belegte Namen, Lehrkraft kann Plätze sperren, Code nur auf dem Beamer.

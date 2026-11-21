@@ -114,10 +114,11 @@ export function liesMitmachen(hash: string): { code: string; schluessel: string 
 export const MAX_ABGABE_ZEICHEN = 2_000_000
 
 /**
- * Prüft eine Seite mit der Prüfung der Tafel; das Hintergrundbild fällt immer weg, Bild-Elemente nur ohne `mitBildern`.
- * (Die Vorlage der Lehrkraft geht ohne Bilder hinaus; die Seiten der Schüler dürfen Fotos enthalten.)
+ * Prüft eine Seite mit der Prüfung der Tafel. Bilder, Hintergrundbild und PDF-Seiten bleiben erhalten, aber nur als
+ * Kennung der Datei: Die Bytes gehen getrennt und verschlüsselt über den Server (Fotos der Schüler, Bilder des
+ * Aufgabenblatts).
  */
-function pruefeSeite(roh: unknown, mitBildern: boolean): Seite | null {
+function pruefeSeite(roh: unknown): Seite | null {
   // pruefeTafel wirft Ungültiges still weg und ersetzt es durch eine leere Seite: also Form und Kennung vorher prüfen
   if (typeof roh !== 'object' || roh === null) return null
   const r = roh as Record<string, unknown>
@@ -125,14 +126,13 @@ function pruefeSeite(roh: unknown, mitBildern: boolean): Seite | null {
   const t = pruefeTafel({ ...neuesTafelbild(), seiten: [roh] })
   const s = t?.seiten[0]
   if (!s || s.id !== r.id) return null
-  const { hintergrund: _weg, ...rest } = s
-  return { ...rest, elemente: mitBildern ? s.elemente : s.elemente.filter((e) => e.art !== 'bild') }
+  return s
 }
 
-/** Seite ohne Bilder und Hintergrund (Vorlage) */
-export const pruefeSchuelerSeite = (roh: unknown): Seite | null => pruefeSeite(roh, false)
-/** Seite eines Schülers: Striche, Texte, Formen, Tabellen und Fotos (als Bild-Elemente mit Kennung der Datei) */
-export const pruefeAbgabeSeite = (roh: unknown): Seite | null => pruefeSeite(roh, true)
+/** Aufgabenblatt der Lehrkraft: Striche, Texte, Formen, Tabellen, Bilder, Hintergrund (Dateien nur als Kennung) */
+export const pruefeSchuelerSeite = (roh: unknown): Seite | null => pruefeSeite(roh)
+/** Seite eines Schülers: wie das Aufgabenblatt, dazu seine Fotos (als Bild-Elemente mit Kennung der Datei) */
+export const pruefeAbgabeSeite = (roh: unknown): Seite | null => pruefeSeite(roh)
 
 export type Platz = { platz: string; vorname: string; nachname: string; /** Platz für Schüler, die nicht in der Liste stehen */ gast?: true }
 
@@ -218,6 +218,15 @@ export async function oeffneAbgabe(schluessel: CryptoKey, box: Box, platz: strin
 // ---------- Fotos ----------
 /** Obergrenze für ein verschlüsseltes Foto (Zeichen Base64); der Server prüft dasselbe */
 export const MAX_BILD_ZEICHEN = 2_500_000
+
+/** Bilder des Aufgabenblatts: höchstens so viele je Freigabe, der Server prüft dasselbe (Migration 019) */
+export const MAX_VORLAGE_BILDER = 12
+/** Die Bilder des Aufgabenblatts sind an diesen festen „Platz“ gebunden (statt an den Platz eines Schülers) */
+export const VORLAGE_PLATZ = 'vorlage'
+
+/** Bildart nach den ersten Bytes (die Datei selbst trägt ihre Art nicht mit): PNG oder sonst JPEG */
+export const bildTyp = (bytes: Uint8Array): string =>
+  bytes.length > 3 && bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 ? 'image/png' : 'image/jpeg'
 
 /**
  * Verschlüsselt die Bytes eines Fotos. Platz und Kennung des Bildes sind als zusätzliche Angabe gebunden: Der Server

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { MAX_GAESTE, neuePlaetze, oeffneBild, platzZeilen, pruefeAbgabeSeite, verschluesseleBild } from '../kern/sitzung.ts'
+import { MAX_GAESTE, VORLAGE_PLATZ, bildTyp, neuePlaetze, oeffneBild, platzZeilen, pruefeAbgabeSeite, verschluesseleBild } from '../kern/sitzung.ts'
 import { neueSeite, type Element, type Strich } from '../kern/modell.ts'
 import {
   AUFBEWAHRUNG_STUNDEN, MAX_DAUER, beendet, geheimnisHash, istNeuerStand, istOffen, liesMitmachen, loeschzeit, mitmachenAdresse,
@@ -120,11 +120,29 @@ describe('Sitzungsdaten', () => {
     expect(await oeffneSitzung(schluessel, kaputt)).toBeNull()
   })
 
-  it('nimmt eine Vorlage ohne Bilder mit', () => {
-    const bild = { art: 'bild', id: 'b1', x: 0, y: 0, b: 10, h: 10, datei: '0123456789abcdef' } as unknown as Element
-    const vorlage = neueSeite([strich('s1'), bild])
+  it('nimmt eine Vorlage mit Bildern und Hintergrund mit (nur als Kennung der Datei)', async () => {
+    const bild = { art: 'bild', id: 'b1', x: 0, y: 0, b: 10, h: 10, dateiId: 'abcd1234ef' } as unknown as Element
+    const vorlage = neueSeite([strich('s1'), bild], { dateiId: 'beef5678ab', b: 800, h: 600 })
     const d = neueSitzungsdaten('10G1', schueler, vorlage)
-    expect(d.vorlage?.elemente.map((e) => e.art)).toEqual(['strich'])
+    expect(d.vorlage?.elemente.map((e) => e.art)).toEqual(['strich', 'bild'])
+    expect(d.vorlage?.hintergrund?.dateiId).toBe('beef5678ab')
+    const schluessel = await sitzungsSchluessel(neuerSitzungsSchluessel())
+    const offen = await oeffneSitzung(schluessel, await verschluesseleSitzung(schluessel, d))
+    expect(offen?.vorlage?.elemente.map((e) => e.art)).toEqual(['strich', 'bild'])
+    expect(offen?.vorlage?.hintergrund?.dateiId).toBe('beef5678ab')
+  })
+
+  it('verschlüsselt Bilder des Aufgabenblatts an den festen Platz „vorlage“ gebunden', async () => {
+    const schluessel = await sitzungsSchluessel(neuerSitzungsSchluessel())
+    const box = await verschluesseleBild(schluessel, VORLAGE_PLATZ, 'abcd1234ef', new Uint8Array([1, 2, 3]))
+    expect([...(await oeffneBild(schluessel, box, VORLAGE_PLATZ, 'abcd1234ef'))!]).toEqual([1, 2, 3])
+    expect(await oeffneBild(schluessel, box, 'p1', 'abcd1234ef')).toBeNull()
+  })
+
+  it('erkennt PNG an den ersten Bytes, sonst JPEG', () => {
+    expect(bildTyp(new Uint8Array([0x89, 0x50, 0x4e, 0x47, 1]))).toBe('image/png')
+    expect(bildTyp(new Uint8Array([0xff, 0xd8, 0xff]))).toBe('image/jpeg')
+    expect(bildTyp(new Uint8Array([]))).toBe('image/jpeg')
   })
 })
 
@@ -212,10 +230,10 @@ describe('Gäste und Fotos', () => {
     expect(z.map((x) => !!x.gast)).toEqual([false, false, true])
   })
 
-  it('Seiten der Schüler dürfen Fotos enthalten, die Vorlage nicht', async () => {
+  it('Seiten der Schüler und das Aufgabenblatt dürfen Fotos und Bilder enthalten', async () => {
     const seite = neueSeite([strich('s1'), bild])
     expect(pruefeAbgabeSeite(seite)?.elemente.map((e) => e.art)).toEqual(['strich', 'bild'])
-    expect(pruefeSchuelerSeite(seite)?.elemente.map((e) => e.art)).toEqual(['strich'])
+    expect(pruefeSchuelerSeite(seite)?.elemente.map((e) => e.art)).toEqual(['strich', 'bild'])
     const schluessel = await sitzungsSchluessel(neuerSitzungsSchluessel())
     const box = await verschluesseleAbgabe(schluessel, 'p1', seite, 1)
     expect((await oeffneAbgabe(schluessel, box, 'p1'))?.seite.elemente.map((e) => e.art)).toEqual(['strich', 'bild'])

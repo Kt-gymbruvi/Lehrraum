@@ -4,15 +4,16 @@ import { MemoryRouter } from 'react-router-dom'
 import App from '../App.tsx'
 import { namenAusText, neueKlasse, type Klasse } from '../kern/klassen.ts'
 import { neueSeite, type Bild, type Seite, type Strich, type Text } from '../kern/modell.ts'
-import { pruefeFreigabeMerk, platzZeilen, sitzungsSchluessel, verschluesseleAbgabe, verschluesseleBild, oeffneSitzung, type Sitzungsdaten } from '../kern/sitzung.ts'
+import { pruefeFreigabeMerk, platzZeilen, sitzungsSchluessel, verschluesseleAbgabe, verschluesseleBild, oeffneBild, oeffneSitzung, VORLAGE_PLATZ, type Sitzungsdaten } from '../kern/sitzung.ts'
 import { gemerkteFreigabe } from '../speicher/freigabe.ts'
+import { bytesVon } from '../speicher/dateien.ts'
 import { Freigabefenster } from '../schueler/Freigabefenster.tsx'
 import { speichereKlasse } from '../speicher/datenbank.ts'
 import { vergissStift } from '../tafel/Zeichenflaeche.tsx'
 
 // ---------- nachgemachter Server ----------
 type Zeile = { stand: number; belegt: boolean; iv: string | null; daten: string | null; geaendert_am: string }
-const store: { sitzung: { code: string; beginn: string; ende: string; iv: string; daten: string } | null; abgaben: Map<string, Zeile>; bilder: Map<string, { iv: string; daten: string }>; angemeldet: boolean } = { sitzung: null, abgaben: new Map(), bilder: new Map(), angemeldet: true }
+const store: { sitzung: { code: string; beginn: string; ende: string; iv: string; daten: string } | null; abgaben: Map<string, Zeile>; bilder: Map<string, { iv: string; daten: string }>; vorlage: Map<string, { iv: string; daten: string }>; vorlageFehler: boolean; angemeldet: boolean } = { sitzung: null, abgaben: new Map(), bilder: new Map(), vorlage: new Map(), vorlageFehler: false, angemeldet: true }
 // Die Testumgebung gibt in IndexedDB gespeicherte Blobs nicht als Blob zurück: Dateien liegen hier in einer Map
 const dateien = vi.hoisted(() => new Map<string, Blob>())
 vi.mock('../speicher/dateien.ts', async (original) => ({
@@ -38,6 +39,14 @@ vi.mock('../speicher/server.ts', async (original) => ({
   ladeAbgabeZeile: async (_c: string, platz: string) => store.abgaben.get(platz) ?? null,
   ladeBildZeile: async (_c: string, platz: string, bild: string) => {
     const z = store.bilder.get(`${platz}/${bild}`)
+    return z ? { bild, ...z } : null
+  },
+  vorlageBildSpeichern: async (_c: string, bild: string, iv: string, daten: string) => {
+    if (store.vorlageFehler) throw new Error('QUIZZO: Das Aufgabenblatt hat zu viele Bilder.')
+    store.vorlage.set(bild, { iv, daten })
+  },
+  vorlageBildLaden: async (_c: string, bild: string) => {
+    const z = store.vorlage.get(bild)
     return z ? { bild, ...z } : null
   },
   setzeSitzungEnde: async (code: string, ende: string) => {
@@ -85,6 +94,8 @@ beforeEach(() => {
   store.sitzung = null
   store.abgaben = new Map()
   store.bilder = new Map()
+  store.vorlage = new Map()
+  store.vorlageFehler = false
   dateien.clear()
   store.angemeldet = true
   lege.mockReset()
@@ -367,6 +378,72 @@ describe('Freigabefenster: Fotos der Schüler', () => {
     await nutzer.click(screen.getByRole('button', { name: /Auf die Klassentafel kopieren \(1\)/ }))
     const seiten = beiUebernehmen.mock.calls[0][0] as Seite[]
     expect(seiten[0].elemente.filter((x) => x.art === 'bild').map((x) => (x as Bild).dateiId)).toEqual(['abcd1234ef'])
+  })
+})
+
+describe('Freigabefenster: Bilder und PDF-Seiten im Aufgabenblatt', () => {
+  const blattBild: Bild = { art: 'bild', id: 'v9', x: 0, y: 0, b: 800, h: 600, dateiId: 'beef5678ab' }
+  const blatt: Seite = neueSeite([strich('v1'), blattBild], { dateiId: 'cafe9012cd', b: 800, h: 600 })
+
+  it('schickt Bilder und Hintergrund verschlüsselt mit', async () => {
+    const k = klasse()
+    dateien.set('beef5678ab', new Blob([new Uint8Array([9, 8, 7])], { type: 'image/jpeg' }))
+    dateien.set('cafe9012cd', new Blob([new Uint8Array([0x89, 0x50, 0x4e, 0x47, 5])], { type: 'image/png' }))
+    zeige(k, { seite: blatt })
+    const nutzer = userEvent.setup()
+    await nutzer.click(await screen.findByLabelText('Die gezeigte Seite als Aufgabenblatt mitschicken'))
+    expect(screen.getByText(/Bilder und PDF-Seiten gehen verschlüsselt mit/)).toBeInTheDocument()
+    await nutzer.click(screen.getByRole('button', { name: 'QR-Code erzeugen' }))
+    await screen.findByRole('img', { name: 'QR-Code zum Mitmachen' })
+    expect([...store.vorlage.keys()].sort()).toEqual(['beef5678ab', 'cafe9012cd'])
+    const merk = gemerkteFreigabe(k.id)!
+    const key = await sitzungsSchluessel(merk.schluessel)
+    const z = store.vorlage.get('beef5678ab')!
+    expect([...(await oeffneBild(key, z, VORLAGE_PLATZ, 'beef5678ab'))!]).toEqual([9, 8, 7])
+    // der Server sieht nur Verschlüsseltes
+    expect(z.daten).not.toContain('CQgH')
+    const daten = (await oeffneSitzung(key, { iv: lege.mock.calls[0][2], daten: lege.mock.calls[0][3] }))!
+    expect(daten.vorlage?.hintergrund?.dateiId).toBe('cafe9012cd')
+  })
+
+  it('legt keine Freigabe an, wenn ein Bild des Blattes fehlt', async () => {
+    const k = klasse()
+    zeige(k, { seite: blatt })
+    const nutzer = userEvent.setup()
+    await nutzer.click(await screen.findByLabelText('Die gezeigte Seite als Aufgabenblatt mitschicken'))
+    await nutzer.click(screen.getByRole('button', { name: 'QR-Code erzeugen' }))
+    expect(await screen.findByText(/nicht verfügbar/)).toBeInTheDocument()
+    expect(lege).not.toHaveBeenCalled()
+    expect(gemerkteFreigabe(k.id)).toBeNull()
+  })
+
+  it('löscht die Freigabe wieder, wenn der Server ein Bild ablehnt', async () => {
+    const k = klasse()
+    dateien.set('beef5678ab', new Blob([new Uint8Array([1])]))
+    dateien.set('cafe9012cd', new Blob([new Uint8Array([2])]))
+    store.vorlageFehler = true
+    zeige(k, { seite: blatt })
+    const nutzer = userEvent.setup()
+    await nutzer.click(await screen.findByLabelText('Die gezeigte Seite als Aufgabenblatt mitschicken'))
+    await nutzer.click(screen.getByRole('button', { name: 'QR-Code erzeugen' }))
+    expect(await screen.findByText('Das Aufgabenblatt hat zu viele Bilder.')).toBeInTheDocument()
+    expect(loesche).toHaveBeenCalledTimes(1)
+    expect(gemerkteFreigabe(k.id)).toBeNull()
+  })
+
+  it('holt ein Bild des Blattes vom Server, wenn es auf diesem Gerät nicht mehr liegt', async () => {
+    const k = klasse()
+    dateien.set('beef5678ab', new Blob([new Uint8Array([9, 8, 7])]))
+    dateien.set('cafe9012cd', new Blob([new Uint8Array([6])]))
+    zeige(k, { seite: blatt })
+    const nutzer = userEvent.setup()
+    await nutzer.click(await screen.findByLabelText('Die gezeigte Seite als Aufgabenblatt mitschicken'))
+    await nutzer.click(screen.getByRole('button', { name: 'QR-Code erzeugen' }))
+    await screen.findByRole('img', { name: 'QR-Code zum Mitmachen' })
+    dateien.clear() // die Originale sind weg (Seite gelöscht und aufgeräumt)
+    await schuelerSchreibt(k.id, 0, neueSeite([strich('s1'), { ...blattBild, id: 'v10' }]))
+    await waitFor(() => expect(screen.getByRole('checkbox', { name: 'Anna Adler auswählen' })).toBeEnabled(), { timeout: 4000 })
+    expect([...new Uint8Array(await bytesVon(dateien.get('beef5678ab')!))]).toEqual([9, 8, 7])
   })
 })
 

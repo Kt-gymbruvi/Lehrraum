@@ -2,7 +2,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { neueSeite, type Bild, type Seite, type Strich } from '../kern/modell.ts'
-import { neueSitzungsdaten, neuerSitzungsCode, neuerSitzungsSchluessel, oeffneAbgabe, oeffneBild, sitzungsSchluessel, verschluesseleAbgabe, verschluesseleBild, verschluesseleSitzung, type Sitzungsdaten } from '../kern/sitzung.ts'
+import { VORLAGE_PLATZ, neueSitzungsdaten, neuerSitzungsCode, neuerSitzungsSchluessel, oeffneAbgabe, oeffneBild, sitzungsSchluessel, verschluesseleAbgabe, verschluesseleBild, verschluesseleSitzung, type Sitzungsdaten } from '../kern/sitzung.ts'
 import Mitmachen from '../schueler/Mitmachen.tsx'
 import { vergissStift } from '../tafel/Zeichenflaeche.tsx'
 
@@ -12,6 +12,7 @@ const abgabeHolen = vi.fn()
 const senden = vi.fn()
 const bilderHolen = vi.fn()
 const bildAblegen = vi.fn()
+const vorlageHolen = vi.fn()
 vi.mock('../speicher/server.ts', async (original) => ({
   ...(await original<typeof import('../speicher/server.ts')>()),
   serverVorhanden: () => true,
@@ -21,6 +22,7 @@ vi.mock('../speicher/server.ts', async (original) => ({
   abgabeSpeichern: (...a: unknown[]) => senden(...a),
   bilderLaden: (...a: unknown[]) => bilderHolen(...a),
   bildSpeichern: (...a: unknown[]) => bildAblegen(...a),
+  vorlageBildLaden: (...a: unknown[]) => vorlageHolen(...a),
 }))
 
 const probe = vi.hoisted(() => ({ nimmBild: [] as unknown[][], dateien: new Map<string, Blob>() }))
@@ -93,6 +95,8 @@ beforeEach(() => {
   senden.mockReset()
   bilderHolen.mockReset()
   bildAblegen.mockReset()
+  vorlageHolen.mockReset()
+  vorlageHolen.mockResolvedValue(null)
   bilderHolen.mockResolvedValue([])
   bildAblegen.mockResolvedValue(undefined)
   probe.nimmBild.length = 0
@@ -315,6 +319,35 @@ describe('Schülerseite: Schreiben', () => {
     await nutzer.upload(screen.getByLabelText('Bilddatei wählen'), new File([new Uint8Array([1])], 'x.jpg', { type: 'image/jpeg' }))
     expect(await screen.findByText('Höchstens 8 Fotos je Seite.')).toBeInTheDocument()
     expect(probe.nimmBild).toHaveLength(0)
+  })
+
+  it('holt Bilder und Hintergrund des Aufgabenblatts und lädt sie nicht noch einmal hoch', async () => {
+    const bildE: Bild = { art: 'bild', id: 'v9', x: 0, y: 0, b: 800, h: 600, dateiId: 'beef5678ab' }
+    const vorlage = neueSeite([strich('v1'), bildE], { dateiId: 'cafe9012cd', b: 800, h: 600 })
+    const a = await sitzung({ vorlage })
+    vorlageHolen.mockImplementation(async (_c: string, id: string) => ({ bild: id, ...(await verschluesseleBild(a.key, VORLAGE_PLATZ, id, new Uint8Array(id === 'beef5678ab' ? [4, 5, 6] : [0x89, 0x50, 0x4e, 0x47]))) }))
+    zeige(a)
+    const nutzer = userEvent.setup()
+    await nutzer.click(await screen.findByRole('button', { name: 'Anna Adler' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Ja, das bin ich' }))
+    expect(await screen.findByTestId('zeichenflaeche')).toBeInTheDocument()
+    expect(vorlageHolen).toHaveBeenCalledTimes(2)
+    expect(probe.dateien.get('beef5678ab')?.size).toBe(3)
+    expect(probe.dateien.get('cafe9012cd')?.type).toBe('image/png')
+    // eine Änderung wird gesendet, die Bilder des Blattes gehen nicht als Fotos des Schülers hoch
+    ziehe([100, 100], [300, 200])
+    await waitFor(() => expect(senden).toHaveBeenCalled(), { timeout: 6000 })
+    expect(bildAblegen).not.toHaveBeenCalled()
+  })
+
+  it('meldet, wenn das Aufgabenblatt nicht vollständig ankommt', async () => {
+    const bildE: Bild = { art: 'bild', id: 'v9', x: 0, y: 0, b: 800, h: 600, dateiId: 'beef5678ab' }
+    const a = await sitzung({ vorlage: neueSeite([bildE]) })
+    zeige(a)
+    const nutzer = userEvent.setup()
+    await nutzer.click(await screen.findByRole('button', { name: 'Anna Adler' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Ja, das bin ich' }))
+    expect(await screen.findByText(/Aufgabenblatt konnte nicht vollständig geladen werden/)).toBeInTheDocument()
   })
 
   it('lässt keine PDF-Dateien zu', async () => {

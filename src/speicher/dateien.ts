@@ -18,6 +18,17 @@ export async function legeDateiAb(id: string, daten: Blob): Promise<void> {
   await vorgang('dateien', 'readwrite', (s) => s.put(datei))
 }
 
+/** Bytes eines Blobs (jsdom kennt arrayBuffer() nicht überall) */
+export const bytesVon = (b: Blob): Promise<ArrayBuffer> =>
+  typeof b.arrayBuffer === 'function'
+    ? b.arrayBuffer()
+    : new Promise((ok, fehler) => {
+        const l = new FileReader()
+        l.onload = () => ok(l.result as ArrayBuffer)
+        l.onerror = () => fehler(l.error)
+        l.readAsArrayBuffer(b)
+      })
+
 /** Holt eine fehlende Datei (vom Server) – wird vom Tafel-Abgleich gesetzt */
 let nachladen: ((id: string) => Promise<Datei | null>) | null = null
 export function setzeNachladen(tun: typeof nachladen) {
