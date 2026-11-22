@@ -95,7 +95,7 @@ describe('Fenster „Spiele“', () => {
     expect(istCode(code)).toBe(true)
     expect(screen.getByText(code)).toBeTruthy()
     expect(screen.getByRole('img', { name: `QR-Code zum Spielraum ${code}` })).toBeTruthy()
-    expect(raum.geoeffnet[0].erlaubt).toEqual(['vier-gewinnt', 'muehle', 'schach'])
+    expect(raum.geoeffnet[0].erlaubt).toEqual(['vier-gewinnt', 'muehle', 'schach', 'chaos-flitzer'])
   })
 
   it('behält den Code beim erneuten Öffnen im selben Tab', () => {
@@ -110,9 +110,9 @@ describe('Fenster „Spiele“', () => {
   it('meldet geänderte Spiele an den Raum', () => {
     render(<Spiele />)
     fireEvent.click(screen.getByLabelText('Mühle'))
-    expect(raum.setzeErlaubt).toHaveBeenLastCalledWith(['vier-gewinnt', 'schach'])
+    expect(raum.setzeErlaubt).toHaveBeenLastCalledWith(['vier-gewinnt', 'schach', 'chaos-flitzer'])
     fireEvent.click(screen.getByLabelText('Mühle'))
-    expect(raum.setzeErlaubt).toHaveBeenLastCalledWith(['vier-gewinnt', 'muehle', 'schach'])
+    expect(raum.setzeErlaubt).toHaveBeenLastCalledWith(['vier-gewinnt', 'muehle', 'schach', 'chaos-flitzer'])
   })
 
   it('„Neuer Code“ wechselt den Raum', () => {
@@ -133,11 +133,15 @@ describe('Fenster „Spiele“', () => {
           { id: 'a', name: 'Anna', angebot: { partie: 'P1', spiel: 'schach' } },
           { id: 'b', name: 'Ben', spielt: { partie: 'P2', spiel: 'muehle', gegner: 'Carla' } },
           { id: 'c', name: 'Carla', spielt: { partie: 'P2', spiel: 'muehle', gegner: 'Ben' } },
+          { id: 'd', name: 'Dora', angebot: { partie: 'ABC234', spiel: 'chaos-flitzer', code: 'ABC234', belegt: 2 } },
+          { id: 'e', name: 'Emil', spielt: { partie: 'XYZ789', spiel: 'chaos-flitzer', gegner: '4 Spieler' } },
         ]),
       )
     })
+    expect(screen.getByText('Dora sucht Mitspieler: Chaos-Flitzer 3000')).toBeTruthy()
+    expect(screen.getByText('Emil spielt Chaos-Flitzer 3000 (4 Spieler)')).toBeTruthy()
     expect(screen.getByText('Anna sucht Schach')).toBeTruthy()
     expect(screen.getByText('Ben gegen Carla – Mühle')).toBeTruthy()
-    expect(screen.getByText(/im Raum/).textContent).toContain('3')
+    expect(screen.getByText(/im Raum/).textContent).toContain('5')
   })
 })

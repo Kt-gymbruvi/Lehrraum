@@ -3,7 +3,8 @@
 // die Tafel ist dort die „Leitung“: Sie legt den Raum an, zeigt den QR-Code und legt fest, welche Spiele erlaubt sind.
 // Das Format der Anwesenheit ist in `../Kt-gymbruvi.github.io/spielen/raum.js` beschrieben.
 
-export const SPIELE = { 'vier-gewinnt': 'Vier gewinnt', muehle: 'Mühle', schach: 'Schach' } as const
+// „chaos-flitzer“ ist ein Gruppenspiel: Der Anbieter führt es auf seinem Gerät, die anderen spielen mit dem Handy (Startseite, vertretung/chaos-flitzer/)
+export const SPIELE = { 'vier-gewinnt': 'Vier gewinnt', muehle: 'Mühle', schach: 'Schach', 'chaos-flitzer': 'Chaos-Flitzer 3000' } as const
 export type SpielId = keyof typeof SPIELE
 export const SPIEL_IDS = Object.keys(SPIELE) as SpielId[]
 

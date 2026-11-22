@@ -112,7 +112,8 @@ export function Spiele() {
         <ul className="spiele-liste" aria-label="Angebote">
           {offen.map((t) => (
             <li key={t.id}>
-              {t.name} sucht {SPIELE[t.angebot!.spiel]}
+              {t.name} sucht {t.angebot!.spiel === 'chaos-flitzer' ? 'Mitspieler: ' : ''}
+              {SPIELE[t.angebot!.spiel]}
             </li>
           ))}
         </ul>
@@ -121,7 +122,7 @@ export function Spiele() {
         <ul className="spiele-liste" aria-label="Laufende Partien">
           {partien.map((p) => (
             <li key={p.partie}>
-              {p.a} gegen {p.b} – {SPIELE[p.spiel]}
+              {p.spiel === 'chaos-flitzer' ? `${p.a} spielt ${SPIELE[p.spiel]} (${p.b})` : `${p.a} gegen ${p.b} – ${SPIELE[p.spiel]}`}
             </li>
           ))}
         </ul>
