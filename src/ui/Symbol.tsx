@@ -81,6 +81,8 @@ const ZEICHNUNGEN = {
   fluestern: 'M3 9h4l5-4v14l-5-4H3zM15.5 10a3 3 0 0 1 0 4',
   leise: 'M3 9h4l5-4v14l-5-4H3zM15.5 10a3 3 0 0 1 0 4M18 7.5a6.5 6.5 0 0 1 0 9',
   normal: 'M3 9h4l5-4v14l-5-4H3zM15.5 10a3 3 0 0 1 0 4M18 7.5a6.5 6.5 0 0 1 0 9M20.5 5a10 10 0 0 1 0 14',
+  // Spiele: Spielstein auf einem Brett mit Feldern
+  spiele: 'M4 4h16v16H4zM4 12h16M12 4v16M8 8h.01M16 16h.01M16 8h.01M8 16h.01',
   geraeusch: 'M8 2h8v20H8zM12 4.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 10a2 2 0 1 0 0 4 2 2 0 0 0 0-4zM12 15.5a2 2 0 1 0 0 4 2 2 0 0 0 0-4z',
   mikrofon: 'M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3zM5 11a7 7 0 0 0 14 0M12 18v3',
   abdecken: 'M4 4h16v16H4zM4 7.5h16M4 11h16M4 14.5h16M10 14.5v3h4v-3',
