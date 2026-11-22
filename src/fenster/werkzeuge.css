@@ -1,4 +1,4 @@
-/* Neue Unterrichtswerkzeuge der rechten Leiste: Arbeitsform, Geräuschampel, QR-Code, Abdecken, Scheinwerfer, Geometrie */
+/* Neue Unterrichtswerkzeuge der rechten Leiste: Arbeitsform, Geräuschampel, Abdecken, Scheinwerfer, Geometrie */
 
 /* ---------- Rechte Leiste ---------- */
 .leisten-knopf.mit-text span {
@@ -244,53 +244,6 @@
   width: 100%;
   min-height: 2.75rem;
   accent-color: var(--gewaehlt);
-}
-
-/* ---------- QR-Code ---------- */
-.qr-code {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-}
-.qr-bild {
-  display: block;
-  width: 15rem;
-  height: 15rem;
-  border-radius: 0.5rem;
-}
-.qr-adresse {
-  max-width: 15rem;
-  margin: 0.5rem 0 0;
-  font-size: 1rem;
-  font-weight: 700;
-  text-align: center;
-  overflow-wrap: anywhere;
-}
-.qr-code .f-knopf {
-  margin-top: 0.5rem;
-}
-.qr-eingabe {
-  display: flex;
-  flex-direction: column;
-  min-width: 17rem;
-}
-.qr-eingabe label {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  font-weight: 700;
-}
-.qr-eingabe input {
-  min-height: 3rem;
-  padding: 0.25rem 0.75rem;
-  border: 2px solid var(--linie);
-  border-radius: 0.75rem;
-  background: var(--leiste);
-  color: var(--text);
-  font: inherit;
-}
-.qr-eingabe input[aria-invalid='true'] {
-  border-color: var(--fehler);
 }
 
 /* ---------- Abdecken und Scheinwerfer (über der Tafel, unter den Fenstern) ---------- */

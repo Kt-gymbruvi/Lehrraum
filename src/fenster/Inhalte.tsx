@@ -1,25 +1,21 @@
-// Inhalte der Fenster: Uhr, Timer, Stoppuhr, Notiz, Arbeitsform, Geräuschampel, QR-Code. Alles läuft nur auf diesem Gerät.
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
+// Inhalte der Fenster: Uhr, Timer, Stoppuhr, Notiz, Arbeitsform, Geräuschampel. Alles läuft nur auf diesem Gerät.
+import { useEffect, useRef, useState } from 'react'
 import {
   ARBEITSFORM_NAMEN,
   ARBEITSFORMEN,
   GRENZE_MAX,
   GRENZE_MIN,
   GRENZE_STANDARD,
-  kurzeAdresse,
   LAUTSTAERKE_NAMEN,
   LAUTSTAERKEN,
-  MAX_ADRESSE,
   MAX_NOTIZTEXT,
   NOTIZFARBEN,
-  pruefeAdresse,
   stoppText,
   zeitText,
   type FensterZustand,
   type NotizFarbe,
 } from '../kern/fenster.ts'
 import { AMPEL_NAMEN, AMPEL_START, glaette, naechsteAmpel, pegel, type Ampelstand } from '../kern/geraeusch.ts'
-import { qrPfad } from '../kern/qrcode.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 
 type Aenderung = Partial<Omit<FensterZustand, 'id' | 'art'>>
@@ -366,84 +362,5 @@ export function Geraeuschampel({ fenster, beiAendern }: { fenster: FensterZustan
       )}
       <p className="hinweis klein">Nur der Pegel wird auf diesem Gerät gemessen – nichts wird aufgenommen oder gesendet.</p>
     </div>
-  )
-}
-
-// ---------- QR-Code ----------
-/** Zeigt eine Adresse als QR-Code, damit die Klasse sie mit dem Handy öffnen kann. Der Code entsteht auf dem Gerät. */
-export function QrCode({ fenster, beiAendern }: { fenster: FensterZustand; beiAendern: (neu: Aenderung) => void }) {
-  const adresse = fenster.adresse
-  const [eingabe, setEingabe] = useState(adresse ?? '')
-  const [aendern, setAendern] = useState(!adresse)
-  const [fehler, setFehler] = useState(false)
-  const code = useMemo(() => {
-    if (!adresse) return null
-    try {
-      return qrPfad(adresse)
-    } catch {
-      return null
-    }
-  }, [adresse])
-
-  function zeigen(e: FormEvent) {
-    e.preventDefault()
-    const a = pruefeAdresse(eingabe)
-    if (!a) return setFehler(true)
-    setFehler(false)
-    setEingabe(a)
-    beiAendern({ adresse: a })
-    setAendern(false)
-  }
-
-  if (!aendern && adresse && code)
-    return (
-      <div className="qr-code">
-        <svg className="qr-bild" viewBox={`0 0 ${code.groesse} ${code.groesse}`} role="img" aria-label={`QR-Code für ${adresse}`} shapeRendering="crispEdges">
-          <rect width={code.groesse} height={code.groesse} fill="#ffffff" />
-          <path d={code.pfad} fill="#000000" />
-        </svg>
-        <p className="qr-adresse">{kurzeAdresse(adresse)}</p>
-        <button type="button" className="f-knopf" onClick={() => setAendern(true)}>
-          Andere Adresse
-        </button>
-      </div>
-    )
-  return (
-    <form className="qr-eingabe" onSubmit={zeigen} noValidate>
-      <label>
-        Adresse
-        <input
-          type="url"
-          inputMode="url"
-          autoComplete="off"
-          autoCapitalize="off"
-          spellCheck={false}
-          placeholder="z. B. kt-gymbruvi.github.io"
-          maxLength={MAX_ADRESSE}
-          value={eingabe}
-          aria-invalid={fehler}
-          onChange={(e) => {
-            setEingabe(e.target.value)
-            setFehler(false)
-          }}
-        />
-      </label>
-      {fehler && (
-        <p className="fehler" role="alert">
-          Bitte eine Internetadresse eingeben (http oder https).
-        </p>
-      )}
-      <div className="reihe">
-        <button type="submit" className="f-knopf haupt">
-          <Symbol name="qr" />
-          Code zeigen
-        </button>
-        {adresse && (
-          <button type="button" className="f-knopf" onClick={() => setAendern(false)}>
-            Abbrechen
-          </button>
-        )}
-      </div>
-    </form>
   )
 }

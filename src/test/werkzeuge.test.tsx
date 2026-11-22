@@ -1,11 +1,10 @@
-// Unterrichtswerkzeuge der rechten Leiste: Arbeitsform, Geräuschampel, QR-Code, Abdecken, Scheinwerfer, Geometrie.
+// Unterrichtswerkzeuge der rechten Leiste: Arbeitsform, Geräuschampel, Abdecken, Scheinwerfer, Geometrie.
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { kurzeAdresse, pruefeAdresse, pruefeFenster, schalte } from '../kern/fenster.ts'
+import { pruefeFenster, schalte } from '../kern/fenster.ts'
 import { AMPEL_START, farbeFuer, naechsteAmpel, pegel, ZURUECK_MS } from '../kern/geraeusch.ts'
 import { anKante, CM, fangeKante, folgeZweiFingern, INSTRUMENT_SKALA_MAX, INSTRUMENT_SKALA_MIN, kanten, LINEAL_BREITE, neuesInstrument, rasteWinkel, skaliereAmGriff, teilstriche, winkelText, zuLokal, zuTafelPunkt, type Instrument } from '../kern/instrumente.ts'
 import type { Strich } from '../kern/modell.ts'
-import { qrPfad, QR_RAND } from '../kern/qrcode.ts'
 import { ABDECKUNG_MIN, begrenzeScheinwerfer, GANZ_ABGEDECKT, scheinwerferPfad, schiebeKante } from '../kern/zeigen.ts'
 import { ladeLetzteTafel } from '../speicher/datenbank.ts'
 import Tafel from '../tafel/Tafel.tsx'
@@ -56,37 +55,15 @@ describe('Geräuschampel – Logik', () => {
   })
 })
 
-describe('QR-Code – Logik', () => {
-  it('nimmt nur http- und https-Adressen an', () => {
-    expect(pruefeAdresse(' kt-gymbruvi.github.io ')).toBe('https://kt-gymbruvi.github.io/')
-    expect(pruefeAdresse('http://beispiel.de/a?b=1')).toBe('http://beispiel.de/a?b=1')
-    expect(pruefeAdresse('javascript:alert(1)')).toBeNull()
-    expect(pruefeAdresse('ftp://beispiel.de')).toBeNull()
-    expect(pruefeAdresse('data:text/html,hallo')).toBeNull()
-    expect(pruefeAdresse('hallo welt')).toBeNull()
-    expect(pruefeAdresse('hallo')).toBeNull()
-    expect(pruefeAdresse('')).toBeNull()
-    expect(pruefeAdresse('x.de/' + 'a'.repeat(600))).toBeNull()
-    expect(kurzeAdresse('https://kt-gymbruvi.github.io/')).toBe('kt-gymbruvi.github.io')
-  })
-
-  it('berechnet die Felder des Codes', () => {
-    const { groesse, pfad } = qrPfad('https://kt-gymbruvi.github.io/')
-    expect(groesse).toBeGreaterThanOrEqual(21 + 2 * QR_RAND)
-    expect(pfad.startsWith('M')).toBe(true)
-    // die drei Suchmuster: Ecke oben links ist dunkel
-    expect(pfad).toContain(`M${QR_RAND} ${QR_RAND}h7`)
-  })
-
+describe('Fenster – Logik', () => {
   it('prüft gespeicherte Fenster der neuen Arten', () => {
     const l = pruefeFenster([
       { id: 'a', art: 'arbeitsform', x: 0, y: 0, form: 'gruppe', laut: 'leise' },
       { id: 'b', art: 'geraeusch', x: 0, y: 0, grenze: 999 },
-      { id: 'c', art: 'qr', x: 0, y: 0, adresse: 'javascript:alert(1)' },
     ])
     expect(l[0]).toMatchObject({ form: 'gruppe', laut: 'leise' })
     expect(l[1].grenze).toBe(95)
-    expect(l[2].adresse).toBeUndefined()
+    expect(pruefeFenster([{ id: 'c', art: 'qr', x: 0, y: 0, adresse: 'https://beispiel.de/' }])).toEqual([]) // QR-Fenster gibt es nicht mehr
     expect(pruefeFenster([{ id: 'a', art: 'arbeitsform', x: 0, y: 0, form: 'quatsch' }])[0]).toMatchObject({ form: 'einzel', laut: 'still' })
     expect(schalte([], 'arbeitsform')[0]).toMatchObject({ form: 'einzel', laut: 'still' })
     expect(schalte([], 'geraeusch')[0].grenze).toBe(60)
@@ -204,7 +181,7 @@ const bereit = () => screen.findByText('Auf diesem Gerät gespeichert')
 const leiste = () => within(screen.getByRole('complementary', { name: 'Unterrichtswerkzeuge' }))
 const gespeicherteFenster = async () => (await ladeLetzteTafel())?.fenster ?? []
 
-describe('Arbeitsform und QR-Code in der Tafel', () => {
+describe('Arbeitsform in der Tafel', () => {
   it('Arbeitsform: Sozialform und Lautstärke wählen, wird mit der Tafel gemerkt', async () => {
     const nutzer = userEvent.setup()
     render(<Tafel />)
@@ -216,24 +193,6 @@ describe('Arbeitsform und QR-Code in der Tafel', () => {
     await nutzer.click(within(fenster).getByRole('button', { name: 'Flüstern' }))
     expect(within(fenster).getByRole('status')).toHaveAccessibleName('Gruppenarbeit, Flüstern')
     await waitFor(async () => expect((await gespeicherteFenster())[0]).toMatchObject({ art: 'arbeitsform', form: 'gruppe', laut: 'fluestern' }))
-  })
-
-  it('QR-Code: lehnt Unsinn ab, zeigt den Code einer Adresse und merkt ihn', async () => {
-    const nutzer = userEvent.setup()
-    render(<Tafel />)
-    await bereit()
-    await nutzer.click(leiste().getByRole('button', { name: 'QR-Code' }))
-    const fenster = screen.getByRole('region', { name: 'QR-Code' })
-    await nutzer.type(within(fenster).getByLabelText('Adresse'), 'javascript:alert(1)')
-    await nutzer.click(within(fenster).getByRole('button', { name: 'Code zeigen' }))
-    expect(within(fenster).getByRole('alert')).toHaveTextContent('Internetadresse')
-    await nutzer.clear(within(fenster).getByLabelText('Adresse'))
-    await nutzer.type(within(fenster).getByLabelText('Adresse'), 'kt-gymbruvi.github.io{Enter}')
-    expect(within(fenster).getByRole('img', { name: 'QR-Code für https://kt-gymbruvi.github.io/' })).toBeInTheDocument()
-    expect(within(fenster).getByText('kt-gymbruvi.github.io')).toBeInTheDocument()
-    // Tippen im Feld hat kein Werkzeug umgeschaltet
-    expect(screen.getByRole('button', { name: /^Stift/ })).toHaveAttribute('aria-pressed', 'true')
-    await waitFor(async () => expect((await gespeicherteFenster())[0]).toMatchObject({ art: 'qr', adresse: 'https://kt-gymbruvi.github.io/' }))
   })
 })
 

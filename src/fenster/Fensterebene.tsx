@@ -7,7 +7,7 @@ import type { Schueler } from '../kern/klassen.ts'
 import { useSchliessenDraussen } from '../tafel/handballen.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 import { Fenster } from './Fenster.tsx'
-import { Arbeitsform, Geraeuschampel, Notiz, QrCode, Stoppuhr, Timer, Uhr } from './Inhalte.tsx'
+import { Arbeitsform, Geraeuschampel, Notiz, Stoppuhr, Timer, Uhr } from './Inhalte.tsx'
 import { Zufall } from './Zufall.tsx'
 import './werkzeuge.css'
 
@@ -36,7 +36,6 @@ export function Fensterebene({ fenster, beiAendern, schueler = null, beiText }: 
             {f.art === 'notiz' && <Notiz fenster={f} beiAendern={aendereF} />}
             {f.art === 'arbeitsform' && <Arbeitsform fenster={f} beiAendern={aendereF} />}
             {f.art === 'geraeusch' && <Geraeuschampel fenster={f} beiAendern={aendereF} />}
-            {f.art === 'qr' && <QrCode fenster={f} beiAendern={aendereF} />}
           </Fenster>
         )
       })}
