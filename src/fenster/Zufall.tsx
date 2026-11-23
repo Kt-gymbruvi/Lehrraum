@@ -3,13 +3,16 @@
 // nichts davon wird gespeichert. Die Tafel ändert sich nur über „An die Tafel schreiben“ (rückgängig machbar).
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Schueler } from '../kern/klassen.ts'
-import { anzeigeNamen, bildeGruppen, gruppenText, zufallBis, ziehe, type Gruppenart } from '../kern/zufall.ts'
+import { anzeigeNamen, bildeGruppen, bildePaare, gruppenText, raddrehung, zufallBis, ziehe, type Gruppenart } from '../kern/zufall.ts'
+import { Gluecksrad } from './Gluecksrad.tsx'
 
 type Props = { schueler: Schueler[] | null; beiAnTafel: (text: string) => void }
-type Ansicht = 'wer' | 'gruppen' | 'da'
+type Ansicht = 'wer' | 'paare' | 'gruppen' | 'da'
+type Verfahren = 'name' | 'rad'
 
 const DAUER = 1200 // ms Auswahl-Animation
 const TAKT = 80
+const RAD_DAUER = 5200 // ms, bis das Rad stillsteht
 
 const ruhigGewuenscht = () => typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
@@ -26,6 +29,11 @@ export function Zufall({ schueler, beiAnTafel }: Props) {
   const [art, setArt] = useState<Gruppenart>('anzahl')
   const [wert, setWert] = useState(4)
   const [gruppen, setGruppen] = useState<string[][]>([])
+  const [paare, setPaare] = useState<string[][]>([])
+  const [verfahren, setVerfahren] = useState<Verfahren>('name')
+  const [drehung, setDrehung] = useState(0)
+  const [radDauer, setRadDauer] = useState(0)
+  const [radGewinner, setRadGewinner] = useState<string | null>(null)
   const uhren = useRef<number[]>([])
 
   const namen = useMemo(() => anzeigeNamen(schueler ?? []), [schueler])
@@ -54,6 +62,23 @@ export function Zufall({ schueler, beiAnTafel }: Props) {
     }
     uhren.current.forEach((u) => window.clearTimeout(u))
     uhren.current = []
+    if (verfahren === 'rad' && da.length >= 2) {
+      // Erst losen, dann das Rad auf das gezogene Feld auslaufen lassen
+      const feld = da.indexOf(z.id)
+      const ms = animation ? RAD_DAUER : 0
+      setLaeuft(true)
+      setHinweis('')
+      setRadGewinner(null)
+      setRadDauer(ms)
+      setDrehung(raddrehung(drehung, da.length, feld, zufallBis(1000) / 999, animation ? 5 + zufallBis(3) : 0))
+      uhren.current.push(
+        window.setTimeout(() => {
+          fertig()
+          setRadGewinner(z.id)
+        }, ms + 60),
+      )
+      return
+    }
     if (!animation || da.length < 2) return fertig()
     setLaeuft(true)
     setHinweis('')
@@ -73,10 +98,13 @@ export function Zufall({ schueler, beiAnTafel }: Props) {
   const max = Math.max(1, da.length)
 
   return (
-    <div className={'zufall' + (ansicht === 'gruppen' && gruppen.length > 0 ? ' mit-gruppen' : '')}>
+    <div className={'zufall' + ((ansicht === 'gruppen' && gruppen.length > 0) || (ansicht === 'paare' && paare.length > 0) ? ' mit-gruppen' : '') + (ansicht === 'wer' && verfahren === 'rad' ? ' mit-rad' : '')}>
       <div className="reihe eng zufall-reiter" role="group" aria-label="Ansicht">
         <button type="button" className="f-knopf klein" aria-pressed={ansicht === 'wer'} onClick={() => setAnsicht('wer')}>
           Wer ist dran?
+        </button>
+        <button type="button" className="f-knopf klein" aria-pressed={ansicht === 'paare'} onClick={() => setAnsicht('paare')}>
+          Paare
         </button>
         <button type="button" className="f-knopf klein" aria-pressed={ansicht === 'gruppen'} onClick={() => setAnsicht('gruppen')}>
           Gruppen
@@ -88,13 +116,24 @@ export function Zufall({ schueler, beiAnTafel }: Props) {
 
       {ansicht === 'wer' && (
         <>
+          <div className="reihe eng zufall-reiter" role="group" aria-label="Auslosen mit">
+            <button type="button" className="f-knopf klein" aria-pressed={verfahren === 'name'} disabled={laeuft} onClick={() => setVerfahren('name')}>
+              Namen
+            </button>
+            <button type="button" className="f-knopf klein" aria-pressed={verfahren === 'rad'} disabled={laeuft} onClick={() => setVerfahren('rad')}>
+              Glücksrad
+            </button>
+          </div>
+          {verfahren === 'rad' && da.length >= 2 && (
+            <Gluecksrad felder={da.map((id) => ({ id, name: namen.get(id) ?? '?', verbraucht: ohneWiederholung && dran.has(id) && id !== radGewinner }))} drehung={drehung} dauer={radDauer} gewinner={radGewinner} />
+          )}
           <p className={'zufall-name' + (laeuft ? ' laeuft' : '')} role="status" aria-live="polite" aria-label={laeuft ? 'Wird ausgelost' : gezogen ? `Dran: ${namen.get(gezogen)}` : 'Noch niemand ausgelost'}>
-            {zeige ? namen.get(zeige) : '?'}
+            {verfahren === 'rad' && da.length >= 2 ? (laeuft ? '…' : gezogen ? namen.get(gezogen) : 'Dreh das Rad!') : zeige ? namen.get(zeige) : '?'}
           </p>
           {hinweis && <p className="hinweis">{hinweis}</p>}
           <div className="reihe">
             <button type="button" className="f-knopf haupt" disabled={!da.length || laeuft} onClick={ziehen}>
-              Auslosen
+              {verfahren === 'rad' ? 'Rad drehen' : 'Auslosen'}
             </button>
             {ohneWiederholung && dran.size > 0 && (
               <button
@@ -117,6 +156,36 @@ export function Zufall({ schueler, beiAnTafel }: Props) {
             <input type="checkbox" checked={animation} onChange={(e) => setAnimation(e.target.checked)} />
             Mit Animation
           </label>
+        </>
+      )}
+
+      {ansicht === 'paare' && (
+        <>
+          <p className="hinweis">Zufällige Paare{da.length % 2 === 1 ? ' – bei ungerader Zahl entsteht eine Dreiergruppe' : ''}. Wer heute fehlt, steht unter „Heute nicht da“.</p>
+          <div className="reihe">
+            <button type="button" className="f-knopf haupt" disabled={da.length < 2} onClick={() => setPaare(bildePaare(da))}>
+              {paare.length ? 'Neu mischen' : 'Paare bilden'}
+            </button>
+            {paare.length > 0 && (
+              <button type="button" className="f-knopf" onClick={() => beiAnTafel(gruppenText(paare, namen, 'Paar'))}>
+                An die Tafel schreiben
+              </button>
+            )}
+          </div>
+          {paare.length > 0 && (
+            <ol className="zufall-gruppen" aria-label="Paare">
+              {paare.map((g, i) => (
+                <li key={i}>
+                  <h3>{g.length > 2 ? 'Dreiergruppe' : `Paar ${i + 1}`}</h3>
+                  <ul>
+                    {g.map((id) => (
+                      <li key={id}>{namen.get(id)}</li>
+                    ))}
+                  </ul>
+                </li>
+              ))}
+            </ol>
+          )}
         </>
       )}
 

@@ -5,7 +5,7 @@ import { MemoryRouter } from 'react-router-dom'
 import App from '../App.tsx'
 import { schalte, pruefeFenster } from '../kern/fenster.ts'
 import { namenAusText, neueKlasse, type Schueler } from '../kern/klassen.ts'
-import { anzeigeNamen, bildeGruppen, gemischt, gruppenAnzahl, gruppenText, ziehe } from '../kern/zufall.ts'
+import { anzeigeNamen, bildeGruppen, bildePaare, feldAmZeiger, gemischt, gruppenAnzahl, gruppenText, raddrehung, ziehe } from '../kern/zufall.ts'
 import { ladeKlasse, ladeTafel, speichereKlasse } from '../speicher/datenbank.ts'
 import { vergissStift } from '../tafel/Zeichenflaeche.tsx'
 
@@ -55,6 +55,33 @@ describe('Zufall – Logik', () => {
     }
     expect(gemischt([1, 2, 3, 4], erster)).toEqual([2, 3, 4, 1])
     expect(gruppenText([['a', 'b'], ['c']], new Map([['a', 'Anna'], ['b', 'Ben'], ['c', 'Carla']]))).toBe('Gruppe 1: Anna, Ben\nGruppe 2: Carla')
+  })
+
+  it('Paare: alle sind dabei, bei ungerader Zahl eine Dreiergruppe, eine einzelne Person bleibt allein', () => {
+    const ids = ['a', 'b', 'c', 'd', 'e', 'f']
+    const p = bildePaare(ids)
+    expect(p.map((x) => x.length)).toEqual([2, 2, 2])
+    expect(p.flat().sort()).toEqual(ids)
+    const ungerade = bildePaare(['a', 'b', 'c', 'd', 'e'])
+    expect(ungerade.map((x) => x.length).sort()).toEqual([2, 3])
+    expect(bildePaare(['a'])).toEqual([['a']])
+    expect(bildePaare([])).toEqual([])
+    expect(gruppenText([['a', 'b']], new Map([['a', 'Anna'], ['b', 'Ben']]), 'Paar')).toBe('Paar 1: Anna, Ben')
+  })
+
+  it('Glücksrad: das Rad läuft immer auf das gezogene Feld aus und nie rückwärts', () => {
+    for (const n of [2, 3, 7, 24]) {
+      for (let feld = 0; feld < n; feld++) {
+        for (const aktuell of [0, 123.4, 1800, 3999.9]) {
+          for (const versatz of [0, 0.5, 1]) {
+            const neu = raddrehung(aktuell, n, feld, versatz, 5)
+            expect(neu).toBeGreaterThanOrEqual(aktuell + 5 * 360)
+            expect(neu).toBeLessThan(aktuell + 6 * 360 + 1e-6)
+            expect(feldAmZeiger(neu, n)).toBe(feld)
+          }
+        }
+      }
+    }
   })
 
   it('das Fenster lässt sich speichern und wieder laden', () => {
@@ -124,6 +151,33 @@ describe('Fenster „Zufall & Gruppen“', () => {
     await waitFor(async () => expect(await text()).toEqual([]))
     // Nichts von „Heute nicht da“ wurde in der Klasse gespeichert
     expect((await ladeKlasse(k.id))?.schueler).toHaveLength(4)
+  }, 20_000)
+
+  it('Paare bilden und mit dem Glücksrad auslosen', async () => {
+    const nutzer = userEvent.setup()
+    const k = { ...neueKlasse({ bezeichnung: '9a', fach: 'Sport', jahrgang: '' }), schueler: namenAusText('Muster, Anna\nBeispiel, Ben\nTest, Carla\nProbe, David\nNeu, Emil') }
+    await speichereKlasse(k)
+    zeige(`/tafel?klasse=${k.id}`)
+    await screen.findByRole('heading', { name: '9a Sport' })
+    await nutzer.click(screen.getByRole('button', { name: 'Zufall & Gruppen' }))
+    const fenster = within(await screen.findByRole('region', { name: 'Zufall & Gruppen' }))
+    await waitFor(() => expect(fenster.getByRole('button', { name: 'Auslosen' })).toBeEnabled())
+
+    // Paare: fünf Personen = ein Paar und eine Dreiergruppe
+    await nutzer.click(fenster.getByRole('button', { name: 'Paare' }))
+    await nutzer.click(fenster.getByRole('button', { name: 'Paare bilden' }))
+    const paare = fenster.getByRole('list', { name: 'Paare' })
+    expect(within(paare).getAllByRole('heading').map((h) => h.textContent)).toEqual(['Paar 1', 'Dreiergruppe'])
+    expect(paare.textContent).toMatch(/Anna/)
+
+    // Glücksrad (ohne Animation): ein Feld je Person, danach steht der Name unter dem Rad
+    await nutzer.click(fenster.getByRole('button', { name: /^Wer ist dran/ }))
+    await nutzer.click(fenster.getByRole('button', { name: 'Glücksrad' }))
+    expect(fenster.getByRole('img', { name: 'Glücksrad mit 5 Feldern' })).toBeInTheDocument()
+    await nutzer.click(fenster.getByLabelText('Mit Animation'))
+    if ((fenster.getByLabelText('Mit Animation') as HTMLInputElement).checked) await nutzer.click(fenster.getByLabelText('Mit Animation'))
+    await nutzer.click(fenster.getByRole('button', { name: 'Rad drehen' }))
+    await waitFor(() => expect(fenster.getByRole('status').textContent).toMatch(/^(Anna|Ben|Carla|David|Emil)$/))
   }, 20_000)
 
   it('ohne Namen ein Hinweis mit dem Weg zu „Meine Klassen“', async () => {

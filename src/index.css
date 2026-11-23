@@ -916,6 +916,78 @@ input {
 .zufall-leer {
   max-width: 22rem;
 }
+/* Glücksrad: Farben aus Dunkelgrün und Orange des Logos */
+.zufall.mit-rad {
+  width: min(30rem, 90vw);
+}
+.rad {
+  align-self: center;
+  width: min(100%, 22rem, 46vh);
+  filter: drop-shadow(0 6px 14px rgb(15 92 71 / 0.22));
+}
+.rad-bild {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.rad-dreh {
+  transform-origin: 0 0;
+  will-change: transform;
+}
+.rad-f0 {
+  fill: var(--color-navy);
+}
+.rad-f1 {
+  fill: var(--color-tuerkis);
+}
+.rad-f2 {
+  fill: var(--color-navy-hell);
+}
+.rad-f3 {
+  fill: color-mix(in srgb, var(--color-tuerkis) 55%, white);
+}
+.rad-feld path {
+  stroke: var(--leiste);
+  stroke-width: 0.8;
+}
+.rad-name {
+  font-weight: 700;
+  fill: #fff;
+  pointer-events: none;
+}
+.rad-feld:has(.rad-f1) .rad-name,
+.rad-feld:has(.rad-f3) .rad-name {
+  fill: #2b1500;
+}
+.rad-feld.verbraucht {
+  opacity: 0.35;
+}
+.rad-feld.gewinner path {
+  stroke: var(--text);
+  stroke-width: 2.4;
+}
+.rad-rand {
+  fill: none;
+  stroke: var(--leiste);
+  stroke-width: 3;
+}
+.rad-nabe {
+  fill: var(--leiste);
+  stroke: var(--color-navy);
+  stroke-width: 2;
+}
+.rad-zeiger {
+  fill: var(--fehler);
+  stroke: var(--leiste);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+@media (prefers-reduced-motion: reduce) {
+  .rad-dreh {
+    transition: none !important;
+  }
+}
 /* Notizen sehen in beiden Modi wie Klebezettel aus */
 .fenster-notiz {
   color: #2b2400;

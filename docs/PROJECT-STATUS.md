@@ -18,6 +18,12 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 - Geprüft: 11 neue Tests (Logik, Fenster mit ersetztem Server), alle 454 Tests grün, Build grün. Im Browser mit der Lobby der Startseite in einem zweiten Tab gegen den echten Server: Tafel erscheint als Leitung, Beitritt und Angebot („Clara sucht Schach“) erscheinen in der Tafel, abgewähltes Spiel verschwindet in der Lobby. Nicht geprüft: iPad/SMART Board, Schul-WLAN, Beamer, viele Teilnehmer gleichzeitig.
 - Offen: Die Tafel zeigt (noch) keine Züge – nur Angebote und laufende Partien. Zuschauen und „Spiel auf der Tafel zeigen“ wären ein nächster Schritt.
 
+## Zufall & Gruppen: Paare und Glücksrad – 23.11.2026 (nicht veröffentlicht, nicht committet)
+- Fenster „Zufall & Gruppen“: neuer Reiter **Paare** (zufällig, bei ungerader Zahl eine Dreiergruppe, „An die Tafel schreiben“ als „Paar 1: …“) und in „Wer ist dran?“ die Wahl **Namen | Glücksrad**. Das Rad (`fenster/Gluecksrad.tsx`, SVG) läuft ~5 s weich aus, der Zeiger steht oben; erst wird gelost (`ziehe`), dann dreht `raddrehung` auf das Feld. Mit „Ohne Wiederholung“ werden gezogene Felder blasser; ohne Animation (oder bei „Bewegung reduzieren“) dreht es sofort.
+- Neu in `kern/zufall.ts`: `bildePaare`, `raddrehung`, `feldAmZeiger`; `gruppenText` mit Titel. Styles am Ende des Zufall-Blocks in `index.css`.
+- Die Startseite bietet dieselben Möglichkeiten im Werkzeug „Gruppen & Zufall“ (angemeldet mit Klassenwahl).
+- **Getestet:** `npm test` (457 grün, neue Tests für Paare, Rad-Rechnung und Fenster), `npm run build`; Rad der Startseite im Browser hell/dunkel am Handy gesehen. **Das Rad in der Tafel selbst am iPad/Beamer ungeprüft** (Animation und Größe im Fenster).
+
 ## Leisten einklappen, Zufallsfenster ganz sichtbar – 19.11.2026 (nicht veröffentlicht, am Gerät ungeprüft)
 - Kopfzeile: je ein Knopf links und rechts klappt die Werkzeugleiste ein und aus (`localStorage` „lehrraum-leisten“, je Gerät); eingeklappt wächst die Zeichenfläche in den Platz. In der **unendlichen Tafel** liegt die Fläche immer hinter den schwebenden Leisten (`.tafel-mitte.unendlich`).
 - Fenster sind nie höher als die Tafel (Inhalt rollt im Fenster), schieben sich nach oben, wenn sie wachsen, und lassen sich bis 50 % verkleinern (`SKALA_MIN`). „Zufall & Gruppen“ wird mit Gruppen breiter und hat keine eigene Höhenbegrenzung mehr.
