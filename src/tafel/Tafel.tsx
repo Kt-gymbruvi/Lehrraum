@@ -107,6 +107,8 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
   const [abdeckung, setAbdeckung] = useState<Abdeckung | null>(null)
   const [scheinwerfer, setScheinwerfer] = useState<Scheinwerfer | null>(null)
   const [instrumente, setInstrumente] = useState<Instrument[]>([])
+  // Geometrie gewählt: die Kapsel zeigt die Instrumente; geschrieben wird weiter mit Stift oder Textmarker
+  const [geometrie, setGeometrie] = useState(false)
   const [werkzeug, setWerkzeug] = useState<Werkzeug>(STANDARD_EINSTELLUNGEN.werkzeug)
   const [farbe, setFarbe] = useState<string>(STANDARD_EINSTELLUNGEN.farbe)
   const [staerke, setStaerke] = useState<number>(STANDARD_EINSTELLUNGEN.staerke)
@@ -559,6 +561,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
     if (geaendert.length) beiErsetzen(geaendert, neu.filter((_, i) => geaendert.includes(gewaehlte[i])))
   }
   const waehleWerkzeug = (w: Werkzeug) => {
+    setGeometrie(false)
     setWerkzeug(w)
     if (w !== 'auswahl') setAuswahl([])
   }
@@ -629,6 +632,12 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       return [...alt, neuesInstrument(art, mx, my)]
     })
   }
+  /** Knopf „Geometrie“: Kapsel umschalten; zum Anlegen am Lineal wird mit dem Stift geschrieben */
+  const schalteGeometrie = () => {
+    if (geometrie) return setGeometrie(false)
+    if (werkzeug !== 'stift' && werkzeug !== 'marker') waehleWerkzeug('stift')
+    setGeometrie(true)
+  }
   const aendereInstrument = useCallback((art: InstrumentArt, neu: Instrument | null) => {
     setInstrumente((alt) => (neu ? alt.map((i) => (i.art === art ? neu : i)) : alt.filter((i) => i.art !== art)))
   }, [])
@@ -660,6 +669,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
   const vollbild = useRef(false)
   const betreteBuehne = () => {
     setAuswahl([])
+    setGeometrie(false)
     setBuehne(true)
     const el = document.documentElement
     if (el.requestFullscreen && !document.fullscreenElement)
@@ -1033,6 +1043,8 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
     beiBild: () => bildWahl.current?.click(),
     instrumente: instrumente.map((i) => i.art),
     beiInstrument: schalteInstrument,
+    geometrie,
+    beiGeometrie: schalteGeometrie,
   }
 
   const zoomen = (faktor: number) => setKamera((k) => zoomeUm(k, (mass.b || window.innerWidth) / 2, (mass.h || window.innerHeight) / 2, faktor))

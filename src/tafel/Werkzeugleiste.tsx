@@ -12,7 +12,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AuswahlArt } from '../kern/auswahl.ts'
 import type { Formwahl } from '../kern/einstellungen.ts'
-import type { InstrumentArt } from '../kern/instrumente.ts'
+import { INSTRUMENT_NAMEN, INSTRUMENTARTEN, type InstrumentArt } from '../kern/instrumente.ts'
 import { LINIENARTEN, type Linienart } from '../kern/modell.ts'
 import { begrenzeStaerke, inLeiste, PALETTE, STAERKE_MAX, STAERKE_MIN, staerkeInLeiste } from '../kern/farben.ts'
 import { FARBEN, STAERKEN } from '../kern/modell.ts'
@@ -55,6 +55,9 @@ type Props = {
   /** fehlt (beiInstrument): kein Geometrie-Knopf (Schülerseite). instrumente: Welche Geometrie-Werkzeuge liegen auf der Tafel? */
   instrumente?: InstrumentArt[]
   beiInstrument?: (art: InstrumentArt) => void
+  /** Geometrie gewählt: die Kapsel zeigt Lineal, Geodreieck, Winkelmesser und Zirkel (das Zeichenwerkzeug bleibt) */
+  geometrie?: boolean
+  beiGeometrie?: () => void
   /** Bühne (Präsentieren): nur Stift, Radierer und Laser, dazu ein Knopf zum Verlassen */
   buehne?: boolean
   beiBuehneEnde?: () => void
@@ -267,7 +270,7 @@ export function Werkzeugleiste(p: Props) {
                   ? `${w.name} (${w.taste}) – antippen, Zeilen und Spalten wählen; Zellen antippen zum Schreiben`
                   : `${w.name} (${w.taste})`
     return (
-      <button key={id} type="button" className="leisten-knopf" aria-pressed={p.werkzeug === w.wert} aria-label={w.name} title={titel} onClick={() => p.beiWerkzeug(w.wert)}>
+      <button key={id} type="button" className="leisten-knopf" aria-pressed={p.werkzeug === w.wert && !p.geometrie} aria-label={w.name} title={titel} onClick={() => p.beiWerkzeug(w.wert)}>
         <Symbol name={zeichen} voll={f.gefuellt && istFlaeche} />
       </button>
     )
@@ -309,7 +312,7 @@ export function Werkzeugleiste(p: Props) {
         )}
       </div>
       <div className="gruppe" role="group" aria-label="Zeigen">
-        {p.beiInstrument && <Geometriewahl an={p.instrumente ?? []} beiInstrument={p.beiInstrument} />}
+        {p.beiInstrument && p.beiGeometrie && <Geometriewahl an={p.instrumente ?? []} offen={!!p.geometrie} beiKlick={p.beiGeometrie} />}
         {familienKnopf('laser')}
       </div>
     </aside>
@@ -350,8 +353,21 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
   // Ohne „Bearbeiten“ am Ende steht nach der letzten Gruppe kein Trenner
 
   return (
-    <div className="kontextkapsel" role="toolbar" aria-label="Einstellungen des Werkzeugs">
-      {familie.glieder.length > 1 && (
+    <div className={p.geometrie ? 'kontextkapsel geometrie' : 'kontextkapsel'} role="toolbar" aria-label="Einstellungen des Werkzeugs">
+      {p.geometrie && (
+        <>
+          <Segment
+            name="Geometrie"
+            kinder={INSTRUMENTARTEN.map((a) => (
+              <SegmentKnopf key={a} an={(p.instrumente ?? []).includes(a)} name={INSTRUMENT_NAMEN[a]} titel={`${INSTRUMENT_NAMEN[a]} auf die Tafel legen oder wegnehmen`} text={INSTRUMENT_NAMEN[a]} beiKlick={() => p.beiInstrument?.(a)}>
+                <Symbol name={a} />
+              </SegmentKnopf>
+            ))}
+          />
+          <Trenner />
+        </>
+      )}
+      {!p.geometrie && familie.glieder.length > 1 && (
         <>
           <div className="varianten" role="radiogroup" aria-label="Art des Werkzeugs">
             {familie.glieder.map((g) => {
@@ -367,7 +383,7 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
           <Trenner />
         </>
       )}
-      {w === 'auswahl' && (
+      {!p.geometrie && w === 'auswahl' && (
         <>
           <Segment
             name="Art der Auswahl"
@@ -380,7 +396,7 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
           <Trenner />
         </>
       )}
-      {w === 'radierer' && (
+      {!p.geometrie && w === 'radierer' && (
         <>
           <Segment
             name="Art des Radierers"
@@ -405,7 +421,7 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
           <Trenner />
         </>
       )}
-      {(w === 'rechteck' || w === 'ellipse' || w === 'linie' || w === 'pfeil') && <FormWahl art={w} wahl={p.formwahl} beiWahl={p.beiFormwahl} />}
+      {!p.geometrie && (w === 'rechteck' || w === 'ellipse' || w === 'linie' || w === 'pfeil') && <FormWahl art={w} wahl={p.formwahl} beiWahl={p.beiFormwahl} />}
       {inhalt.farben && (
         <>
           <div className="kapsel-gruppe" role="group" aria-label="Farbe">
@@ -442,7 +458,7 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
           <Trenner />
         </>
       )}
-      {inhalt.hinweis && (
+      {!p.geometrie && inhalt.hinweis && (
         <>
           <p className="kapsel-hinweis">{inhalt.hinweis}</p>
           <Trenner />

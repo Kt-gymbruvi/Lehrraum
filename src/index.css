@@ -624,6 +624,27 @@ input {
     padding: 0 0.5rem;
   }
 }
+/* Geometrie liegt auf der Tafel: kleiner oranger Punkt am Knopf (wie offene Fenster rechts) */
+.werkzeugleiste.links .leisten-knopf.liegt {
+  position: relative;
+}
+.werkzeugleiste.links .leisten-knopf.liegt::after {
+  content: '';
+  position: absolute;
+  top: 0.4rem;
+  right: 0.4rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #ff8a14;
+  box-shadow: 0 0 0 2px var(--leiste);
+}
+/* Schmal: Namen der Geometrie-Werkzeuge nur als Hinweis, sonst nur das Symbol */
+@media (max-width: 80rem) {
+  .kontextkapsel.geometrie .variante span {
+    display: none;
+  }
+}
 /* Kurzer Hinweis statt Einstellungen (Hand, Laserpointer) */
 .kontextkapsel .kapsel-hinweis {
   margin: 0 0.5rem;
@@ -946,11 +967,26 @@ input {
   display: flex;
   flex-direction: column;
   pointer-events: auto;
-  border-radius: var(--rund);
-  background: var(--leiste);
+  border-radius: 1.75rem;
   color: var(--text);
-  border: 1px solid var(--linie);
-  box-shadow: var(--schatten-hoch);
+  border: 1px solid var(--haarlinie, var(--linie));
+  /* Glaskarte (Gestaltung „Atelier“): durchscheinend, weich grün getönter Schatten wie das Blatt */
+  isolation: isolate;
+  box-shadow: 0 1px 2px rgb(15 92 71 / 0.06), 0 10px 30px rgb(15 92 71 / 0.14), 0 24px 60px rgb(15 92 71 / 0.1);
+}
+/* Unschärfe nur über ::before – backdrop-filter am Fenster selbst würde feste Aufklappfelder darin einsperren */
+.fenster::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: inherit;
+  background: var(--glas);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+}
+.fenster.fenster-notiz::before {
+  display: none; /* Notizen bleiben farbige Klebezettel */
 }
 .fenster select {
   min-height: 3rem;
@@ -965,7 +1001,7 @@ input {
   display: flex;
   align-items: center;
   gap: 0.4rem;
-  padding: 0.25rem 0.25rem 0.25rem 0.875rem;
+  padding: 0.125rem 0.25rem 0 1rem;
   cursor: grab;
   touch-action: none;
   user-select: none;
@@ -999,6 +1035,17 @@ input {
 }
 .fenster-knopf:hover {
   background: var(--leiste-2);
+}
+/* Mit Maus: Einklappen und Schließen treten zurück, bis man über das Fenster fährt (am Touchgerät immer sichtbar) */
+@media (hover: hover) {
+  .fenster .fenster-knopf {
+    opacity: 0.45;
+    transition: opacity var(--schnell, 160ms);
+  }
+  .fenster:hover .fenster-knopf,
+  .fenster:focus-within .fenster-knopf {
+    opacity: 1;
+  }
 }
 .fenster-inhalt {
   padding: 0 1rem 1rem;
@@ -1115,17 +1162,56 @@ input {
   opacity: 0.45;
   cursor: default;
 }
-.timer .balken {
-  height: 0.5rem;
-  margin-top: 0.5rem;
-  border-radius: 999px;
-  background: var(--leiste-2);
-  overflow: hidden;
+/* Ring um Timer und Stoppuhr: Spur, Bogen läuft leer (Timer) bzw. einmal je Minute um (Stoppuhr) */
+.zeitring {
+  position: relative;
+  width: 15rem;
+  aspect-ratio: 1;
+  margin: 0.25rem auto 0;
 }
-.timer .balken span {
-  display: block;
+.zeitring svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
   height: 100%;
-  background: var(--gewaehlt);
+}
+.zeitring circle {
+  fill: none;
+  stroke-width: 7;
+}
+.zeitring-spur {
+  stroke: color-mix(in srgb, var(--gewaehlt) 14%, transparent);
+}
+.zeitring-bogen {
+  stroke: var(--gewaehlt);
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.25s linear, stroke 0.6s ease;
+}
+.zeitring-mitte {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.zeitring .grosse-zahl {
+  font-size: 3.25rem;
+}
+/* letzte Minute: orange; abgelaufen: rot und kurz pulsierend */
+.zeitring-knapp .zeitring-bogen {
+  stroke: #ff8a14;
+}
+.zeitring-knapp .grosse-zahl {
+  color: #d96d00;
+}
+.zeitring-fertig .zeitring-spur {
+  stroke: color-mix(in srgb, var(--fehler) 22%, transparent);
+  animation: ring-puls 1s ease-in-out 6;
+}
+@keyframes ring-puls {
+  50% {
+    stroke: var(--fehler);
+  }
 }
 .timer.fertig .grosse-zahl,
 .timer.fertig .hinweis {
@@ -1140,8 +1226,12 @@ input {
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .timer.fertig .grosse-zahl {
+  .timer.fertig .grosse-zahl,
+  .zeitring-fertig .zeitring-spur {
     animation: none;
+  }
+  .zeitring-bogen {
+    transition: none;
   }
 }
 /* Zufall & Gruppen */

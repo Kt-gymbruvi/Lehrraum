@@ -3,7 +3,7 @@ import { act, fireEvent, render, screen, waitFor, within } from '@testing-librar
 import userEvent from '@testing-library/user-event'
 import { pruefeFenster, schalte } from '../kern/fenster.ts'
 import { AMPEL_START, farbeFuer, naechsteAmpel, pegel, ZURUECK_MS } from '../kern/geraeusch.ts'
-import { anKante, CM, fangeKante, folgeZweiFingern, INSTRUMENT_SKALA_MAX, INSTRUMENT_SKALA_MIN, kanten, LINEAL_BREITE, neuesInstrument, rasteWinkel, skaliereAmGriff, teilstriche, winkelText, zuLokal, zuTafelPunkt, type Instrument } from '../kern/instrumente.ts'
+import { anKante, CM, fangeKante, folgeZweiFingern, INSTRUMENT_SKALA_MAX, INSTRUMENT_SKALA_MIN, kanten, klemmeRadius, LINEAL_BREITE, neuesInstrument, radiusAmGriff, radiusText, rasteWinkel, skaliereAmGriff, teilstriche, umriss, winkelText, ZIRKEL_MAX, ZIRKEL_MIN, zuLokal, zuTafelPunkt, type Instrument } from '../kern/instrumente.ts'
 import type { Strich } from '../kern/modell.ts'
 import { ABDECKUNG_MIN, begrenzeScheinwerfer, GANZ_ABGEDECKT, scheinwerferPfad, schiebeKante } from '../kern/zeigen.ts'
 import { ladeLetzteTafel } from '../speicher/datenbank.ts'
@@ -86,6 +86,40 @@ describe('Abdecken und Scheinwerfer – Logik', () => {
     expect(begrenzeScheinwerfer({ x: 2, y: -1, r: 5 }, 800, 600)).toEqual({ x: 1, y: 0, r: 48 })
     expect(begrenzeScheinwerfer({ x: 0.5, y: 0.5, r: 5000 }, 800, 600).r).toBe(450)
     expect(scheinwerferPfad({ x: 0.5, y: 0.5, r: 100 }, 800, 600)).toBe('M0 0H800V600H0Z M300 300a100 100 0 1 0 200 0a100 100 0 1 0 -200 0Z')
+  })
+})
+
+describe('Zirkel – Logik', () => {
+  const zirkel: Instrument = { art: 'zirkel', x: 100, y: 100, winkel: 0, radius: 3 }
+
+  it('ein Strich dicht am Kreis läuft genau auf dem Kreis (ohne Versatz um die Strichbreite)', () => {
+    const r = 3 * CM
+    const k = fangeKante(zirkel, 100, 100 + r + 6, 20)!
+    expect(k).toEqual({ art: 'kreis', r })
+    for (const [x, y] of [[100 + r + 8, 100], [100, 100 - r + 5], [100 - r * 0.7, 100 + r * 0.7 + 4]]) {
+      const [px, py] = anKante(zirkel, k, x, y, 5)
+      nahe(Math.hypot(px - 100, py - 100), r)
+    }
+    expect(fangeKante(zirkel, 100, 100, 20)).toBeNull() // an der Nadel: freier Strich
+  })
+
+  it('Radius am Griff: folgt dem Zeiger, rastet an halben Zentimetern ein, bleibt in den Grenzen', () => {
+    const neu = radiusAmGriff(zirkel, [100, 100 + 5.04 * CM])
+    expect(neu.radius).toBe(5)
+    expect(neu.winkel).toBe(90) // die Schenkel drehen mit (nach unten)
+    expect(radiusAmGriff(zirkel, [100 + 4.27 * CM, 100]).radius).toBe(4.3)
+    expect(klemmeRadius(0.1)).toBe(ZIRKEL_MIN)
+    expect(klemmeRadius(99)).toBe(ZIRKEL_MAX)
+    expect(radiusText(4.5)).toBe('4,5 cm')
+  })
+
+  it('neuer Zirkel: 4 cm, waagerecht; zwei Finger verändern seine Größe nicht', () => {
+    const n = neuesInstrument('zirkel', 400, 300)
+    expect(n).toMatchObject({ art: 'zirkel', radius: 4, winkel: 0 })
+    const z = folgeZweiFingern(n, [0, 0], [100, 0], [0, 0], [200, 0])
+    expect(z.skala).toBeUndefined()
+    expect(teilstriche('zirkel')).toEqual([])
+    expect(umriss('zirkel', 6)).not.toBe(umriss('zirkel', 2)) // die Schenkel spreizen sich mit dem Radius
   })
 })
 
@@ -261,6 +295,8 @@ describe('Geräuschampel in der Tafel', () => {
   })
 })
 
+const kapsel = () => screen.getByRole('toolbar', { name: 'Einstellungen des Werkzeugs' })
+
 describe('Abdecken, Scheinwerfer und Geometrie in der Tafel', () => {
   it('Abdecken: aufziehen mit der Tastatur, entfernen; die Tafel bleibt unverändert', async () => {
     const nutzer = userEvent.setup()
@@ -295,8 +331,8 @@ describe('Abdecken, Scheinwerfer und Geometrie in der Tafel', () => {
     await bereit()
     const geometrie = linkeLeiste().getByRole('button', { name: 'Geometrie' })
     await nutzer.click(geometrie)
-    await nutzer.click(within(screen.getByRole('dialog', { name: 'Geometrie' })).getByRole('button', { name: 'Lineal' }))
-    expect(geometrie).toHaveClass('an')
+    await nutzer.click(within(kapsel()).getByRole('button', { name: 'Lineal' }))
+    expect(geometrie).toHaveClass('liegt') // Punkt: etwas liegt auf der Tafel
     const drehen = screen.getByRole('slider', { name: 'Lineal drehen' })
     expect(drehen).toHaveAttribute('aria-valuetext', '0°')
 
@@ -345,7 +381,7 @@ describe('Abdecken, Scheinwerfer und Geometrie in der Tafel', () => {
     const { container } = render(<Tafel />)
     await bereit()
     await nutzer.click(linkeLeiste().getByRole('button', { name: 'Geometrie' }))
-    await nutzer.click(within(screen.getByRole('dialog', { name: 'Geometrie' })).getByRole('button', { name: 'Lineal' }))
+    await nutzer.click(within(kapsel()).getByRole('button', { name: 'Lineal' }))
     const koerper = container.querySelector('.instrument-koerper')!
     const lage = () => container.querySelector('.instrument')!.getAttribute('transform')
     const vorher = lage()
@@ -365,5 +401,29 @@ describe('Abdecken, Scheinwerfer und Geometrie in der Tafel', () => {
     })
     expect(lage()).toMatch(/rotate\(30\) scale\(1\)$/)
     expect(screen.getByRole('slider', { name: 'Lineal drehen' })).toHaveAttribute('aria-valuetext', '−30°')
+  })
+
+  it('Geometrie zeigt oben Lineal, Geodreieck, Winkelmesser und Zirkel; ein Zeichenwerkzeug beendet die Auswahl', async () => {
+    const nutzer = userEvent.setup()
+    render(<Tafel />)
+    await bereit()
+    await nutzer.click(linkeLeiste().getByRole('button', { name: 'Text' }))
+    const geometrie = linkeLeiste().getByRole('button', { name: 'Geometrie' })
+    await nutzer.click(geometrie)
+    expect(geometrie).toHaveAttribute('aria-pressed', 'true')
+    for (const name of ['Lineal', 'Geodreieck', 'Winkelmesser', 'Zirkel']) expect(within(kapsel()).getByRole('button', { name })).toHaveAttribute('aria-pressed', 'false')
+    expect(within(kapsel()).getByRole('button', { name: 'Rot' })).toBeInTheDocument() // geschrieben wird mit dem Stift
+    expect(linkeLeiste().getByRole('button', { name: 'Stift' })).toHaveAttribute('aria-pressed', 'false')
+    await nutzer.click(within(kapsel()).getByRole('button', { name: 'Zirkel' }))
+    expect(within(kapsel()).getByRole('button', { name: 'Zirkel' })).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByRole('slider', { name: 'Radius des Zirkels' })).toHaveAttribute('aria-valuetext', '4,0 cm')
+    fireEvent.keyDown(screen.getByRole('slider', { name: 'Radius des Zirkels' }), { key: 'ArrowUp', shiftKey: true })
+    expect(screen.getByRole('slider', { name: 'Radius des Zirkels' })).toHaveAttribute('aria-valuetext', '5,0 cm')
+    await nutzer.click(linkeLeiste().getByRole('button', { name: 'Stift' }))
+    expect(geometrie).toHaveAttribute('aria-pressed', 'false')
+    expect(within(kapsel()).queryByRole('button', { name: 'Zirkel' })).toBeNull()
+    expect(screen.getByRole('slider', { name: 'Radius des Zirkels' })).toBeInTheDocument() // der Zirkel bleibt liegen
+    await nutzer.click(screen.getByRole('button', { name: 'Zirkel wegnehmen' }))
+    expect(screen.queryByRole('slider', { name: 'Radius des Zirkels' })).toBeNull()
   })
 })

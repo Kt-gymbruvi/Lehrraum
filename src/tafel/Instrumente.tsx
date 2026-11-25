@@ -1,4 +1,4 @@
-// Lineal, Geodreieck und Winkelmesser über der Zeichenfläche. Sie liegen in Tafel-Koordinaten und wachsen mit dem Zoom.
+// Lineal, Geodreieck, Winkelmesser und Zirkel über der Zeichenfläche. Sie liegen in Tafel-Koordinaten und wachsen mit dem Zoom.
 // Ziehen am Körper verschiebt, zwei Finger drehen und verschieben, der runde Griff dreht um den Nullpunkt.
 // Das Anlegen des Stifts an die Kanten geschieht in der Zeichenfläche (kern/instrumente.ts: fangeKante, anKante).
 import { memo, useEffect, useRef, type PointerEvent as ReactPointerEvent } from 'react'
@@ -11,7 +11,13 @@ import {
   INSTRUMENT_NAMEN,
   INSTRUMENT_SKALA_MAX,
   INSTRUMENT_SKALA_MIN,
+  klemmeRadius,
   klemmeSkala,
+  radiusAmGriff,
+  radiusText,
+  ZIRKEL_RADIUS,
+  zirkelLage,
+  zirkelRadius,
   rasteWinkel,
   skaliereAmGriff,
   teilstriche,
@@ -28,7 +34,7 @@ import { istHandballen } from './handballen.ts'
 import '../fenster/werkzeuge.css'
 
 type P = [number, number]
-type Modus = 'schieben' | 'drehen' | 'groesse'
+type Modus = 'schieben' | 'drehen' | 'groesse' | 'radius'
 
 /** Teilstriche und Zahlen – ändern sich nie, deshalb nur einmal je Art gezeichnet */
 const Skala = memo(function Skala({ art }: { art: InstrumentArt }) {
@@ -101,6 +107,7 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
     const finger = [...zeiger.current.values()]
     let neu: Instrument
     if (zg.modus === 'drehen') neu = dreheAmGriff(zg.start, zg.start.winkel, z.start, z.jetzt)
+    else if (zg.modus === 'radius') neu = radiusAmGriff(zg.start, z.jetzt)
     else if (zg.modus === 'groesse') neu = skaliereAmGriff(zg.start, zg.start.skala ?? 1, z.start, z.jetzt)
     else if (finger.length >= 2) neu = folgeZweiFingern(zg.start, finger[0].start, finger[1].start, finger[0].jetzt, finger[1].jetzt)
     else neu = verschiebeInstrument(zg.start, z.jetzt[0] - z.start[0], z.jetzt[1] - z.start[1])
@@ -141,7 +148,7 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
             <g key={i.art} className={'instrument instrument-' + i.art} transform={`translate(${i.x} ${i.y}) rotate(${i.winkel}) scale(${i.skala ?? 1})`}>
               <path
                 className="instrument-koerper"
-                d={umriss(i.art)}
+                d={umriss(i.art, zirkelRadius(i))}
                 strokeWidth={1.5 / (k.zoom * (i.skala ?? 1))}
                 onPointerDown={(e) => greifen(e, i, 'schieben')}
                 onPointerMove={ziehen}
@@ -151,13 +158,21 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
               <g strokeWidth={1 / (k.zoom * (i.skala ?? 1))}>
                 <Skala art={i.art} />
               </g>
+              {i.art === 'zirkel' && (
+                <>
+                  {/* Kreis der Mine: hier entlang zeichnet der Stift */}
+                  <circle className="zirkel-kreis" r={zirkelRadius(i) * CM} strokeWidth={1.5 / k.zoom} strokeDasharray={`${6 / k.zoom} ${5 / k.zoom}`} />
+                  <circle className="zirkel-mine" cx={zirkelLage(zirkelRadius(i)).mine[0]} r={3 / k.zoom} />
+                </>
+              )}
               <circle className="nullpunkt" r={4 / (k.zoom * (i.skala ?? 1))} />
             </g>
           ))}
         </g>
       </svg>
       {liste.map((i) => {
-        const g = griffe(i.art)
+        const g = griffe(i.art, zirkelRadius(i))
+        const zirkel = i.art === 'zirkel'
         const name = INSTRUMENT_NAMEN[i.art]
         return (
           <div key={i.art}>
@@ -186,6 +201,34 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
             >
               <Symbol name="drehenRechts" />
             </div>
+            {zirkel ? (
+              <div
+                className="instrument-griff groesse"
+                role="slider"
+                tabIndex={0}
+                aria-label="Radius des Zirkels"
+                aria-valuemin={5}
+                aria-valuemax={150}
+                aria-valuenow={Math.round(zirkelRadius(i) * 10)}
+                aria-valuetext={radiusText(zirkelRadius(i))}
+                title="Ziehen: Radius aufziehen und Zirkel drehen – Doppeltippen: 4 cm"
+                style={bildschirm(i, g.groesse)}
+                onPointerDown={(e) => greifen(e, i, 'radius')}
+                onPointerMove={ziehen}
+                onPointerUp={loslassen}
+                onPointerCancel={loslassen}
+                onDoubleClick={() => beiAendern(i.art, { ...i, radius: ZIRKEL_RADIUS })}
+                onKeyDown={(e) => {
+                  const richtung = e.key === 'ArrowUp' || e.key === 'ArrowRight' || e.key === '+' ? 1 : e.key === 'ArrowDown' || e.key === 'ArrowLeft' || e.key === '-' ? -1 : 0
+                  if (!richtung) return
+                  e.preventDefault()
+                  e.stopPropagation()
+                  beiAendern(i.art, { ...i, radius: klemmeRadius(zirkelRadius(i) + richtung * (e.shiftKey ? 1 : 0.1)) })
+                }}
+              >
+                <Symbol name="groesse" />
+              </div>
+            ) : (
             <div
               className="instrument-griff groesse"
               role="slider"
@@ -212,8 +255,9 @@ export function Instrumente({ liste, kamera, beiAendern }: Props) {
             >
               <Symbol name="groesse" />
             </div>
+            )}
             <span className="instrument-winkel" style={bildschirm(i, g.winkel)} aria-hidden="true">
-              {winkelText(i.winkel)}
+              {zirkel ? 'r = ' + radiusText(zirkelRadius(i)) : winkelText(i.winkel)}
             </span>
             <button type="button" className="instrument-schliessen" aria-label={`${name} wegnehmen`} title={`${name} wegnehmen`} style={bildschirm(i, g.schliessen)} onClick={() => beiAendern(i.art, null)}>
               <Symbol name="schliessen" />

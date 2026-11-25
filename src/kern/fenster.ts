@@ -160,3 +160,19 @@ export function zeitText(ms: number, aufrunden = false): string {
 
 /** Zehntelsekunden für die Stoppuhr: 61234 ms → „1:01,2“ */
 export const stoppText = (ms: number): string => `${zeitText(ms)},${Math.floor((Math.max(0, ms) % 1000) / 100)}`
+
+// ---------- Ring um Timer und Stoppuhr ----------
+/** Anteil des Timer-Rings, der noch steht (1 = volle Zeit, 0 = abgelaufen) */
+export const timerAnteil = (rest: number, dauer: number): number => (dauer > 0 ? Math.min(1, Math.max(0, rest / dauer)) : 0)
+
+/**
+ * Farbe des Timers: „knapp“ (orange) in der letzten Minute – bei kurzen Timern im letzten Viertel –,
+ * „fertig“ (rot) wenn die Zeit um ist, sonst „normal“.
+ */
+export function timerStufe(rest: number, dauer: number, fertig: boolean): 'normal' | 'knapp' | 'fertig' {
+  if (fertig) return 'fertig'
+  return rest > 0 && rest < dauer && rest <= Math.min(60_000, dauer / 4) ? 'knapp' : 'normal'
+}
+
+/** Der Ring der Stoppuhr läuft jede Minute einmal um (Anteil 0 … 1 der laufenden Minute) */
+export const stoppAnteil = (ms: number): number => (Math.max(0, ms) % 60_000) / 60_000

@@ -89,6 +89,8 @@ const ZEICHNUNGEN = {
   lineal: 'M2 16L16 2l6 6L8 22zM6 12l2.5 2.5M9 9l2 2M12 6l2.5 2.5',
   geodreieck: 'M2 18h20L12 8zM7 18v-2M12 18v-3M17 18v-2',
   winkelmesser: 'M3 18a9 9 0 0 1 18 0zM12 18l4.5-6.5',
+  // Zirkel: Griff, Gelenk, zwei Schenkel (Nadel links, Mine rechts)
+  zirkel: 'M12 2v3M10.5 6.5a1.5 1.5 0 1 0 3 0a1.5 1.5 0 1 0 -3 0M11.3 7.9L6 21M12.7 7.9L18 21M16.5 17.5h3',
   qr: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h2v2h-2zM18 14h2M14 18v2M18 18h2v2',
   // Mitmachen: Tablet mit Stift (Schüler schreiben auf eigenen Seiten)
   mitmachen: 'M4 5h13a1 1 0 0 1 1 1v12a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1zM7 9h6M7 12.5h4M20.5 6.5l-6.5 6.5-.8 2.3 2.3-.8 6.5-6.5a1.2 1.2 0 0 0-1.5-1.5z',

@@ -16,6 +16,7 @@ import {
   type NotizFarbe,
 } from '../kern/fenster.ts'
 import { AMPEL_NAMEN, AMPEL_START, glaette, naechsteAmpel, pegel, type Ampelstand } from '../kern/geraeusch.ts'
+import { stoppAnteil, timerAnteil, timerStufe } from '../kern/fenster.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 
 type Aenderung = Partial<Omit<FensterZustand, 'id' | 'art'>>
@@ -73,6 +74,22 @@ function signal() {
   }
 }
 
+/**
+ * Ring um die große Zahl (Timer und Stoppuhr): Spur und Bogen, der Bogen zeigt den Anteil 0 … 1.
+ * Bei 1 ist der Ring voll; beim Timer läuft er leer, bei der Stoppuhr einmal je Minute um.
+ */
+function Ring({ anteil, stufe = 'normal', children }: { anteil: number; stufe?: string; children: React.ReactNode }) {
+  return (
+    <div className={'zeitring zeitring-' + stufe}>
+      <svg viewBox="0 0 120 120" aria-hidden="true">
+        <circle className="zeitring-spur" cx="60" cy="60" r="54" />
+        <circle className="zeitring-bogen" cx="60" cy="60" r="54" pathLength={100} strokeDasharray="100 100" strokeDashoffset={100 * (1 - anteil)} transform="rotate(-90 60 60)" />
+      </svg>
+      <div className="zeitring-mitte">{children}</div>
+    </div>
+  )
+}
+
 export function Timer() {
   const [dauer, setDauer] = useState(5 * 60_000)
   const [rest, setRest] = useState(5 * 60_000)
@@ -111,12 +128,11 @@ export function Timer() {
   const laeuft = bis !== null
   return (
     <div className={'timer' + (fertig ? ' fertig' : '')}>
-      <p className="grosse-zahl" role="timer" aria-label="Restzeit">
-        {zeitText(rest, true)}
-      </p>
-      <div className="balken" aria-hidden="true">
-        <span style={{ width: `${(rest / dauer) * 100}%` }} />
-      </div>
+      <Ring anteil={timerAnteil(rest, dauer)} stufe={timerStufe(rest, dauer, fertig)}>
+        <p className="grosse-zahl" role="timer" aria-label="Restzeit">
+          {zeitText(rest, true)}
+        </p>
+      </Ring>
       {fertig && (
         <p className="hinweis" role="status">
           Die Zeit ist um.
@@ -159,9 +175,11 @@ export function Stoppuhr() {
   const laeuft = seit !== null
   return (
     <div className="stoppuhr">
-      <p className="grosse-zahl" role="timer" aria-label="Gestoppte Zeit">
-        {stoppText(zeit)}
-      </p>
+      <Ring anteil={zeit > 0 && zeit % 60_000 === 0 ? 1 : stoppAnteil(zeit)} stufe={laeuft ? 'laeuft' : 'normal'}>
+        <p className="grosse-zahl" role="timer" aria-label="Gestoppte Zeit">
+          {stoppText(zeit)}
+        </p>
+      </Ring>
       <div className="reihe">
         <button
           type="button"

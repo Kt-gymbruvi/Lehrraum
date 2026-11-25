@@ -47,43 +47,6 @@
   }
 }
 
-.geometriefeld {
-  min-width: 15rem;
-  transform-origin: right top;
-}
-.geometriefeld .feld-zeile {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  min-height: 3.5rem;
-  padding: 0 0.9rem;
-  border: 0;
-  border-radius: 0.875rem;
-  background: transparent;
-  color: var(--text);
-  font: inherit;
-  font-weight: 600;
-  text-align: left;
-  cursor: pointer;
-}
-.geometriefeld .feld-zeile:hover {
-  background: var(--leiste-2);
-}
-.geometriefeld .feld-zeile[aria-pressed='true'] {
-  background: var(--gewaehlt);
-  color: var(--gewaehlt-text);
-}
-.geometriefeld .symbol {
-  width: 1.5rem;
-  height: 1.5rem;
-}
-.geometriefeld .hinweis {
-  max-width: 15rem;
-  margin: 0.25rem 0.5rem 0.25rem;
-  color: var(--text-2);
-  font-size: 0.8rem;
-}
-
 /* ---------- Gemeinsames in Fenstern ---------- */
 .fenster .hinweis.klein {
   max-width: 18rem;
@@ -445,5 +408,17 @@
   font-size: 0.8rem;
   font-weight: 700;
   font-variant-numeric: tabular-nums;
+  pointer-events: none;
+}
+
+/* Zirkel: Kreis der Mine gestrichelt, Mine als Punkt */
+.zirkel-kreis {
+  fill: none;
+  stroke: #ff8a14;
+  opacity: 0.75;
+  pointer-events: none;
+}
+.zirkel-mine {
+  fill: #ff8a14;
   pointer-events: none;
 }
