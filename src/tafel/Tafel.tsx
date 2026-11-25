@@ -10,7 +10,7 @@ import { AUSWAHL_RAND, geloest, gruppiert, istEineGruppe, type AuswahlArt } from
 import { ausfuehrenAuf, entfernenBefehl, inhaltVon, leererVerlauf, ordnenBefehl, rueckgaengigAuf, wiederholenAuf, type Befehl, type Inhalt, type Verlauf } from '../kern/befehle.ts'
 import type { FensterZustand } from '../kern/fenster.ts'
 import { einpassen, gesamtRahmen, textMass, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
-import { alsHintergrundBefehl, aufsBlattBefehl, begrenzt, bildHintergrund, bildHintergrundBefehl, blattVon, eingepasst, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
+import { alsHintergrundBefehl, aufsBlattBefehl, begrenzt, bildHintergrund, bildHintergrundBefehl, blattVon, eingepasst, fuerSchueler, istEingepasst, seitenMitUeberstand, type Blatt } from '../kern/blatt.ts'
 import { geaendert, vorlageAus, type Klasse } from '../kern/klassen.ts'
 import { benutzteDateien, istFuellbar, LINIENARTEN, linienartVon, MAX_SEITEN, type Form, MAX_TEXT, neueId, neuesTafelbild, schriftgroesse, TABELLE_MAX_SPALTEN, TABELLE_MAX_ZEILEN, type Bild, type Element, type Format, type Kamera, type Muster, type Seite, type Tabelle, type Tafelbild } from '../kern/modell.ts'
 import { gleichesMuster } from '../kern/muster.ts'
@@ -1206,7 +1206,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       {freigabeOffen && klasse && (
         <Freigabefenster
           klasse={klasse}
-          seite={seite}
+          seite={fuerSchueler(seite, format)}
           beiUebernehmen={uebernimmSeiten}
           beiSchliessen={() => setFreigabeOffen(false)}
         />

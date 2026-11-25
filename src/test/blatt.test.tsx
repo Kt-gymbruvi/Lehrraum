@@ -1,7 +1,7 @@
 // Seitenformat und Blätter (Spezifikation Hintergründe, F1–F4): Logik in kern/blatt.ts und Bedienung an der Tafel.
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { aufBlatt, aufsBlattBefehl, begrenzt, BLATT_RAND, blattVon, eingepasst, FORMAT_MASS, istEingepasst, passZoom, ragtHinaus, seitenMitUeberstand } from '../kern/blatt.ts'
+import { aufBlatt, aufsBlattBefehl, begrenzt, BLATT_RAND, blattVon, eingepasst, FORMAT_MASS, fuerSchueler, istEingepasst, passZoom, ragtHinaus, seitenMitUeberstand } from '../kern/blatt.ts'
 import { ausfuehren, leererVerlauf } from '../kern/befehle.ts'
 import { gesamtRahmen, seitenMass } from '../kern/geometrie.ts'
 import { neueSeite, neuesTafelbild, pruefeTafel, ZOOM_MAX, type Strich } from '../kern/modell.ts'
@@ -25,6 +25,44 @@ const strich = (id: string, x1: number, y1: number, x2: number, y2: number): Str
   staerke: 6,
   druckEcht: false,
   punkte: [[x1, y1, 0.5], [x2, y2, 0.5]],
+})
+
+describe('Aufgabenblatt für Schüler (fuerSchueler)', () => {
+  const rahmenVon = (s: ReturnType<typeof neueSeite>) => gesamtRahmen(s.elemente)!
+
+  it('unendliche Tafel: Blatt umfasst allen Inhalt, mindestens A4 quer, Inhalt liegt auf dem Blatt', () => {
+    const seite = { ...neueSeite(), elemente: [strich('a', -3000, -500, -2500, 4000)] }
+    const s = fuerSchueler(seite, 'unendlich')
+    const r = rahmenVon(s)
+    expect(r[0]).toBeGreaterThanOrEqual(0)
+    expect(r[1]).toBeGreaterThanOrEqual(0)
+    expect(r[2]).toBeLessThanOrEqual(s.blatt!.b)
+    expect(r[3]).toBeLessThanOrEqual(s.blatt!.h)
+    expect(s.blatt!.b).toBeGreaterThanOrEqual(FORMAT_MASS['a4-quer'][0])
+    expect(ragtHinaus(s, blattVon('a4-quer', s)!)).toBe(false)
+  })
+
+  it('unendliche Tafel ohne Inhalt bleibt unverändert (A4 quer auf der Schülerseite)', () => {
+    const seite = neueSeite()
+    expect(fuerSchueler(seite, 'unendlich')).toBe(seite)
+  })
+
+  it('16:9: die Schüler bekommen das Blatt in 16:9, nicht A4 quer', () => {
+    const s = fuerSchueler({ ...neueSeite(), elemente: [strich('a', 1500, 800, 1590, 890)] }, '16:9')
+    expect(s.blatt).toEqual({ b: 1600, h: 900 })
+    expect(ragtHinaus(s, blattVon('a4-quer', s)!)).toBe(false)
+  })
+
+  it('Inhalt über den Blattrand hinaus: Blatt wird größer, Inhalt wird mitgeschoben', () => {
+    const s = fuerSchueler({ ...neueSeite(), elemente: [strich('a', -100, -50, 1500, 900)] }, 'a4-quer')
+    expect(ragtHinaus(s, [s.blatt!.b, s.blatt!.h])).toBe(false)
+    expect(s.blatt!.b).toBeGreaterThanOrEqual(1600)
+  })
+
+  it('Seite mit Hintergrund bleibt, wie sie ist', () => {
+    const seite = { ...neueSeite(), hintergrund: { dateiId: 'd1', b: 600, h: 800 } }
+    expect(fuerSchueler(seite, 'unendlich')).toBe(seite)
+  })
 })
 
 describe('Blatt – Logik', () => {

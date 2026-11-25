@@ -109,6 +109,30 @@ export function aufsBlattBefehl(seite: Seite, blatt: Blatt): Befehl | null {
   return { art: 'ersetzen', vorher: seite.elemente, nachher: klein.map((e) => verschoben(e, dx, dy)) }
 }
 
+/**
+ * Die Seite, wie sie als Aufgabenblatt zu den Schülern geht. Die Schülerseite ist ein festes Blatt; damit nichts
+ * außerhalb liegt (eine unendliche Tafel, Inhalt über den Blattrand hinaus, 16:9 statt A4), bekommt die Kopie ein
+ * eigenes Blattmaß, das allen Inhalt umfasst – bei der unendlichen Fläche mindestens A4 quer, Inhalt oben links.
+ * Seiten mit Hintergrund (PDF-Seite, Bild) behalten dessen Größe.
+ */
+export function fuerSchueler(seite: Seite, format: Format): Seite {
+  if (seite.hintergrund) return seite
+  const basis = blattVon(format, seite)
+  const r = gesamtRahmen(seite.elemente)
+  if (!r) return basis ? { ...seite, blatt: { b: basis[0], h: basis[1] } } : seite
+  if (basis) {
+    const [x0, y0] = [Math.min(0, r[0]), Math.min(0, r[1])]
+    const [x1, y1] = [Math.max(basis[0], r[2]), Math.max(basis[1], r[3])]
+    const [dx, dy] = [-x0, -y0]
+    const elemente = dx || dy ? seite.elemente.map((e) => verschoben(e, dx, dy)) : seite.elemente
+    return { ...seite, elemente, blatt: { b: Math.ceil(x1 - x0), h: Math.ceil(y1 - y0) } }
+  }
+  const [a4b, a4h] = FORMAT_MASS['a4-quer']
+  const b = Math.max(a4b, Math.ceil(r[2] - r[0] + 2 * INHALT_RAND))
+  const h = Math.max(a4h, Math.ceil(r[3] - r[1] + 2 * INHALT_RAND))
+  return { ...seite, elemente: seite.elemente.map((e) => verschoben(e, INHALT_RAND - r[0], INHALT_RAND - r[1])), blatt: { b, h } }
+}
+
 // ---------- Eigenes Bild als Hintergrund ----------
 /** Längste Kante eines Bild-Hintergrunds auf der unendlichen Fläche (so groß wie ein Blatt in 16:9) */
 const MAX_BILD_KANTE = 1600
