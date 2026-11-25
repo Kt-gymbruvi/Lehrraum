@@ -37,7 +37,7 @@ import { Instrumente } from './Instrumente.tsx'
 const KOPIE_HINWEIS = 'Aus einer Lehrraum-Tafel kopiert – einfügen lässt es sich nur in einer Lehrraum-Tafel.'
 import { Pruefansicht } from './Pruefansicht.tsx'
 import { Seitenleiste } from './Seitenleiste.tsx'
-import { Kontextkapsel, WERKZEUGE, Werkzeugleiste } from './Werkzeugleiste.tsx'
+import { Bearbeiten, Kontextkapsel, WERKZEUGE, Werkzeugleiste } from './Werkzeugleiste.tsx'
 import { Zeichenflaeche, type Werkzeug } from './Zeichenflaeche.tsx'
 
 type Speicherstand = 'laedt' | 'gespeichert' | 'ungespeichert' | 'fehler'
@@ -1173,7 +1173,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       <div className={'tafel-mitte' + (format === 'unendlich' ? ' unendlich' : '') + (leistenZu.links ? ' links-zu' : '') + (leistenZu.rechts ? ' rechts-zu' : '')}>
         <Werkzeugleiste {...leistenWerte} buehne={buehne} beiBuehneEnde={verlasseBuehne} />
         <div className="tafel-spalte">
-          {!buehne && <Kontextkapsel {...leistenWerte} />}
+          {!buehne && <Kontextkapsel {...leistenWerte} ohneBearbeiten={!schueler} />}
           <div
             className={blatt ? 'tafel-flaeche mit-blatt' : 'tafel-flaeche'}
             ref={flaeche}
@@ -1258,6 +1258,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
               setAuswahl([])
               setUebersicht(true)
             }}
+            bearbeiten={<Bearbeiten {...leistenWerte} knopf="s-knopf" />}
           />
           )}
         </div>

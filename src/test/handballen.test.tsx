@@ -50,38 +50,30 @@ describe('Aufliegende Hand', () => {
     expect(screen.queryByRole('dialog', { name: 'Hintergrund' })).toBeNull()
   })
 
-  it('Art des Radierers: das Feld bleibt trotz Hand offen, der Schwamm lässt sich wählen', async () => {
+  it('Art des Radierers in der Kapsel: trotz aufliegender Hand mit dem Stift wählbar', async () => {
     render(<Tafel />)
     await bereit()
-    const radierer = screen.getByRole('button', { name: 'Radierer' })
-    stiftTippt(radierer) // wählt den Radierer
-    stiftTippt(radierer) // öffnet Art und Größe
+    stiftTippt(screen.getByRole('button', { name: 'Radierer' }))
     hand(flaeche())
     hand(flaeche(), { pointerId: 21, isPrimary: false })
     stiftTippt(screen.getByRole('button', { name: 'Schwamm' }))
     expect(screen.getByRole('button', { name: 'Schwamm' }).getAttribute('aria-pressed')).toBe('true')
-    // Maus daneben schließt wie bisher
-    fireEvent.pointerDown(flaeche(), { pointerId: 1, pointerType: 'mouse', button: 0, isPrimary: true })
-    expect(screen.queryByRole('dialog', { name: 'Art und Größe des Radierers' })).toBeNull()
   })
 
-  it('Radierer mit dem Stift geöffnet: auch eine Hand, die erst Sekunden später aufliegt, schließt das Feld nicht', async () => {
+  it('„Mehr Farben“ mit dem Stift geöffnet: auch eine Hand, die erst Sekunden später aufliegt, schließt das Feld nicht', async () => {
     render(<Tafel />)
     await bereit()
     const jetzt = Date.now()
     const uhr = vi.spyOn(Date, 'now').mockReturnValue(jetzt)
+    const mehr = () => screen.queryByRole('dialog', { name: 'Mehr Farben und Stärken' })
     try {
-      const radierer = screen.getByRole('button', { name: 'Radierer' })
-      stiftTippt(radierer)
-      stiftTippt(radierer)
+      stiftTippt(screen.getByRole('button', { name: 'Mehr Farben und Stärken' }))
       uhr.mockReturnValue(jetzt + 5000) // man liest das Feld, dann legt sich die Hand auf
       hand(flaeche())
-      expect(screen.getByRole('dialog', { name: 'Art und Größe des Radierers' })).toBeTruthy()
-      stiftTippt(screen.getByRole('button', { name: 'Schwamm' }))
-      expect(screen.getByRole('button', { name: 'Schwamm' }).getAttribute('aria-pressed')).toBe('true')
+      expect(mehr()).toBeTruthy()
       // Der Stift daneben schließt es
       fireEvent.pointerDown(flaeche(), { pointerId: 7, pointerType: 'pen', button: 0, isPrimary: true })
-      expect(screen.queryByRole('dialog', { name: 'Art und Größe des Radierers' })).toBeNull()
+      expect(mehr()).toBeNull()
     } finally {
       uhr.mockRestore()
     }
@@ -111,14 +103,12 @@ describe('Aufliegende Hand', () => {
   it('Felder hängen direkt an der Seite, nicht in der rollbaren Leiste (Safari schneidet sie dort ab)', async () => {
     render(<Tafel />)
     await bereit()
-    const radierer = screen.getByRole('button', { name: 'Radierer' })
-    stiftTippt(radierer)
-    stiftTippt(radierer)
-    const feld = screen.getByRole('dialog', { name: 'Art und Größe des Radierers' })
-    expect(feld.closest('aside')).toBeNull()
+    stiftTippt(screen.getByRole('button', { name: 'Mehr Farben und Stärken' }))
+    const feld = screen.getByRole('dialog', { name: 'Mehr Farben und Stärken' })
+    expect(feld.closest('.kontextkapsel')).toBeNull()
     expect(feld.parentElement).toBe(document.body)
-    stiftTippt(screen.getByRole('button', { name: 'Radierer' }))
-    expect(screen.queryByRole('dialog', { name: 'Art und Größe des Radierers' })).toBeNull()
+    stiftTippt(screen.getByRole('button', { name: 'Mehr Farben und Stärken' }))
+    expect(screen.queryByRole('dialog', { name: 'Mehr Farben und Stärken' })).toBeNull()
     stiftTippt(screen.getByRole('button', { name: 'Hintergrund' }))
     expect(screen.getByRole('dialog', { name: 'Hintergrund' }).closest('aside')).toBeNull()
   })

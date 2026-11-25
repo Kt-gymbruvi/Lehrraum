@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FAMILIEN, familieVon, merke, vertreter } from '../kern/werkzeugfamilien.ts'
+import { FAMILIEN, familieVon, kapselInhalt, merke, vertreter } from '../kern/werkzeugfamilien.ts'
 
 describe('Werkzeugfamilien', () => {
   it('jedes Werkzeug gehört zu genau einer Familie', () => {
@@ -22,5 +22,16 @@ describe('Werkzeugfamilien', () => {
     const z = merke(merke({}, 'marker'), 'ellipse')
     expect(z).toEqual({ stift: 'marker', formen: 'ellipse' })
     expect(merke(z, 'marker')).toBe(z)
+  })
+
+  it('die Kapsel zeigt nur, was zum Werkzeug passt', () => {
+    for (const w of ['stift', 'marker', 'text', 'tabelle', 'rechteck', 'ellipse', 'linie', 'pfeil'] as const) expect(kapselInhalt(w, 0)).toEqual({ farben: true, staerke: true })
+    expect(kapselInhalt('radierer', 0)).toEqual({ farben: false, staerke: false })
+    expect(kapselInhalt('fuellen', 0)).toEqual({ farben: true, staerke: false })
+    expect(kapselInhalt('laser', 0)).toMatchObject({ farben: false, staerke: false, hinweis: expect.any(String) })
+    expect(kapselInhalt('hand', 0)).toMatchObject({ farben: false, staerke: false, hinweis: expect.any(String) })
+    // Auswahl: Farbe und Stärke erst, wenn etwas ausgewählt ist
+    expect(kapselInhalt('auswahl', 0)).toEqual({ farben: false, staerke: false })
+    expect(kapselInhalt('auswahl', 2)).toEqual({ farben: true, staerke: true })
   })
 })

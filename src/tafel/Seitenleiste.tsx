@@ -1,11 +1,11 @@
 // Untere Leiste: Seiten der Tafel – blättern, hinzufügen, duplizieren, umsortieren, löschen.
 // Gestaltung „Atelier“: Die Seiten um die gezeigte herum stehen als kleine Vorschaubilder im Streifen (antippen öffnet),
-// die gezeigte mit Ring; die Befehle sind nur noch Symbole.
+// die gezeigte mit Ring; die Befehle sind nur noch Symbole. Am Ende Einfügen und Seite leeren.
 // Hat die Seite ein Bild als Hintergrund, kommen drei Knöpfe dazu: nach links und rechts drehen (das Geschriebene
 // dreht sich mit) und nur das Hintergrundbild entfernen (das Geschriebene bleibt) – alle drei lassen sich rückgängig
 // machen. (PDF-Seiten sind Bild-Elemente: drehen und löschen wie jedes Bild.) Beim Löschen einer Seite aus einem
 // mehrseitigen PDF fragt die Leiste, ob nur diese oder alle Seiten dieses PDFs gehen sollen.
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { MAX_SEITEN, type Format, type Seite } from '../kern/modell.ts'
 import { Symbol } from '../ui/Symbol.tsx'
 import { Vorschau } from './Seitenuebersicht.tsx'
@@ -39,6 +39,8 @@ type Props = {
   beiDrehen: (richtung: -1 | 1) => void
   beiHintergrundWeg: () => void
   beiUebersicht: () => void
+  /** Einfügen und Seite leeren (aus der Werkzeugleiste) – am Ende der Leiste */
+  bearbeiten?: ReactNode
 }
 
 export function Seitenleiste(p: Props) {
@@ -146,6 +148,7 @@ export function Seitenleiste(p: Props) {
           <Symbol name="leeren" />
         </button>
       )}
+      {p.bearbeiten}
     </nav>
   )
 }

@@ -37,3 +37,25 @@ export function merke(zuletzt: Zuletzt, w: Werkzeug): Zuletzt {
 
 /** Auf der Bühne (Präsentieren) zeigt die linke Leiste nur diese Familien */
 export const BUEHNEN_FAMILIEN: readonly FamilienId[] = ['stift', 'radierer', 'laser']
+
+/**
+ * Was die Kapsel über der Tafel für ein Werkzeug zeigt – außer den Varianten der Familie, den eigenen Einstellungen
+ * (Rechteck/Lasso, Art und Größe des Radierers, Füllung/Linienart/Spitzen der Formen) und „Einfügen/Leeren“.
+ * Auswahl: Farbe und Stärke nur, wenn etwas ausgewählt ist (sie ändern dann die Auswahl).
+ */
+export function kapselInhalt(w: Werkzeug, gewaehlt: number): { farben: boolean; staerke: boolean; hinweis?: string } {
+  switch (w) {
+    case 'auswahl':
+      return { farben: gewaehlt > 0, staerke: gewaehlt > 0 }
+    case 'hand':
+      return { farben: false, staerke: false, hinweis: 'Tafel verschieben – mit zwei Fingern zoomen' }
+    case 'radierer':
+      return { farben: false, staerke: false }
+    case 'fuellen':
+      return { farben: true, staerke: false }
+    case 'laser':
+      return { farben: false, staerke: false, hinweis: 'Zeigen – die Spur verschwindet von selbst' }
+    default:
+      return { farben: true, staerke: true }
+  }
+}

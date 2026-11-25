@@ -579,11 +579,60 @@ input {
   width: 1.2rem;
   height: 1.2rem;
 }
-.kontextkapsel .variante[aria-checked='true'] {
+.kontextkapsel .variante[aria-checked='true'],
+.kontextkapsel .variante[aria-pressed='true'] {
   background: var(--leiste);
   color: var(--text);
   font-weight: 600;
   box-shadow: 0 1px 2px rgb(15 92 71 / 0.08), 0 2px 8px rgb(15 92 71 / 0.08);
+}
+/* Nach der letzten Gruppe kein Trenner */
+.kontextkapsel > .trenner:last-child {
+  display: none;
+}
+/* Untere Leiste: Einfügen und Seite leeren am Ende, mit Trenner */
+.seitenleiste .kapsel-gruppe {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+  padding-left: 0.375rem;
+  margin-left: 0.25rem;
+  border-left: 1px solid var(--linie);
+}
+/* Schmalere Bildschirme (iPad quer): Kapsel etwas kompakter, damit auch die Formen ohne Rollen hineinpassen */
+@media (max-width: 80rem) {
+  .kontextkapsel {
+    gap: 0.125rem;
+    padding: 0.25rem 0.375rem;
+  }
+  .kontextkapsel .trenner {
+    margin: 0 0.125rem;
+  }
+  .kontextkapsel .farb-knopf,
+  .kontextkapsel .leisten-knopf,
+  .kontextkapsel .leisten-knopf.schmal {
+    width: 2.5rem;
+    height: 2.5rem;
+  }
+  .kontextkapsel .farb-knopf span {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+  .kontextkapsel .variante {
+    min-width: 2.375rem;
+    height: 2.25rem;
+    padding: 0 0.5rem;
+  }
+}
+/* Kurzer Hinweis statt Einstellungen (Hand, Laserpointer) */
+.kontextkapsel .kapsel-hinweis {
+  margin: 0 0.5rem;
+  color: var(--text-2);
+  font-size: 0.875rem;
+  white-space: nowrap;
+}
+.kontextkapsel .radierer-kreis {
+  box-sizing: border-box;
 }
 .aufklappfeld.von-oben {
   transform-origin: left top;

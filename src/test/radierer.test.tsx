@@ -133,33 +133,25 @@ describe('Radierer – Bedienung', () => {
     await waitFor(async () => expect(ids(await seite())).toEqual(['a', 't', 'f']))
   })
 
-  it('noch einmal antippen öffnet Art und Größe; Antippen der Tafel, Escape und ein anderes Werkzeug schließen', async () => {
+  it('Art und Größe stehen in der Kapsel über der Tafel; Farben und Stärken nicht', async () => {
     const nutzer = userEvent.setup()
     await vorlage()
     render(<Tafel />)
     await bereit()
+    expect(screen.queryByRole('button', { name: 'Schwamm' })).toBeNull() // beim Stift nicht
     await nutzer.click(knopf('Radierer'))
-    expect(feld()).toBeNull()
-    await nutzer.click(knopf('Radierer'))
-    expect(feld()).not.toBeNull()
     expect(knopf('Schwamm')).toHaveAttribute('aria-pressed', 'true')
     expect(knopf('Radierer Mittel')).toHaveAttribute('aria-pressed', 'true')
+    for (const name of ['Rot', 'Mehr Farben und Stärken', 'Strichstärke fein']) expect(screen.queryByRole('button', { name })).toBeNull()
     await nutzer.click(knopf('Radierer Groß'))
     expect(knopf('Radierer Groß')).toHaveAttribute('aria-pressed', 'true')
-    expect(feld()).not.toBeNull() // bleibt offen, damit sich auch die Art wählen lässt
-    fireEvent.pointerDown(flaeche(), { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 600, clientY: 600 })
-    fireEvent.pointerUp(flaeche(), { pointerId: 1, pointerType: 'mouse', button: 0, clientX: 600, clientY: 600 })
-    expect(feld()).toBeNull()
-    await nutzer.click(knopf('Radierer'))
-    expect(feld()).not.toBeNull()
-    await nutzer.keyboard('{Escape}')
-    expect(feld()).toBeNull()
-    await nutzer.click(knopf('Radierer'))
+    await nutzer.click(knopf('Element-Radierer'))
+    expect(knopf('Element-Radierer')).toHaveAttribute('aria-pressed', 'true')
+    expect(knopf('Radierer')).toHaveAttribute('title', expect.stringContaining('Element'))
+    expect(feld()).toBeNull() // kein Aufklappfeld mehr an der linken Leiste
     await nutzer.click(knopf('Stift'))
-    expect(feld()).toBeNull()
-    await nutzer.click(knopf('Radierer'))
-    expect(feld()).toBeNull() // erst das zweite Antippen öffnet
-    expect(knopf('Radierer')).toHaveAttribute('title', expect.stringContaining('Schwamm'))
+    expect(screen.queryByRole('button', { name: 'Element-Radierer' })).toBeNull()
+    expect(knopf('Rot')).toBeInTheDocument()
   })
 
   it('die Größe zählt: klein und mittel verfehlen den Strich, groß wischt ihn ganz weg', async () => {

@@ -394,7 +394,7 @@ describe('Ausgefüllte Formen auf der Tafel', () => {
     render(<Tafel />)
     await bereit()
     await formWahl(nutzer, 'Rechteck')
-    await nutzer.click(knopf('Rechteck')) // noch einmal: Umriss oder ausgefüllt
+    expect(screen.getByRole('button', { name: 'Ausgefüllt' })).toHaveAttribute('aria-pressed', 'false') // Umschalter in der Kapsel
     await nutzer.click(screen.getByRole('button', { name: 'Ausgefüllt' }))
     expect(knopf('Rechteck').title).toContain('ausgefüllt')
     ziehe([20, 10], [220, 90])
@@ -402,8 +402,8 @@ describe('Ausgefüllte Formen auf der Tafel', () => {
     ziehe([20, 110], [220, 190])
     await waitFor(async () => expect((await seite()).map((e) => (e as Form).gefuellt)).toEqual([true, true]))
     await waitFor(async () => expect((await ladeEinstellungen()).gefuellt).toBe(true))
-    await nutzer.click(knopf('Ellipse'))
-    await nutzer.click(screen.getByRole('button', { name: 'Umriss' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Ausgefüllt' })) // zurück zum Umriss
+    expect(screen.getByRole('button', { name: 'Ausgefüllt' })).toHaveAttribute('aria-pressed', 'false')
     ziehe([20, 210], [220, 290])
     await waitFor(async () => expect((await seite())[2]).not.toHaveProperty('gefuellt'))
 

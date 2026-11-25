@@ -1,11 +1,13 @@
-// Linke Werkzeugleiste der Tafel (eine Spalte, je Werkzeugfamilie ein Knopf) und die Kontext-Kapsel über der Tafel
-// (Varianten, Farben, Stärke, Einfügen, Leeren) – beide bleiben dauerhaft sichtbar. Aufklappfelder:
-//   Auswahl: erneutes Antippen der gewählten Auswahl öffnet Rechteck oder Lasso.
-//   Radierer: erneutes Antippen des gewählten Radierers öffnet Art und Größe.
-//   Rechteck, Ellipse, Linie, Pfeil: erneutes Antippen öffnet Füllung, Linienart (durchgezogen, gestrichelt, gepunktet)
-//   und beim Pfeil eine oder zwei Spitzen.
-//   Mehr (in der Kapsel, Feld darunter): weitere Farben, eigene Farbplätze mit dem Farbwähler des Geräts und ein Regler für die Stärke.
-// Ein Feld schließt sich beim Antippen außerhalb (auch der Tafel), mit Escape und beim Wechsel des Werkzeugs.
+// Linke Werkzeugleiste der Tafel (eine Spalte, je Werkzeugfamilie ein Knopf) und die Kontext-Kapsel über der Tafel.
+// Die Kapsel zeigt nur, was zum gewählten Werkzeug passt:
+//   Auswahl: Rechteck oder Lasso; ist etwas ausgewählt, auch Farbe und Stärke (färbt um, ändert die Stärke).
+//   Hand: nur ein Hinweis.          Stift, Textmarker: Farbe und Stärke.
+//   Radierer: Element oder Schwamm, drei Größen.   Text, Tabelle: Farbe und Schriftgröße.
+//   Formen: Füllung (Rechteck, Ellipse), Pfeilspitzen (Pfeil), Linienart, Farbe und Stärke.
+//   Füllen: Farbe.                   Laserpointer: nur ein Hinweis.
+// Dazu immer die Varianten der Familie (z. B. Stift | Textmarker). Einfügen und Seite leeren sind keine Einstellungen
+// eines Werkzeugs: sie stehen in der Seitenleiste unten (auf der Schülerseite am Ende der Kapsel).
+// „Mehr“ öffnet darunter weitere Farben, eigene Farbplätze und (wo Stärke passt) den Regler.
 import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AuswahlArt } from '../kern/auswahl.ts'
@@ -18,7 +20,7 @@ import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_RADIUS, type Radierer } fro
 import { Geometriewahl } from './Geometriewahl.tsx'
 import { useSchliessenDraussen } from './handballen.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
-import { BUEHNEN_FAMILIEN, FAMILIEN, familieVon, merke, vertreter, type FamilienId, type Zuletzt } from '../kern/werkzeugfamilien.ts'
+import { BUEHNEN_FAMILIEN, FAMILIEN, familieVon, kapselInhalt, merke, vertreter, type FamilienId, type Zuletzt } from '../kern/werkzeugfamilien.ts'
 import type { Werkzeug } from './Zeichenflaeche.tsx'
 
 type Props = {
@@ -74,13 +76,8 @@ export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; tast
   { wert: 'laser', name: 'Laserpointer', symbol: 'laser', taste: 'Z' },
 ]
 
-/** Werkzeuge, deren Feld sich durch erneutes Antippen öffnet – mit der Höhe des Feldes */
-const FELD_HOEHE = { auswahl: 140, radierer: 240, rechteck: 240, ellipse: 240, linie: 140, pfeil: 240 } as const
-type Werkzeugfeld = keyof typeof FELD_HOEHE
-const hatFeld = (w: Werkzeug): w is Werkzeugfeld => w in FELD_HOEHE
-
 const AUSWAHL_WAHL: { wert: AuswahlArt; name: string; symbol: SymbolName; titel: string }[] = [
-  { wert: 'rechteck', name: 'Rechteck', symbol: 'auswahl', titel: 'Rechteck aufziehen: alles, was es berührt, wird ausgewählt' },
+  { wert: 'rechteck', name: 'Rechteck-Auswahl', symbol: 'auswahl', titel: 'Rechteck aufziehen: alles, was es berührt, wird ausgewählt' },
   { wert: 'lasso', name: 'Lasso', symbol: 'lasso', titel: 'Frei umfahren: ausgewählt wird, was überwiegend innerhalb liegt' },
 ]
 
@@ -97,54 +94,57 @@ function formBeschreibung(w: Werkzeug, f: Formwahl): string {
   return teile.length ? ', ' + teile.join(', ') : ''
 }
 
-/** Feld der Formwerkzeuge: Füllung (Rechteck, Ellipse), Spitzen (Pfeil), Linienart (alle) */
-function FormFeld({ art, wahl, beiWahl }: { art: 'rechteck' | 'ellipse' | 'linie' | 'pfeil'; wahl: Formwahl; beiWahl: (w: Formwahl) => void }) {
+/** Ein Segment in der Kapsel: mehrere Knöpfe, einer gedrückt */
+function Segment({ name, kinder }: { name: string; kinder: React.ReactNode }) {
+  return (
+    <div className="varianten" role="group" aria-label={name}>
+      {kinder}
+    </div>
+  )
+}
+function SegmentKnopf(p: { an: boolean; name: string; titel?: string; text?: string; beiKlick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" className="variante" aria-pressed={p.an} aria-label={p.name} title={p.titel ?? p.name} onClick={p.beiKlick}>
+      {p.children}
+      {p.text && <span>{p.text}</span>}
+    </button>
+  )
+}
+const Trenner = () => <span className="trenner" aria-hidden="true" />
+
+/** Formen: Füllung (Rechteck, Ellipse), Spitzen (Pfeil), Linienart (alle) */
+function FormWahl({ art, wahl, beiWahl }: { art: 'rechteck' | 'ellipse' | 'linie' | 'pfeil'; wahl: Formwahl; beiWahl: (w: Formwahl) => void }) {
   return (
     <>
       {(art === 'rechteck' || art === 'ellipse') && (
-        <div className="feld-reihe" role="group" aria-label="Füllung">
-          {[false, true].map((g) => (
-            <button
-              key={String(g)}
-              type="button"
-              className="leisten-knopf mit-text"
-              aria-pressed={wahl.gefuellt === g}
-              aria-label={g ? 'Ausgefüllt' : 'Umriss'}
-              title={g ? 'Innen mit der Farbe ausgefüllt' : 'Nur der Umriss – innen frei zum Hineinschreiben'}
-              onClick={() => beiWahl({ ...wahl, gefuellt: g })}
-            >
-              <Symbol name={art} voll={g} />
-              <span>{g ? 'Ausgefüllt' : 'Umriss'}</span>
-            </button>
-          ))}
-        </div>
+        <>
+          <Segment
+            name="Füllung"
+            kinder={
+              <SegmentKnopf an={wahl.gefuellt} name="Ausgefüllt" titel={wahl.gefuellt ? 'Ausgefüllt – antippen: nur der Umriss' : 'Nur der Umriss – antippen: innen mit der Farbe ausgefüllt'} beiKlick={() => beiWahl({ ...wahl, gefuellt: !wahl.gefuellt })}>
+                <Symbol name={art} voll={wahl.gefuellt} />
+              </SegmentKnopf>
+            }
+          />
+          <Trenner />
+        </>
       )}
       {art === 'pfeil' && (
-        <div className="feld-reihe" role="group" aria-label="Pfeilspitzen">
-          {[false, true].map((b) => (
-            <button
-              key={String(b)}
-              type="button"
-              className="leisten-knopf mit-text"
-              aria-pressed={wahl.beidseitig === b}
-              aria-label={b ? 'Beide Richtungen' : 'Eine Richtung'}
-              title={b ? 'Spitzen an beiden Enden' : 'Spitze am Ende'}
-              onClick={() => beiWahl({ ...wahl, beidseitig: b })}
-            >
+        <>
+          <Segment name="Pfeilspitzen" kinder={[false, true].map((b) => (
+            <SegmentKnopf key={String(b)} an={wahl.beidseitig === b} name={b ? 'Beide Richtungen' : 'Eine Richtung'} titel={b ? 'Spitzen an beiden Enden' : 'Spitze am Ende'} beiKlick={() => beiWahl({ ...wahl, beidseitig: b })}>
               <Symbol name={b ? 'pfeilBeide' : 'pfeil'} />
-              <span>{b ? 'Beide' : 'Eine'}</span>
-            </button>
-          ))}
-        </div>
+            </SegmentKnopf>
+          ))} />
+          <Trenner />
+        </>
       )}
-      <div className="feld-reihe" role="group" aria-label="Linienart">
-        {LINIENARTEN.map((l) => (
-          <button key={l} type="button" className="leisten-knopf mit-text" aria-pressed={wahl.linienart === l} aria-label={LINIEN_NAME[l]} title={LINIEN_NAME[l]} onClick={() => beiWahl({ ...wahl, linienart: l })}>
-            <Symbol name={LINIEN_SYMBOL[l]} />
-            <span>{LINIEN_NAME[l]}</span>
-          </button>
-        ))}
-      </div>
+      <Segment name="Linienart" kinder={LINIENARTEN.map((l) => (
+        <SegmentKnopf key={l} an={wahl.linienart === l} name={LINIEN_NAME[l]} beiKlick={() => beiWahl({ ...wahl, linienart: l })}>
+          <Symbol name={LINIEN_SYMBOL[l]} />
+        </SegmentKnopf>
+      ))} />
+      <Trenner />
     </>
   )
 }
@@ -168,7 +168,7 @@ function useFertig(ref: React.RefObject<HTMLInputElement | null>, tun: (wert: st
   }, [ref])
 }
 
-function MehrFeld(p: Props) {
+function MehrFeld(p: Props & { mitStaerke: boolean }) {
   const waehler = useRef<HTMLInputElement>(null)
   const regler = useRef<HTMLInputElement>(null)
   /** Wert, während der Regler gezogen wird (übernommen wird erst beim Loslassen) */
@@ -202,6 +202,8 @@ function MehrFeld(p: Props) {
           <input ref={waehler} type="color" aria-label="Farbe frei wählen" defaultValue={p.farbe} />
         </label>
       </div>
+      {p.mitStaerke && (
+      <>
       <p className="feld-titel">
         Stärke <output>{staerke}</output>
       </p>
@@ -220,6 +222,8 @@ function MehrFeld(p: Props) {
           <span className="staerke-punkt" style={{ width: punktGroesse(staerke), height: punktGroesse(staerke), background: p.farbe }} />
         </span>
       </div>
+      </>
+      )}
     </>
   )
 }
@@ -233,33 +237,10 @@ function useFeld<A extends string>() {
 
 /**
  * Linke Leiste „Atelier“: eine Spalte, je Werkzeugfamilie ein Knopf. Er steht für das Werkzeug, das in seiner Familie
- * zuletzt benutzt wurde; die anderen stehen als Varianten in der Kapsel. Erneutes Antippen öffnet wie bisher das Feld
- * mit Art und Größe (Radierer), Rechteck oder Lasso (Auswahl) oder Füllung und Linienart (Formen).
+ * zuletzt benutzt wurde; Varianten und Einstellungen stehen in der Kapsel über der Tafel.
  */
 export function Werkzeugleiste(p: Props) {
-  const ausloeser = { auswahl: useRef<HTMLButtonElement>(null), radierer: useRef<HTMLButtonElement>(null), rechteck: useRef<HTMLButtonElement>(null), ellipse: useRef<HTMLButtonElement>(null), linie: useRef<HTMLButtonElement>(null), pfeil: useRef<HTMLButtonElement>(null) }
-  const { feld, setFeld, feldRef } = useFeld<Werkzeugfeld>()
-  // Die Felder der Werkzeuge gehören zu ihrem Werkzeug: wird ein anderes gewählt, sind sie zu
-  const offen = feld && p.werkzeug === feld.art ? feld : null
-  const offeneArt = offen?.art ?? null
   const zuletzt = useZuletzt(p.werkzeug)
-
-  useSchliessenDraussen(!!offeneArt, () => [feldRef.current, offeneArt && ausloeser[offeneArt].current], () => setFeld(null))
-
-  /** Öffnet das Feld rechts neben der ganzen Leiste, auf Höhe seines Knopfes – oder schließt es wieder */
-  const umschalten = (art: Werkzeugfeld, hoehe: number) => {
-    if (offeneArt === art) return setFeld(null)
-    const knopf = ausloeser[art].current
-    const r = knopf?.getBoundingClientRect()
-    const leiste = knopf?.closest('aside')?.getBoundingClientRect()
-    setFeld({ art, links: (leiste?.right ?? r?.right ?? 64) + 8, oben: Math.max(8, Math.min(r?.top ?? 8, window.innerHeight - hoehe)) })
-  }
-
-  const waehle = (w: Werkzeug) => {
-    if (hatFeld(w) && p.werkzeug === w) return umschalten(w, FELD_HOEHE[w])
-    setFeld(null)
-    p.beiWerkzeug(w)
-  }
   const auswahlName = AUSWAHL_WAHL.find((a) => a.wert === p.auswahlArt)?.name ?? ''
   const artName = RADIERER_ARTEN.find((a) => a.wert === p.radierer.art)?.name ?? ''
 
@@ -267,37 +248,26 @@ export function Werkzeugleiste(p: Props) {
     const fam = FAMILIEN.find((f) => f.id === id)!
     const wert = vertreter(fam, zuletzt)
     const w = WERKZEUGE.find((x) => x.wert === wert)!
-    const feldArt = hatFeld(w.wert) ? w.wert : null
     const symbol = w.wert === 'auswahl' && p.auswahlArt === 'lasso' ? 'lasso' : w.wert === 'radierer' && p.radierer.art === 'schwamm' ? 'schwamm' : w.symbol
     const f = p.formwahl
     const istFlaeche = w.wert === 'rechteck' || w.wert === 'ellipse'
     const zeichen: SymbolName = w.wert === 'linie' && f.linienart !== 'voll' ? LINIEN_SYMBOL[f.linienart] : w.wert === 'pfeil' && f.beidseitig ? 'pfeilBeide' : symbol
     const titel =
       w.wert === 'auswahl'
-        ? `${w.name}: ${auswahlName} (${w.taste}) – noch einmal antippen: Rechteck oder Lasso`
+        ? `${w.name}: ${auswahlName} (${w.taste})`
         : w.wert === 'radierer'
-          ? `${w.name}: ${artName} (${w.taste}) – noch einmal antippen: Art und Größe`
+          ? `${w.name}: ${artName} (${w.taste})`
           : istFlaeche || w.wert === 'linie' || w.wert === 'pfeil'
-            ? `${w.name}${formBeschreibung(w.wert, f)} (${w.taste}) – noch einmal antippen: ${istFlaeche ? 'Füllung und ' : ''}Linienart${w.wert === 'pfeil' ? ' und Spitzen' : ''}`
+            ? `${w.name}${formBeschreibung(w.wert, f)} (${w.taste})`
             : w.wert === 'laser'
               ? `${w.name} (${w.taste}) – zeigen, die Spur verschwindet von selbst`
               : w.wert === 'fuellen'
-                ? `${w.name} (${w.taste}) – Rechteck, Ellipse oder Dreieck antippen: mit der gewählten Farbe füllen (noch einmal: Füllung weg)`
+                ? `${w.name} (${w.taste}) – Fläche antippen: mit der gewählten Farbe füllen (noch einmal: Füllung weg)`
                 : w.wert === 'tabelle'
                   ? `${w.name} (${w.taste}) – antippen, Zeilen und Spalten wählen; Zellen antippen zum Schreiben`
                   : `${w.name} (${w.taste})`
     return (
-      <button
-        key={id}
-        ref={feldArt ? ausloeser[feldArt] : undefined}
-        type="button"
-        className={'leisten-knopf' + (feldArt ? ' hat-feld' : '')}
-        aria-pressed={p.werkzeug === w.wert}
-        aria-label={w.name}
-        aria-expanded={feldArt ? offeneArt === feldArt : undefined}
-        title={titel}
-        onClick={() => waehle(w.wert)}
-      >
+      <button key={id} type="button" className="leisten-knopf" aria-pressed={p.werkzeug === w.wert} aria-label={w.name} title={titel} onClick={() => p.beiWerkzeug(w.wert)}>
         <Symbol name={zeichen} voll={f.gefuellt && istFlaeche} />
       </button>
     )
@@ -342,71 +312,6 @@ export function Werkzeugleiste(p: Props) {
         {p.beiInstrument && <Geometriewahl an={p.instrumente ?? []} beiInstrument={p.beiInstrument} />}
         {familienKnopf('laser')}
       </div>
-
-      {offen &&
-        createPortal(
-          <div
-            ref={feldRef}
-            className="aufklappfeld"
-            role="dialog"
-            aria-label={offen.art === 'radierer' ? 'Art und Größe des Radierers' : offen.art === 'auswahl' ? 'Art der Auswahl' : 'Form: Füllung, Linienart, Spitzen'}
-            style={{ left: offen.links, top: offen.oben }}
-          >
-            {offen.art === 'rechteck' || offen.art === 'ellipse' || offen.art === 'linie' || offen.art === 'pfeil' ? (
-              <FormFeld art={offen.art} wahl={p.formwahl} beiWahl={p.beiFormwahl} />
-            ) : offen.art === 'auswahl' ? (
-              <div className="feld-reihe" role="group" aria-label="Art der Auswahl">
-                {AUSWAHL_WAHL.map((a) => (
-                  <button
-                    key={a.wert}
-                    type="button"
-                    className="leisten-knopf mit-text"
-                    aria-pressed={p.auswahlArt === a.wert}
-                    aria-label={a.name}
-                    title={a.titel}
-                    onClick={() => {
-                      p.beiAuswahlArt(a.wert)
-                      setFeld(null)
-                    }}
-                  >
-                    <Symbol name={a.symbol} />
-                    <span>{a.name}</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <>
-                <div className="feld-reihe" role="group" aria-label="Art des Radierers">
-                  {RADIERER_ARTEN.map((a) => (
-                    <button
-                      key={a.wert}
-                      type="button"
-                      className="leisten-knopf mit-text"
-                      aria-pressed={p.radierer.art === a.wert}
-                      aria-label={a.wert === 'schwamm' ? 'Schwamm' : 'Element-Radierer'}
-                      title={a.titel}
-                      onClick={() => p.beiRadierer({ ...p.radierer, art: a.wert })}
-                    >
-                      <Symbol name={a.wert === 'schwamm' ? 'schwamm' : 'radierer'} />
-                      <span>{a.name}</span>
-                    </button>
-                  ))}
-                </div>
-                <div className="feld-reihe" role="group" aria-label="Größe des Radierers">
-                  {RADIERER_GROESSEN.map((g) => {
-                    const d = Math.min(40, RADIERER_RADIUS[g.wert] * 0.9 + 6)
-                    return (
-                      <button key={g.wert} type="button" className="leisten-knopf" aria-pressed={p.radierer.groesse === g.wert} aria-label={'Radierer ' + g.name} title={'Größe: ' + g.name} onClick={() => p.beiRadierer({ ...p.radierer, groesse: g.wert })}>
-                        <span className="radierer-kreis" style={{ width: d, height: d }} />
-                      </button>
-                    )
-                  })}
-                </div>
-              </>
-            )}
-          </div>,
-          document.body, // nicht in der Leiste: Safari am iPad schneidet feste Felder in einer rollbaren Leiste ab
-        )}
     </aside>
   )
 }
@@ -422,10 +327,11 @@ function useZuletzt(werkzeug: Werkzeug): Zuletzt {
 }
 
 /**
- * Kapsel über der Tafel: Varianten der gewählten Werkzeugfamilie, Farben, Stärke, Einfügen und Leeren.
- * „Mehr“ öffnet darunter weitere Farben, eigene Farbplätze und den Regler für die Stärke.
+ * Kapsel über der Tafel: Varianten der gewählten Werkzeugfamilie und die Einstellungen, die zum Werkzeug passen
+ * (siehe oben). Einfügen und Seite leeren stehen bei der Lehrkraft in der Seitenleiste unten (`ohneBearbeiten`),
+ * auf der Schülerseite (ohne Seitenleiste) am Ende der Kapsel.
  */
-export function Kontextkapsel(p: Props) {
+export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
   const mehrKnopf = useRef<HTMLButtonElement>(null)
   const { feld, setFeld, feldRef } = useFeld<'mehr'>()
   useSchliessenDraussen(!!feld, () => [feldRef.current, mehrKnopf.current], () => setFeld(null))
@@ -435,68 +341,142 @@ export function Kontextkapsel(p: Props) {
     setFeld({ art: 'mehr', links: Math.max(8, Math.min(r?.left ?? 8, window.innerWidth - 340)), oben: (r?.bottom ?? 64) + 8 })
   }
   const familie = familieVon(p.werkzeug)
+  const inhalt = kapselInhalt(p.werkzeug, p.gewaehlt)
+  const w = p.werkzeug
+  const schrift = w === 'text' || w === 'tabelle'
   // Farbe oder Stärke außerhalb der Kapsel: der Knopf „Mehr“ zeigt sie als Punkt
-  const besonders = !inLeiste(p.farbe) || !staerkeInLeiste(p.staerke)
+  const besonders = !inLeiste(p.farbe) || (inhalt.staerke && !staerkeInLeiste(p.staerke))
+  const mehrOffen = feld && inhalt.farben ? feld : null
+  // Ohne „Bearbeiten“ am Ende steht nach der letzten Gruppe kein Trenner
 
   return (
-    <div className="kontextkapsel" role="toolbar" aria-label="Farbe, Stärke und Varianten">
+    <div className="kontextkapsel" role="toolbar" aria-label="Einstellungen des Werkzeugs">
       {familie.glieder.length > 1 && (
         <>
           <div className="varianten" role="radiogroup" aria-label="Art des Werkzeugs">
             {familie.glieder.map((g) => {
-              const w = WERKZEUGE.find((x) => x.wert === g)!
+              const x = WERKZEUGE.find((y) => y.wert === g)!
               return (
-                <button key={g} type="button" role="radio" className="variante" aria-checked={p.werkzeug === g} aria-label={w.name} title={`${w.name} (${w.taste})`} onClick={() => p.beiWerkzeug(g)}>
-                  <Symbol name={w.symbol} />
-                  {familie.glieder.length <= 2 && <span>{w.name}</span>}
+                <button key={g} type="button" role="radio" className="variante" aria-checked={w === g} aria-label={x.name} title={`${x.name} (${x.taste})`} onClick={() => p.beiWerkzeug(g)}>
+                  <Symbol name={x.symbol} />
+                  {familie.glieder.length <= 2 && <span>{x.name}</span>}
                 </button>
               )
             })}
           </div>
-          <span className="trenner" aria-hidden="true" />
+          <Trenner />
         </>
       )}
-      <div className="kapsel-gruppe" role="group" aria-label="Farbe">
-        {FARBEN.map((f) => (
-          <button key={f.wert} type="button" className="farb-knopf" aria-pressed={p.farbe === f.wert} aria-label={f.name} title={f.name} onClick={() => p.beiFarbe(f.wert)}>
-            <span style={{ background: f.wert, color: f.wert }} />
-          </button>
-        ))}
-        <button ref={mehrKnopf} type="button" className="farb-knopf mehr" aria-pressed={besonders} aria-expanded={!!feld} aria-label="Mehr Farben und Stärken" title="Mehr Farben, eigene Farben und Stärke" onClick={umschalten}>
-          {besonders ? <span className="staerke-punkt" style={{ width: Math.max(8, Math.min(22, punktGroesse(p.staerke))), height: Math.max(8, Math.min(22, punktGroesse(p.staerke))), background: p.farbe }} /> : <Symbol name="palette" />}
-        </button>
-      </div>
-      <span className="trenner" aria-hidden="true" />
-      <div className="kapsel-gruppe" role="group" aria-label="Strichstärke und Schriftgröße">
-        {STAERKEN.map((s) => (
-          <button key={s.wert} type="button" className="leisten-knopf schmal" aria-pressed={p.staerke === s.wert} aria-label={'Strichstärke ' + s.name} title={'Strichstärke und Schriftgröße: ' + s.name} onClick={() => p.beiStaerke(s.wert)}>
-            <span className="staerke-punkt" style={{ width: s.wert * 1.4 + 2, height: s.wert * 1.4 + 2 }} />
-          </button>
-        ))}
-      </div>
-      <span className="trenner" aria-hidden="true" />
-      <div className="kapsel-gruppe" role="group" aria-label="Bearbeiten">
-        <button type="button" className="leisten-knopf" disabled={!p.kannEinfuegen} aria-label="Einfügen" title="Kopiertes einfügen – auch aus einer anderen Tafel (Strg + V)" onClick={p.beiEinfuegen}>
-          <Symbol name="einfuegen" />
-        </button>
-        <button
-          type="button"
-          className="leisten-knopf"
-          disabled={p.gewaehlt === 0 && p.leer}
-          aria-label={p.gewaehlt ? 'Auswahl löschen' : 'Seite leeren'}
-          title={p.gewaehlt ? 'Auswahl löschen (Entf)' : 'Seite leeren (lässt sich rückgängig machen)'}
-          onClick={p.gewaehlt ? p.beiLoeschen : p.beiLeeren}
-        >
-          <Symbol name="leeren" />
-        </button>
-      </div>
-      {feld &&
+      {w === 'auswahl' && (
+        <>
+          <Segment
+            name="Art der Auswahl"
+            kinder={AUSWAHL_WAHL.map((a) => (
+              <SegmentKnopf key={a.wert} an={p.auswahlArt === a.wert} name={a.name} titel={a.titel} text={a.wert === 'lasso' ? 'Lasso' : 'Rechteck'} beiKlick={() => p.beiAuswahlArt(a.wert)}>
+                <Symbol name={a.symbol} />
+              </SegmentKnopf>
+            ))}
+          />
+          <Trenner />
+        </>
+      )}
+      {w === 'radierer' && (
+        <>
+          <Segment
+            name="Art des Radierers"
+            kinder={RADIERER_ARTEN.map((a) => (
+              <SegmentKnopf key={a.wert} an={p.radierer.art === a.wert} name={a.wert === 'schwamm' ? 'Schwamm' : 'Element-Radierer'} titel={a.titel} text={a.name} beiKlick={() => p.beiRadierer({ ...p.radierer, art: a.wert })}>
+                <Symbol name={a.wert === 'schwamm' ? 'schwamm' : 'radierer'} />
+              </SegmentKnopf>
+            ))}
+          />
+          <Trenner />
+          <Segment
+            name="Größe des Radierers"
+            kinder={RADIERER_GROESSEN.map((g) => {
+              const d = Math.min(26, RADIERER_RADIUS[g.wert] * 0.5 + 8)
+              return (
+                <SegmentKnopf key={g.wert} an={p.radierer.groesse === g.wert} name={'Radierer ' + g.name} titel={'Größe: ' + g.name} beiKlick={() => p.beiRadierer({ ...p.radierer, groesse: g.wert })}>
+                  <span className="radierer-kreis" style={{ width: d, height: d }} />
+                </SegmentKnopf>
+              )
+            })}
+          />
+          <Trenner />
+        </>
+      )}
+      {(w === 'rechteck' || w === 'ellipse' || w === 'linie' || w === 'pfeil') && <FormWahl art={w} wahl={p.formwahl} beiWahl={p.beiFormwahl} />}
+      {inhalt.farben && (
+        <>
+          <div className="kapsel-gruppe" role="group" aria-label="Farbe">
+            {FARBEN.map((f) => (
+              <button key={f.wert} type="button" className="farb-knopf" aria-pressed={p.farbe === f.wert} aria-label={f.name} title={f.name} onClick={() => p.beiFarbe(f.wert)}>
+                <span style={{ background: f.wert, color: f.wert }} />
+              </button>
+            ))}
+            <button
+              ref={mehrKnopf}
+              type="button"
+              className="farb-knopf mehr"
+              aria-pressed={besonders}
+              aria-expanded={!!mehrOffen}
+              aria-label={inhalt.staerke ? 'Mehr Farben und Stärken' : 'Mehr Farben'}
+              title={inhalt.staerke ? 'Mehr Farben, eigene Farben und Stärke' : 'Mehr Farben und eigene Farben'}
+              onClick={umschalten}
+            >
+              {besonders ? <span className="staerke-punkt" style={{ width: Math.max(8, Math.min(22, punktGroesse(p.staerke))), height: Math.max(8, Math.min(22, punktGroesse(p.staerke))), background: p.farbe }} /> : <Symbol name="palette" />}
+            </button>
+          </div>
+          <Trenner />
+        </>
+      )}
+      {inhalt.staerke && (
+        <>
+          <div className="kapsel-gruppe" role="group" aria-label={schrift ? 'Schriftgröße' : 'Strichstärke'}>
+            {STAERKEN.map((s) => (
+              <button key={s.wert} type="button" className="leisten-knopf schmal" aria-pressed={p.staerke === s.wert} aria-label={'Strichstärke ' + s.name} title={(schrift ? 'Schriftgröße: ' : 'Strichstärke: ') + s.name} onClick={() => p.beiStaerke(s.wert)}>
+                <span className="staerke-punkt" style={{ width: s.wert * 1.4 + 2, height: s.wert * 1.4 + 2 }} />
+              </button>
+            ))}
+          </div>
+          <Trenner />
+        </>
+      )}
+      {inhalt.hinweis && (
+        <>
+          <p className="kapsel-hinweis">{inhalt.hinweis}</p>
+          <Trenner />
+        </>
+      )}
+      {!p.ohneBearbeiten && <Bearbeiten {...p} knopf="leisten-knopf" />}
+      {mehrOffen &&
         createPortal(
-          <div ref={feldRef} className="aufklappfeld von-oben" role="dialog" aria-label="Mehr Farben und Stärken" style={{ left: feld.links, top: feld.oben }}>
-            <MehrFeld {...p} />
+          <div ref={feldRef} className="aufklappfeld von-oben" role="dialog" aria-label={inhalt.staerke ? 'Mehr Farben und Stärken' : 'Mehr Farben'} style={{ left: mehrOffen.links, top: mehrOffen.oben }}>
+            <MehrFeld {...p} mitStaerke={inhalt.staerke} />
           </div>,
           document.body,
         )}
+    </div>
+  )
+}
+
+/** Einfügen und Seite leeren (bzw. Auswahl löschen) – in der Seitenleiste unten oder am Ende der Kapsel */
+export function Bearbeiten(p: Pick<Props, 'kannEinfuegen' | 'beiEinfuegen' | 'gewaehlt' | 'leer' | 'beiLoeschen' | 'beiLeeren'> & { knopf: string }) {
+  return (
+    <div className="kapsel-gruppe" role="group" aria-label="Bearbeiten">
+      <button type="button" className={p.knopf} disabled={!p.kannEinfuegen} aria-label="Einfügen" title="Kopiertes einfügen – auch aus einer anderen Tafel (Strg + V)" onClick={p.beiEinfuegen}>
+        <Symbol name="einfuegen" />
+      </button>
+      <button
+        type="button"
+        className={p.knopf}
+        disabled={p.gewaehlt === 0 && p.leer}
+        aria-label={p.gewaehlt ? 'Auswahl löschen' : 'Seite leeren'}
+        title={p.gewaehlt ? 'Auswahl löschen (Entf)' : 'Seite leeren (lässt sich rückgängig machen)'}
+        onClick={p.gewaehlt ? p.beiLoeschen : p.beiLeeren}
+      >
+        <Symbol name={p.gewaehlt ? 'leeren' : 'schwamm'} />
+      </button>
     </div>
   )
 }

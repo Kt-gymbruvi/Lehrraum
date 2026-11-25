@@ -136,12 +136,15 @@ describe('Laserpointer', () => {
     expect((await ladeLetzteTafel())!.seiten[0].elemente).toEqual([strich])
   })
 
-  it('eine Farbe wählen wechselt vom Laserpointer zum Stift', async () => {
+  it('beim Laserpointer zeigt die Kapsel keine Farben und Stärken, nur einen Hinweis', async () => {
     const nutzer = userEvent.setup()
     render(<Tafel />)
     await bereit()
+    expect(knopf('Blau')).toBeInTheDocument()
     await nutzer.click(knopf('Laserpointer'))
-    await nutzer.click(knopf('Blau'))
-    gedrueckt('Stift')
+    expect(screen.queryByRole('button', { name: 'Blau' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Strichstärke fein' })).toBeNull()
+    expect(screen.getByText('Zeigen – die Spur verschwindet von selbst')).toBeInTheDocument()
+    expect(knopf('Seite leeren')).toBeInTheDocument() // Einfügen und Leeren bleiben
   })
 })
