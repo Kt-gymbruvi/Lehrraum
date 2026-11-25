@@ -27,6 +27,9 @@
 //   Steht der Stift beim Zeichnen etwa 0,6 s still, wird der Strich – wenn eine Form erkannt wird – noch vor dem
 //   Abheben durch die saubere Form ersetzt. Geht es danach weiter, bleibt er freihändig. Beim Abheben entstehen
 //   zwei Schritte im Verlauf (Strich hinzufügen, durch die Form ersetzen), damit Rückgängig zuerst nur begradigt.
+// Kritzeln zum Löschen:
+//   Wird mit Stift oder Textmarker etwas mehrmals hin und her durchgestrichen (kern/kritzeln.ts), verschwindet es
+//   beim Abheben zusammen mit dem Gekritzel – ein Schritt im Verlauf, Rückgängig holt es zurück.
 // Tabelle:
 //   Das Werkzeug fragt nach Zeilen und Spalten und legt die Tabelle an der Stelle an; danach wird die erste Zelle
 //   beschrieben. Zellen beschreiben: mit dem Tabellen- oder Text-Werkzeug antippen, mit der Auswahl doppelt antippen.
@@ -38,6 +41,7 @@ import { auswahlRahmen, drehBasis, drehwinkel, GRIFF_GROESSE, GRIFF_TREFFER, GRI
 import { biegeGriff, breite, beruehrtRechteck, gebogen, GERADE_FANG, drehePunkt, drehungVon, gedreht, gesamtRahmen, oberstesBei, rasteRichtung, rechteckAus, richtungsWinkel, skaliert, trifft, verschiebe, verschoben, ZEILENHOEHE, zoomeUm, zuTafel, type Rechteck } from '../kern/geometrie.ts'
 import type { Befehl } from '../kern/befehle.ts'
 import { freieFlaeche, umrissAusMaske } from '../kern/flaeche.ts'
+import { kritzelZiele } from '../kern/kritzeln.ts'
 import { linienRaster } from './fuellraster.ts'
 import { begradige, HALTE_TOLERANZ, HALTEZEIT_MS } from '../kern/begradigen.ts'
 import { formAllein, fuelleFlaeche } from '../kern/fuellen.ts'
@@ -1028,8 +1032,15 @@ export function Zeichenflaeche({ elemente, hintergrund, muster, kamera, werkzeug
         beiHinzu(a.strich)
         beiBefehl({ art: 'ersetzen', vorher: [a.strich], nachher: [a.begradigt] })
       } else {
-        fest(a.strich)
-        beiHinzu(a.strich)
+        // Kritzeln: oft hin und her durchgestrichen → das Darunterliegende verschwindet, der Kritzel-Strich auch
+        const weg = a.kante ? [] : kritzelZiele(a.strich, stand.current.elemente, k.zoom)
+        if (weg.length) {
+          beiRadieren(weg)
+          plane()
+        } else {
+          fest(a.strich)
+          beiHinzu(a.strich)
+        }
       }
     }
     if (a.art === 'form' && !abgebrochen && Math.hypot(a.form.x2 - a.form.x1, a.form.y2 - a.form.y1) * k.zoom >= 4) {

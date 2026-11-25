@@ -86,7 +86,9 @@ describe('Zufall – Logik', () => {
 
   it('das Fenster lässt sich speichern und wieder laden', () => {
     const l = schalte([], 'zufall')
-    expect(pruefeFenster(JSON.parse(JSON.stringify(l)))).toEqual(l)
+    const { mitte, ...gespeichert } = l[0] // „mitte“ gilt nur gleich nach dem Öffnen und wird nicht gespeichert
+    expect(mitte).toBe(0)
+    expect(pruefeFenster(JSON.parse(JSON.stringify(l)))).toEqual([gespeichert])
   })
 })
 

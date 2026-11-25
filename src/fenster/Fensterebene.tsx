@@ -21,6 +21,7 @@ export function Fensterebene({ fenster, beiAendern, schueler = null, beiText }: 
             key={f.id}
             fenster={f}
             beiBewegen={(x, y) => aendereF({ x, y })}
+            beiMitte={f.mitte === undefined ? undefined : (x, y) => aendereF({ x, y, mitte: undefined })}
             beiEinklappen={() => aendereF({ eingeklappt: !f.eingeklappt })}
             beiSkala={(skala) => aendereF({ skala: skala === 1 ? undefined : skala })}
             beiSchliessen={() => beiAendern((alt) => schliesse(alt, f.id))}

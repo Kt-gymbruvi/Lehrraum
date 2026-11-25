@@ -2,12 +2,14 @@
 // eingeklappt eingebaut (nur versteckt), damit ein laufender Timer weiterläuft. Fenster haben unten rechts
 // einen Eckgriff wie Bilder: Ziehen vergrößert oder verkleinert den Inhalt gleichmäßig (Doppeltippen: zurück auf 100 %).
 import { useLayoutEffect, useRef, useState, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
-import { begrenze, FENSTERNAMEN, neueSkala, SKALA_MAX, SKALA_MIN, skalaSchritt, type FensterZustand } from '../kern/fenster.ts'
+import { begrenze, FENSTERNAMEN, mittig, neueSkala, SKALA_MAX, SKALA_MIN, skalaSchritt, type FensterZustand } from '../kern/fenster.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 
 type Props = {
   fenster: FensterZustand
   beiBewegen: (x: number, y: number) => void
+  /** neu geöffnet: Lage in der Mitte der Tafel übernehmen (und die Markierung `mitte` entfernen) */
+  beiMitte?: (x: number, y: number) => void
   beiEinklappen: () => void
   beiSkala?: (skala: number) => void
   beiSchliessen: () => void
@@ -15,7 +17,7 @@ type Props = {
   children: ReactNode
 }
 
-export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiSkala, beiSchliessen, beiVorn, children }: Props) {
+export function Fenster({ fenster: f, beiBewegen, beiMitte, beiEinklappen, beiSkala, beiSchliessen, beiVorn, children }: Props) {
   const rahmen = useRef<HTMLElement>(null)
   const zug = useRef<{ zeiger: number; dx: number; dy: number } | null>(null)
   const name = FENSTERNAMEN[f.art]
@@ -70,6 +72,16 @@ export function Fenster({ fenster: f, beiBewegen, beiEinklappen, beiSkala, beiSc
   const loslassen = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (zug.current?.zeiger === e.pointerId) zug.current = null
   }
+
+  // Neu geöffnet: sobald die Größe bekannt ist, mittig auf die Tafel legen (vor dem ersten Bild, kein Springen)
+  const mitte = f.mitte
+  useLayoutEffect(() => {
+    const el = rahmen.current
+    const flaeche = el?.parentElement
+    if (mitte === undefined || !el || !flaeche || !beiMitte) return
+    const [x, y] = mittig(flaeche.clientWidth, flaeche.clientHeight, el.offsetWidth, el.offsetHeight, mitte)
+    beiMitte(x, y)
+  }, [mitte, beiMitte])
 
   // Wird das Fenster höher (z. B. Gruppen gebildet), schiebt es sich nach oben, damit der untere Rand sichtbar bleibt.
   // Gespeichert wird die Lage nicht verändert – nur die Anzeige.

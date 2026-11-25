@@ -33,6 +33,11 @@ export type FensterZustand = {
   grenze?: number
   /** Vergrößerung des Inhalts, fehlt = 1 */
   skala?: number
+  /**
+   * Nur gleich nach dem Öffnen: das Fenster wird mittig auf die Tafel gelegt, sobald seine Größe bekannt ist
+   * (Wert = Versatz in Pixeln, damit mehrere neue Fenster sich nicht genau verdecken). Wird nie gespeichert.
+   */
+  mitte?: number
 }
 
 export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', zufall: 'Zufall & Gruppen', notiz: 'Notiz', arbeitsform: 'Arbeitsform', geraeusch: 'Geräuschampel' }
@@ -58,13 +63,14 @@ export const GRENZE_STANDARD = 60
 
 /**
  * Knopf in der rechten Leiste: öffnet ein Fenster. Gibt es die Art schon (und nur einmal erlaubt), wird es
- * geschlossen – der Knopf schaltet also ein und aus. Neue Fenster liegen leicht versetzt, damit sie sich nicht verdecken.
+ * geschlossen – der Knopf schaltet also ein und aus. Neue Fenster erscheinen in der Mitte der Tafel (`mitte`),
+ * leicht versetzt, damit sie sich nicht verdecken.
  */
 export function schalte(liste: FensterZustand[], art: FensterArt): FensterZustand[] {
   if (!MEHRFACH.has(art) && liste.some((f) => f.art === art)) return liste.filter((f) => f.art !== art)
   if (liste.length >= MAX_FENSTER) return liste
   const versatz = (liste.length % 6) * 28
-  const neu: FensterZustand = { id: neueId(), art, x: 24 + versatz, y: 24 + versatz, eingeklappt: false }
+  const neu: FensterZustand = { id: neueId(), art, x: 24 + versatz, y: 24 + versatz, eingeklappt: false, mitte: versatz }
   if (art === 'notiz') {
     neu.text = ''
     neu.farbe = NOTIZFARBEN[liste.filter((f) => f.art === 'notiz').length % NOTIZFARBEN.length]
@@ -109,6 +115,17 @@ export function neueSkala(start: number, b: number, h: number, dx: number, dy: n
 
 /** Tastatur am Griff: ein Schritt größer oder kleiner */
 export const skalaSchritt = (s: number, richtung: 1 | -1): number => rundeSkala(Math.min(SKALA_MAX, Math.max(SKALA_MIN, s + richtung * 0.1)))
+
+/**
+ * Linke obere Ecke für ein neues Fenster der Größe b × h in der Mitte einer Fläche platzB × platzH,
+ * um `versatz` nach rechts unten verschoben; passt es nicht ganz hinein, liegt es oben links am Rand.
+ */
+export function mittig(platzB: number, platzH: number, b: number, h: number, versatz = 0): [number, number] {
+  const rand = 8
+  const x = Math.max(rand, Math.min((platzB - b) / 2 + versatz, platzB - b - rand))
+  const y = Math.max(rand, Math.min((platzH - h) / 2 + versatz, platzH - h - rand))
+  return [Math.round(x), Math.round(y)]
+}
 
 /** Hält die linke obere Ecke so, dass vom Fenster mindestens die Titelzeile erreichbar bleibt. */
 export function begrenze(x: number, y: number, flaecheB: number, flaecheH: number, fensterB: number): [number, number] {
