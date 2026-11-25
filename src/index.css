@@ -106,7 +106,7 @@ body {
 }
 /* Glas: Grundlage aller schwebenden Leisten */
 .tafel-kopf .zoom,
-.tafel-kopf > .kopf-knopf,
+.kopf-seite > .kopf-knopf,
 .werkzeugleiste,
 .seitenleiste,
 .auswahlleiste,
@@ -118,7 +118,7 @@ body {
 /* Unschärfe dahinter. In den Werkzeugleisten auf einer eigenen Unterebene: ein backdrop-filter am Element selbst
    würde dessen Aufklappfelder (position: fixed) einschließen und abschneiden. */
 .tafel-kopf .zoom,
-.tafel-kopf > .kopf-knopf,
+.kopf-seite > .kopf-knopf,
 .seitenleiste,
 .auswahlleiste,
 .aufklappfeld,
@@ -195,10 +195,13 @@ input {
   -webkit-user-select: text;
   -webkit-touch-callout: default;
 }
+/* Kopfzeile „Atelier“: eine ruhige Linie – links Navigation, in der Mitte Titel und Speicherstand, rechts Datei,
+   Format, Ansicht und „Mitmachen“ als einziger kräftiger Knopf. Die Mitte darf schrumpfen, die Seiten nicht. */
 .tafel-kopf {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(max-content, 1fr) minmax(0, auto) minmax(max-content, 1fr);
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.75rem;
   flex-shrink: 0;
   padding: var(--rand) var(--rand) 0;
   padding-left: max(var(--rand), env(safe-area-inset-left));
@@ -206,9 +209,27 @@ input {
   padding-top: max(var(--rand), env(safe-area-inset-top));
   color: var(--text);
 }
+.kopf-seite {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+.kopf-seite.rechts {
+  justify-content: flex-end;
+}
+.kopf-titel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+  text-align: center;
+}
 .tafel-kopf h1 {
-  margin: 0 0 0 0.35rem;
-  font-size: 1.2rem;
+  max-width: 100%;
+  margin: 0;
+  font-size: 1.0625rem;
+  line-height: 1.25;
   font-weight: 700;
   letter-spacing: -0.02em;
   white-space: nowrap;
@@ -216,18 +237,87 @@ input {
   text-overflow: ellipsis;
 }
 .speicherstand {
-  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  max-width: 100%;
   min-width: 0;
   margin: 0;
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+/* Punkt vor dem Speicherstand: grün gespeichert, orange unterwegs, rot bei Fehlern */
+.speicherstand::before {
+  content: '';
+  flex-shrink: 0;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--linie-aus);
+  transition: background-color var(--schnell);
+}
+.speicherstand.gespeichert::before {
+  background: #34c759;
+}
+.speicherstand.ungespeichert::before {
+  background: #ff8a14;
+}
+.speicherstand.fehler::before {
+  background: var(--fehler);
+}
+.speicherstand.hinweis::before {
+  display: none;
+}
 .speicherstand.fehler {
   color: var(--fehler);
   font-weight: 600;
+}
+/* „Mitmachen“: der einzige kräftige Knopf der Kopfzeile */
+.kopf-haupt {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  height: 3.25rem;
+  flex-shrink: 0;
+  padding: 0 1.25rem 0 1rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--gewaehlt);
+  color: var(--gewaehlt-text);
+  font: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgb(15 92 71 / 0.18), 0 10px 26px rgb(15 92 71 / 0.22);
+  transition: background-color var(--schnell), box-shadow var(--schnell), transform var(--schnell);
+}
+.kopf-haupt:hover {
+  box-shadow: 0 2px 6px rgb(15 92 71 / 0.22), 0 14px 32px rgb(15 92 71 / 0.28);
+}
+.kopf-haupt:active {
+  transform: scale(0.96);
+}
+.kopf-haupt .symbol {
+  width: 1.3rem;
+  height: 1.3rem;
+}
+/* Wird es eng (iPad hochkant), zeigt „Mitmachen“ nur noch sein Symbol */
+@media (max-width: 64rem) {
+  .kopf-haupt {
+    width: 3.25rem;
+    padding: 0;
+    justify-content: center;
+  }
+  .kopf-haupt span {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+  }
 }
 /* Mehrere Knöpfe der Kopfzeile in einer gemeinsamen Kapsel */
 .zoom {
@@ -256,12 +346,12 @@ input {
   cursor: pointer;
 }
 /* einzelne Knöpfe der Kopfzeile: runde Glasknöpfe, so hoch wie die Kapseln */
-.tafel-kopf > .kopf-knopf {
+.kopf-seite > .kopf-knopf {
   min-width: 3.25rem;
   height: 3.25rem;
   box-sizing: border-box;
 }
-.tafel-kopf > .kopf-knopf.breit {
+.kopf-seite > .kopf-knopf.breit {
   padding: 0 1rem;
 }
 .kopf-knopf.breit {
@@ -371,14 +461,153 @@ input {
   border-radius: 50%;
   background: currentColor;
 }
-/* Linke Leiste: zwei Knöpfe nebeneinander, damit alle Werkzeuge ohne Rollen sichtbar bleiben */
-.werkzeugleiste.links .gruppe {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  justify-items: center;
+/* Linke Leiste „Atelier“: eine Spalte, je Werkzeugfamilie ein Knopf; etwas runder und luftiger */
+.werkzeugleiste.links {
+  padding: 0.5rem;
+  border-radius: 1.625rem;
 }
-.werkzeugleiste.links .gruppe.drei {
-  grid-template-columns: 1fr 1fr 1fr;
+.werkzeugleiste.links .gruppe {
+  gap: 0.25rem;
+  padding-bottom: 0.5rem;
+}
+.werkzeugleiste.links .leisten-knopf {
+  border-radius: 1rem;
+}
+.werkzeugleiste.links .leisten-knopf[aria-pressed='true'] {
+  box-shadow: 0 2px 6px rgb(15 92 71 / 0.25), 0 8px 18px rgb(15 92 71 / 0.22);
+}
+
+/* ---------- Kontext-Kapsel über der Tafel ---------- */
+/* Varianten der gewählten Familie, Farben, Stärke, Einfügen und Leeren – eine schwebende Glaskapsel */
+.kontextkapsel {
+  align-self: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0.25rem 0.5rem;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-radius: 999px;
+  background: var(--glas);
+  border: 1px solid var(--linie);
+  box-shadow: var(--schatten);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  flex-shrink: 0;
+}
+.kontextkapsel .kapsel-gruppe {
+  display: flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+.kontextkapsel .trenner {
+  flex-shrink: 0;
+  width: 1px;
+  height: 1.75rem;
+  margin: 0 0.25rem;
+  background: var(--linie);
+}
+.kontextkapsel .farb-knopf {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+}
+.kontextkapsel .farb-knopf span {
+  width: 1.625rem;
+  height: 1.625rem;
+}
+.kontextkapsel .leisten-knopf {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 999px;
+}
+.kontextkapsel .leisten-knopf.schmal {
+  width: 2.75rem;
+}
+.kontextkapsel .leisten-knopf .symbol {
+  width: 1.35rem;
+  height: 1.35rem;
+}
+/* Tinten in der Kapsel: gewählt mit Ring in der eigenen Farbe (wie ein aufgesteckter Stift), Rest ruhig */
+.kontextkapsel .farb-knopf[aria-pressed='true'] span {
+  box-shadow: inset 0 0 0 1px var(--tupfer-rand), 0 0 0 2.5px var(--leiste), 0 0 0 4.5px currentColor;
+  transform: scale(0.86);
+}
+.kontextkapsel .farb-knopf.mehr[aria-pressed='true'] span {
+  box-shadow: none;
+  transform: none;
+}
+/* Dunkler Modus: dunkle Tinten verschwänden im Ring – dort zeigt Orange (das Gewählte) die Wahl */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-design='hell']) .kontextkapsel .farb-knopf[aria-pressed='true']:not(.mehr) span {
+    box-shadow: inset 0 0 0 1px var(--tupfer-rand), 0 0 0 2.5px var(--leiste), 0 0 0 4.5px var(--gewaehlt);
+  }
+}
+:root[data-design='dunkel'] .kontextkapsel .farb-knopf[aria-pressed='true']:not(.mehr) span {
+  box-shadow: inset 0 0 0 1px var(--tupfer-rand), 0 0 0 2.5px var(--leiste), 0 0 0 4.5px var(--gewaehlt);
+}
+/* Varianten als Segment: das Gewählte hell abgehoben (kräftig ist nur das Werkzeug in der Leiste) */
+.kontextkapsel .varianten {
+  display: flex;
+  gap: 0.125rem;
+  padding: 0.1875rem;
+  border-radius: 999px;
+  background: var(--leiste-2);
+}
+.kontextkapsel .variante {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.375rem;
+  min-width: 2.5rem;
+  height: 2.375rem;
+  padding: 0 0.75rem;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-2);
+  font: inherit;
+  font-size: 0.875rem;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color var(--schnell), color var(--schnell), box-shadow var(--schnell);
+}
+.kontextkapsel .variante .symbol {
+  width: 1.2rem;
+  height: 1.2rem;
+}
+.kontextkapsel .variante[aria-checked='true'] {
+  background: var(--leiste);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgb(15 92 71 / 0.08), 0 2px 8px rgb(15 92 71 / 0.08);
+}
+.aufklappfeld.von-oben {
+  transform-origin: left top;
+}
+/* Eingeklappte linke Leiste: auch die Kapsel geht weg */
+.tafel-mitte.links-zu .kontextkapsel {
+  display: none;
+}
+/* Unendliche Tafel: die Leisten schweben über der Fläche – die Kapsel rückt neben die linke Leiste */
+.tafel-mitte.unendlich .kontextkapsel {
+  margin-left: calc(var(--tipp) + 1rem + var(--rand));
+  max-width: calc(100% - 2 * (var(--tipp) + 1rem + var(--rand)));
+}
+.tafel-mitte.unendlich.links-zu .kontextkapsel {
+  margin-left: 0;
+}
+/* Kopfzeile: feiner Trenner in einer Kapsel */
+.kopf-trenner {
+  flex-shrink: 0;
+  align-self: center;
+  width: 1px;
+  height: 1.5rem;
+  margin: 0 0.25rem;
+  background: var(--linie);
 }
 .leisten-knopf.schmal {
   width: calc(var(--tipp) * 2 / 3);
@@ -574,14 +803,12 @@ input {
     --rand: 0.375rem;
   }
   .werkzeugleiste.links {
-    gap: 0.3rem;
-    padding: 0.25rem;
+    gap: 0.25rem;
+    padding: 0.375rem;
   }
   .werkzeugleiste.links .gruppe {
-    padding-bottom: 0.3rem;
-  }
-  .werkzeugleiste.links .farb-knopf {
-    height: 2rem;
+    gap: 0.125rem;
+    padding-bottom: 0.25rem;
   }
 }
 /* Niedrige Bildschirme (Handy quer): kleinere Knöpfe, damit die Leiste passt */
@@ -611,6 +838,48 @@ input {
   font-size: 0.7rem;
   font-weight: 500;
   letter-spacing: 0;
+}
+
+/* Rechte Leiste „Atelier“: nur Symbole wie links (der Name steht im Titel und für Vorleseprogramme im Knopf);
+   ein offenes Fenster ist leicht hinterlegt und trägt einen orangen Punkt – kräftig grün bleibt allein das Werkzeug */
+.werkzeugleiste.rechts {
+  padding: 0.5rem;
+  border-radius: 1.625rem;
+}
+.werkzeugleiste.rechts .gruppe {
+  gap: 0.25rem;
+  padding-bottom: 0.5rem;
+}
+.werkzeugleiste.rechts .leisten-knopf.mit-text {
+  position: relative;
+  width: var(--tipp);
+  height: var(--tipp);
+  border-radius: 1rem;
+}
+.werkzeugleiste.rechts .leisten-knopf.mit-text span {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+.werkzeugleiste.rechts .leisten-knopf[aria-pressed='true'],
+.werkzeugleiste.rechts .leisten-knopf[aria-pressed='true']:hover:not(:disabled),
+.werkzeugleiste.rechts .leisten-knopf[aria-pressed='true']:active:not(:disabled) {
+  background: var(--leiste-2);
+  color: var(--text);
+  box-shadow: none;
+}
+.werkzeugleiste.rechts .leisten-knopf[aria-pressed='true']::after {
+  content: '';
+  position: absolute;
+  top: 0.45rem;
+  right: 0.45rem;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #ff8a14;
+  box-shadow: 0 0 0 2px var(--leiste);
 }
 
 /* ---------- Fenster über der Tafel ---------- */
@@ -1120,6 +1389,7 @@ input {
   font-variant-numeric: tabular-nums;
 }
 .seitenleiste {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 0.125rem;
@@ -1137,6 +1407,72 @@ input {
   font-weight: 600;
   white-space: nowrap;
   font-variant-numeric: tabular-nums;
+}
+/* Seitenzahl: im Streifen nur für Vorleseprogramme (die Nummern stehen an den Bildern) */
+.seitenzahl.unsichtbar {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+}
+/* Streifen mit Vorschaubildern: die gezeigte Seite mit Ring in der Farbe des Gewählten */
+.seitenstreifen {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0 0.25rem;
+}
+.streifen-seite {
+  position: relative;
+  display: block;
+  flex-shrink: 0;
+  padding: 0;
+  border: 0;
+  border-radius: 0.5rem;
+  background: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 0 0 1px var(--linie), 0 1px 3px rgb(15 92 71 / 0.08);
+  transition: box-shadow var(--schnell), transform var(--schnell);
+}
+.streifen-seite .vorschau-bild {
+  display: block;
+  width: 3.75rem;
+  height: auto;
+  max-height: 2.75rem;
+  object-fit: contain;
+  border-radius: 0.5rem;
+}
+@media (hover: hover) {
+  .streifen-seite:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 0 0 1px var(--linie), 0 4px 12px rgb(15 92 71 / 0.14);
+  }
+}
+.streifen-seite:active {
+  transform: scale(0.95);
+}
+.streifen-seite[aria-current='page'] {
+  box-shadow: 0 0 0 2.5px var(--gewaehlt), 0 4px 12px rgb(15 92 71 / 0.2);
+}
+.streifen-nr {
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.2rem;
+  min-width: 1rem;
+  padding: 0 0.25rem;
+  border-radius: 999px;
+  background: rgb(12 61 49 / 0.72);
+  color: #ffffff;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1rem;
+  font-variant-numeric: tabular-nums;
+}
+.streifen-seite[aria-current='page'] .streifen-nr {
+  background: var(--gewaehlt);
+  color: var(--gewaehlt-text);
 }
 .seitenleiste .trenner {
   align-self: stretch;
@@ -1643,4 +1979,110 @@ input {
 .vs-kachel.neu .vs-seite:disabled {
   cursor: default;
   opacity: 0.5;
+}
+
+/* ---------- Bühne (Präsentieren) ---------- */
+/* Immer dunkle Umgebung – auch im hellen Modus –, damit das weiße Blatt am Beamer leuchtet. Werte wie im dunklen Modus. */
+.tafel.buehne {
+  color-scheme: dark;
+  --umgebung: #07241c;
+  --leiste: #0d3329;
+  --glas: rgb(13 51 41 / 0.88);
+  --tupfer-rand: rgb(255 255 255 / 0.35);
+  --leiste-2: rgb(255 255 255 / 0.08);
+  --leiste-3: rgb(255 255 255 / 0.14);
+  --text: #ffffff;
+  --text-2: #b6d3c7;
+  --linie: rgb(255 255 255 / 0.1);
+  --linie-aus: #3f7d68;
+  --gewaehlt: #ff8a14;
+  --gewaehlt-text: #2b1500;
+  --fokus: #ffb067;
+  --schatten: 0 1px 2px rgb(0 0 0 / 0.3), 0 8px 28px rgb(0 0 0 / 0.35);
+  --schatten-hoch: 0 2px 6px rgb(0 0 0 / 0.35), 0 18px 48px rgb(0 0 0 / 0.5);
+  background: var(--umgebung);
+  color: var(--text);
+  animation: buehne-auf 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+@keyframes buehne-auf {
+  from {
+    opacity: 0.6;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tafel.buehne {
+    animation: none;
+  }
+}
+/* Kopf: nur ein kleines Schild in der Mitte */
+.buehne-kopf {
+  display: flex;
+  justify-content: center;
+}
+.buehne-schild {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  height: 2.75rem;
+  box-sizing: border-box;
+  padding: 0 0.375rem 0 1rem;
+  border-radius: 999px;
+  background: var(--glas);
+  border: 1px solid var(--linie);
+  box-shadow: var(--schatten);
+  font-size: 0.875rem;
+  color: var(--text-2);
+  white-space: nowrap;
+}
+.buehne-schild strong {
+  color: var(--text);
+  font-weight: 600;
+}
+.buehne-punkt {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 50%;
+  background: #ff8a14;
+}
+.buehne-ende {
+  height: 2.125rem;
+  padding: 0 0.875rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--leiste-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.buehne-ende:hover {
+  background: var(--leiste-3);
+}
+/* Linke Leiste: mittig an der Seite, gewählt in Orange mit leichtem Leuchten */
+.tafel-mitte > .werkzeugleiste.buehne-leiste {
+  align-self: center;
+}
+.buehne-leiste .leisten-knopf[aria-pressed='true'],
+.buehne-leiste .leisten-knopf[aria-pressed='true']:hover:not(:disabled) {
+  box-shadow: 0 0 0 1px rgb(255 176 103 / 0.4), 0 8px 24px rgb(255 138 20 / 0.35);
+}
+/* Blättern: kleine Kapsel unter dem Blatt */
+.buehne-seiten {
+  align-self: center;
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  border-radius: 999px;
+  background: var(--glas);
+  border: 1px solid var(--linie);
+  box-shadow: var(--schatten);
+}
+.buehne-nr {
+  min-width: 3.5rem;
+  text-align: center;
+  font-size: 0.875rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
 }

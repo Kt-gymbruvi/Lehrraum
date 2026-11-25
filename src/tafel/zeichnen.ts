@@ -189,11 +189,12 @@ export function zeichne(ctx: Ctx, e: Element, frisch = false) {
 export function zeichneBlatt(ctx: Ctx, b: number, h: number, zoom: number) {
   const r = 14 / zoom
   ctx.save()
-  for (const [abstand, deckkraft] of [[4, 0.035], [2, 0.05], [1, 0.07]] as const) {
+  // Gestaltung „Atelier“: das Blatt liegt auf – weiche, nach unten verschobene Ringe (grün getönt wie die Plattform)
+  for (const [abstand, deckkraft] of [[16, 0.012], [11, 0.016], [7, 0.022], [4, 0.03], [2, 0.04], [1, 0.06]] as const) {
     const a = abstand / zoom
     ctx.beginPath()
-    ctx.roundRect(-a, -a + a / 2, b + 2 * a, h + 2 * a, r + a)
-    ctx.fillStyle = `rgba(10, 45, 83, ${deckkraft})`
+    ctx.roundRect(-a, -a + a * 0.6, b + 2 * a, h + 2 * a, r + a)
+    ctx.fillStyle = `rgba(15, 92, 71, ${deckkraft})`
     ctx.fill()
   }
   ctx.beginPath()

@@ -37,7 +37,7 @@ import { Instrumente } from './Instrumente.tsx'
 const KOPIE_HINWEIS = 'Aus einer Lehrraum-Tafel kopiert – einfügen lässt es sich nur in einer Lehrraum-Tafel.'
 import { Pruefansicht } from './Pruefansicht.tsx'
 import { Seitenleiste } from './Seitenleiste.tsx'
-import { WERKZEUGE, Werkzeugleiste } from './Werkzeugleiste.tsx'
+import { Kontextkapsel, WERKZEUGE, Werkzeugleiste } from './Werkzeugleiste.tsx'
 import { Zeichenflaeche, type Werkzeug } from './Zeichenflaeche.tsx'
 
 type Speicherstand = 'laedt' | 'gespeichert' | 'ungespeichert' | 'fehler'
@@ -654,6 +654,36 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       return neu
     })
   const [freigabeOffen, setFreigabeOffen] = useState(false) // „Mitmachen“ (Schülerseiten per QR-Code)
+  // ---------- Bühne (Präsentieren): dunkle Umgebung, großes Blatt, nur Stift, Radierer und Laser ----------
+  // Nur Ansicht: nichts wird gespeichert. Wo möglich im Vollbild; wer das Vollbild verlässt (Esc), verlässt die Bühne.
+  const [buehne, setBuehne] = useState(false)
+  const vollbild = useRef(false)
+  const betreteBuehne = () => {
+    setAuswahl([])
+    setBuehne(true)
+    const el = document.documentElement
+    if (el.requestFullscreen && !document.fullscreenElement)
+      el.requestFullscreen()
+        .then(() => {
+          vollbild.current = true
+        })
+        .catch(() => undefined) // ohne Vollbild (z. B. iPhone) geht es auch
+  }
+  const verlasseBuehne = () => {
+    setBuehne(false)
+    if (vollbild.current && document.fullscreenElement) document.exitFullscreen?.().catch(() => undefined)
+    vollbild.current = false
+  }
+  useEffect(() => {
+    const wechsel = () => {
+      if (!document.fullscreenElement && vollbild.current) {
+        vollbild.current = false
+        setBuehne(false)
+      }
+    }
+    document.addEventListener('fullscreenchange', wechsel)
+    return () => document.removeEventListener('fullscreenchange', wechsel)
+  }, [])
   const uebersichtOffen = useRef(false)
   uebersichtOffen.current = uebersicht || freigabeOffen
 
@@ -810,8 +840,8 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
   }, [])
 
   // ---------- Tastatur ----------
-  const tasten = useRef({ zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, kopiereAuswahl, schneideAus, fuegeEin, gruppiereOderLoese, auswahl })
-  tasten.current = { zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, kopiereAuswahl, schneideAus, fuegeEin, gruppiereOderLoese, auswahl }
+  const tasten = useRef({ zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, kopiereAuswahl, schneideAus, fuegeEin, gruppiereOderLoese, auswahl, buehne, verlasseBuehne })
+  tasten.current = { zurueck, vor, loescheAuswahl, dopple, waehleWerkzeug, waehleAlles, kopiereAuswahl, schneideAus, fuegeEin, gruppiereOderLoese, auswahl, buehne, verlasseBuehne }
   useEffect(() => {
     const taste = (e: KeyboardEvent) => {
       if (uebersichtOffen.current) return
@@ -845,6 +875,9 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
         e.preventDefault()
         t.loescheAuswahl()
       } else if (e.key === 'Escape' && t.auswahl.length) setAuswahl([])
+      else if (e.key === 'Escape' && t.buehne) t.verlasseBuehne()
+      else if (t.buehne && (e.key === 'ArrowRight' || e.key === 'ArrowDown')) blaettern((b) => gehe(b, b.nr + 1))
+      else if (t.buehne && (e.key === 'ArrowLeft' || e.key === 'ArrowUp')) blaettern((b) => gehe(b, b.nr - 1))
       else if (e.key === 'PageDown') blaettern((b) => gehe(b, b.nr + 1))
       else if (e.key === 'PageUp') blaettern((b) => gehe(b, b.nr - 1))
       else {
@@ -975,6 +1008,33 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
     { name: 'Löschen', symbol: 'leeren', titel: 'Löschen (Entf)', tun: loescheAuswahl },
   ]
 
+  /** Gemeinsame Werte der linken Leiste und der Kapsel */
+  const leistenWerte = {
+    werkzeug,
+    farbe,
+    staerke,
+    radierer,
+    beiRadierer: setRadierer,
+    auswahlArt,
+    beiAuswahlArt: setAuswahlArt,
+    formwahl,
+    beiFormwahl: setFormwahl,
+    eigeneFarben,
+    beiEigeneFarbe: waehleEigeneFarbe,
+    leer: seite.elemente.length === 0,
+    gewaehlt: auswahl.length,
+    beiWerkzeug: waehleWerkzeug,
+    beiFarbe: waehleFarbe,
+    beiStaerke: waehleStaerke,
+    beiLeeren: () => entferne(seite.elemente.map((e) => e.id)),
+    kannEinfuegen: ablage !== null,
+    beiEinfuegen: fuegeEin,
+    beiLoeschen: loescheAuswahl,
+    beiBild: () => bildWahl.current?.click(),
+    instrumente: instrumente.map((i) => i.art),
+    beiInstrument: schalteInstrument,
+  }
+
   const zoomen = (faktor: number) => setKamera((k) => zoomeUm(k, (mass.b || window.innerWidth) / 2, (mass.h || window.innerHeight) / 2, faktor))
   const ansichtZurueck = () => (blatt ? passeEin() : setKamera({ x: 0, y: 0, zoom: 1 }))
 
@@ -996,110 +1056,124 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
   }
 
   return (
-    <div className="tafel">
+    <div className={buehne ? 'tafel buehne' : 'tafel'}>
+      {buehne ? (
+        <header className="tafel-kopf buehne-kopf">
+          <div className="buehne-schild" role="status">
+            <span className="buehne-punkt" aria-hidden="true" />
+            <strong>Präsentieren</strong>
+            <span>
+              Seite {buch.nr + 1} von {buch.seiten.length}
+            </span>
+            <button type="button" className="buehne-ende" aria-label="Präsentieren beenden" title="Präsentieren beenden (Esc)" onClick={verlasseBuehne}>
+              Beenden
+            </button>
+          </div>
+        </header>
+      ) : (
       <header className="tafel-kopf">
-        <button type="button" className="kopf-knopf" aria-label={leistenZu.links ? 'Linke Werkzeugleiste einblenden' : 'Linke Werkzeugleiste einklappen'} aria-pressed={!leistenZu.links} title={leistenZu.links ? 'Werkzeugleiste links einblenden' : 'Werkzeugleiste links einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('links')}>
-          <Symbol name="leisteLinks" />
-        </button>
-        {!schueler && (
-          <a className="kopf-knopf" href="/" aria-label="Zur Startseite Lehrraum" title="Zur Startseite">
-            <Symbol name="haus" />
-          </a>
-        )}
-        {!gast && (
-          <a className="kopf-knopf" href="#/klassen" aria-label="Meine Klassen" title="Meine Klassen">
-            <Symbol name="klassen" />
-          </a>
-        )}
-        <h1>{kopf?.titel ?? 'Tafel'}</h1>
-        <p
-          className={'speicherstand ' + (meldung ? (meldung.fehler ? 'fehler' : 'hinweis') : speicher)}
-          role="status"
-          title={!meldung && speicher === 'gespeichert' && abgleich === 'fehler' ? abgleichFehler : undefined}
-        >
-          {meldung?.text ?? (schueler ? schueler.speicherText : gast ? 'Gast – wird nicht gespeichert' : speicher === 'gespeichert' ? ABGLEICHTEXT[abgleich] : SPEICHERTEXT[speicher])}
-        </p>
-        {schueler?.kopfzeile}
-        <input ref={bildWahl} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden aria-label="Bilddatei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
-        {!schueler && (
-          <>
-        <div className="zoom" role="group" aria-label="PDF">
-          <button type="button" className="kopf-knopf" aria-label="PDF öffnen" title="PDF öffnen – jede Seite wird eine Tafelseite zum Beschriften" disabled={meldung?.laeuft} onClick={() => pdfWahl.current?.click()}>
-            <Symbol name="pdfOeffnen" />
-          </button>
-          <button type="button" className="kopf-knopf" aria-label="Als PDF speichern" title="Alle Seiten als PDF speichern" disabled={meldung?.laeuft} onClick={() => void alsPdf(false)}>
-            <Symbol name="pdfSpeichern" />
-          </button>
-          {teilbar && (
-            <button type="button" className="kopf-knopf" aria-label="Als PDF teilen" title="Als PDF teilen, z. B. an Goodnotes" disabled={meldung?.laeuft} onClick={() => void alsPdf(true)}>
-              <Symbol name="teilen" />
+        <div className="kopf-seite links">
+          <div className="zoom" role="group" aria-label="Navigation">
+            <button type="button" className="kopf-knopf" aria-label={leistenZu.links ? 'Linke Werkzeugleiste einblenden' : 'Linke Werkzeugleiste einklappen'} aria-pressed={!leistenZu.links} title={leistenZu.links ? 'Werkzeugleiste links einblenden' : 'Werkzeugleiste links einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('links')}>
+              <Symbol name="leisteLinks" />
+            </button>
+            {!schueler && (
+              <a className="kopf-knopf" href="/" aria-label="Zur Startseite Lehrraum" title="Zur Startseite">
+                <Symbol name="haus" />
+              </a>
+            )}
+            {!gast && (
+              <a className="kopf-knopf" href="#/klassen" aria-label="Meine Klassen" title="Meine Klassen">
+                <Symbol name="klassen" />
+              </a>
+            )}
+            <span className="kopf-trenner" aria-hidden="true" />
+            <button type="button" className="kopf-knopf" disabled={verlauf.zurueck.length === 0 && seitenSchritte.current.zurueck.length === 0} aria-label="Rückgängig" title="Rückgängig (Strg + Z)" onClick={zurueck}>
+              <Symbol name="zurueck" />
+            </button>
+            <button type="button" className="kopf-knopf" disabled={verlauf.vor.length === 0 && seitenSchritte.current.vor.length === 0} aria-label="Wiederholen" title="Wiederholen (Strg + Y)" onClick={vor}>
+              <Symbol name="vor" />
+            </button>
+          </div>
+        </div>
+        <div className="kopf-titel">
+          <h1>{kopf?.titel ?? 'Tafel'}</h1>
+          <p
+            className={'speicherstand ' + (meldung ? (meldung.fehler ? 'fehler' : 'hinweis') : speicher)}
+            role="status"
+            title={!meldung && speicher === 'gespeichert' && abgleich === 'fehler' ? abgleichFehler : undefined}
+          >
+            {meldung?.text ?? (schueler ? schueler.speicherText : gast ? 'Gast – wird nicht gespeichert' : speicher === 'gespeichert' ? ABGLEICHTEXT[abgleich] : SPEICHERTEXT[speicher])}
+          </p>
+        </div>
+        <div className="kopf-seite rechts">
+          {schueler?.kopfzeile}
+          <input ref={bildWahl} type="file" accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml" multiple hidden aria-label="Bilddatei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
+          {!schueler && (
+            <>
+              <div className="zoom" role="group" aria-label="PDF">
+                <button type="button" className="kopf-knopf" aria-label="PDF öffnen" title="PDF öffnen – jede Seite wird eine Tafelseite zum Beschriften" disabled={meldung?.laeuft} onClick={() => pdfWahl.current?.click()}>
+                  <Symbol name="pdfOeffnen" />
+                </button>
+                <button type="button" className="kopf-knopf" aria-label="Als PDF speichern" title="Alle Seiten als PDF speichern" disabled={meldung?.laeuft} onClick={() => void alsPdf(false)}>
+                  <Symbol name="pdfSpeichern" />
+                </button>
+                {teilbar && (
+                  <button type="button" className="kopf-knopf" aria-label="Als PDF teilen" title="Als PDF teilen, z. B. an Goodnotes" disabled={meldung?.laeuft} onClick={() => void alsPdf(true)}>
+                    <Symbol name="teilen" />
+                  </button>
+                )}
+              </div>
+              <input ref={pdfWahl} type="file" accept="application/pdf,.pdf" hidden aria-label="PDF-Datei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
+              <input
+                ref={hintergrundBildWahl}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+                hidden
+                aria-label="Bild für den Hintergrund wählen"
+                onChange={(e) => {
+                  const datei = e.target.files?.[0]
+                  if (datei) void setzeBildHintergrund(datei, hintergrundFuerAlle.current)
+                  e.target.value = ''
+                }}
+              />
+              <Formatwahl format={format} ueberstand={ueberstand} beiFormat={setFormat} beiEinpassen={inhaltEinpassen} />
+            </>
+          )}
+          <div className="zoom" role="group" aria-label="Ansicht">
+            <button type="button" className="kopf-knopf" aria-label="Verkleinern" onClick={() => zoomen(1 / 1.25)}>
+              −
+            </button>
+            <button type="button" className="kopf-knopf breit" aria-label={blatt ? 'Ganzes Blatt zeigen' : 'Ansicht zurücksetzen'} title={blatt ? 'Ganzes Blatt zeigen' : 'Ansicht zurücksetzen'} onClick={ansichtZurueck}>
+              {Math.round(kamera.zoom * 100)} %
+            </button>
+            <button type="button" className="kopf-knopf" aria-label="Vergrößern" onClick={() => zoomen(1.25)}>
+              +
+            </button>
+          </div>
+          {!schueler && (
+            <button type="button" className="kopf-knopf" aria-label="Präsentieren" title="Präsentieren: dunkle Bühne, großes Blatt, nur Stift, Radierer und Laser (Esc beendet)" onClick={betreteBuehne}>
+              <Symbol name="praesentieren" />
+            </button>
+          )}
+          {!schueler && klasseId && klasse && (
+            <button type="button" className="kopf-haupt" aria-label="Mitmachen freigeben" title="Die Klasse schreibt auf eigenen Seiten mit: QR-Code zeigen, Seiten ansehen und übernehmen" onClick={() => setFreigabeOffen(true)}>
+              <Symbol name="mitmachen" />
+              <span>Mitmachen</span>
+            </button>
+          )}
+          {!schueler && (
+            <button type="button" className="kopf-knopf" aria-label={leistenZu.rechts ? 'Rechte Werkzeugleiste einblenden' : 'Rechte Werkzeugleiste einklappen'} aria-pressed={!leistenZu.rechts} title={leistenZu.rechts ? 'Werkzeugleiste rechts einblenden' : 'Werkzeugleiste rechts einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('rechts')}>
+              <Symbol name="leisteRechts" />
             </button>
           )}
         </div>
-        <input ref={pdfWahl} type="file" accept="application/pdf,.pdf" hidden aria-label="PDF-Datei wählen" onChange={(e) => { nimmDateien([...(e.target.files ?? [])]); e.target.value = '' }} />
-        <input
-          ref={hintergrundBildWahl}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
-          hidden
-          aria-label="Bild für den Hintergrund wählen"
-          onChange={(e) => {
-            const datei = e.target.files?.[0]
-            if (datei) void setzeBildHintergrund(datei, hintergrundFuerAlle.current)
-            e.target.value = ''
-          }}
-        />
-        <Formatwahl format={format} ueberstand={ueberstand} beiFormat={setFormat} beiEinpassen={inhaltEinpassen} />
-          </>
-        )}
-        <div className="zoom" role="group" aria-label="Ansicht">
-          <button type="button" className="kopf-knopf" aria-label="Verkleinern" onClick={() => zoomen(1 / 1.25)}>
-            −
-          </button>
-          <button type="button" className="kopf-knopf breit" aria-label={blatt ? 'Ganzes Blatt zeigen' : 'Ansicht zurücksetzen'} title={blatt ? 'Ganzes Blatt zeigen' : 'Ansicht zurücksetzen'} onClick={ansichtZurueck}>
-            {Math.round(kamera.zoom * 100)} %
-          </button>
-          <button type="button" className="kopf-knopf" aria-label="Vergrößern" onClick={() => zoomen(1.25)}>
-            +
-          </button>
-        </div>
-        {!schueler && (
-          <button type="button" className="kopf-knopf" aria-label={leistenZu.rechts ? 'Rechte Werkzeugleiste einblenden' : 'Rechte Werkzeugleiste einklappen'} aria-pressed={!leistenZu.rechts} title={leistenZu.rechts ? 'Werkzeugleiste rechts einblenden' : 'Werkzeugleiste rechts einklappen – mehr Platz zum Schreiben'} onClick={() => schalteLeiste('rechts')}>
-            <Symbol name="leisteRechts" />
-          </button>
-        )}
       </header>
+      )}
       <div className={'tafel-mitte' + (format === 'unendlich' ? ' unendlich' : '') + (leistenZu.links ? ' links-zu' : '') + (leistenZu.rechts ? ' rechts-zu' : '')}>
-        <Werkzeugleiste
-          werkzeug={werkzeug}
-          farbe={farbe}
-          staerke={staerke}
-          radierer={radierer}
-          beiRadierer={setRadierer}
-          auswahlArt={auswahlArt}
-          beiAuswahlArt={setAuswahlArt}
-          formwahl={formwahl}
-          beiFormwahl={setFormwahl}
-          eigeneFarben={eigeneFarben}
-          beiEigeneFarbe={waehleEigeneFarbe}
-          kannZurueck={verlauf.zurueck.length > 0 || seitenSchritte.current.zurueck.length > 0}
-          kannVor={verlauf.vor.length > 0 || seitenSchritte.current.vor.length > 0}
-          leer={seite.elemente.length === 0}
-          gewaehlt={auswahl.length}
-          beiWerkzeug={waehleWerkzeug}
-          beiFarbe={waehleFarbe}
-          beiStaerke={waehleStaerke}
-          beiZurueck={zurueck}
-          beiVor={vor}
-          beiLeeren={() => entferne(seite.elemente.map((e) => e.id))}
-          kannEinfuegen={ablage !== null}
-          beiEinfuegen={fuegeEin}
-          beiLoeschen={loescheAuswahl}
-          beiBild={() => bildWahl.current?.click()}
-          instrumente={instrumente.map((i) => i.art)}
-          beiInstrument={schalteInstrument}
-        />
+        <Werkzeugleiste {...leistenWerte} buehne={buehne} beiBuehneEnde={verlasseBuehne} />
         <div className="tafel-spalte">
+          {!buehne && <Kontextkapsel {...leistenWerte} />}
           <div
             className={blatt ? 'tafel-flaeche mit-blatt' : 'tafel-flaeche'}
             ref={flaeche}
@@ -1149,8 +1223,23 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
               </div>
             )}
           </div>
-          {!schueler && (
+          {buehne && (
+            <nav className="buehne-seiten" aria-label="Seiten">
+              <button type="button" className="s-knopf" disabled={buch.nr === 0} aria-label="Vorige Seite" onClick={() => blaettern((b) => gehe(b, b.nr - 1))}>
+                <Symbol name="links" />
+              </button>
+              <span className="buehne-nr">
+                {buch.nr + 1} / {buch.seiten.length}
+              </span>
+              <button type="button" className="s-knopf" disabled={buch.nr === buch.seiten.length - 1} aria-label="Nächste Seite" onClick={() => blaettern((b) => gehe(b, b.nr + 1))}>
+                <Symbol name="rechts" />
+              </button>
+            </nav>
+          )}
+          {!schueler && !buehne && (
           <Seitenleiste
+            seiten={buch.seiten}
+            format={format}
             nr={buch.nr}
             anzahl={buch.seiten.length}
             beschrieben={seite.elemente.length > 0 || seite.hintergrund !== undefined}
@@ -1172,12 +1261,11 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
           />
           )}
         </div>
-        {!schueler && (
+        {!schueler && !buehne && (
         <Schnellleiste
           fenster={fenster}
           beiAendern={setFenster}
           klasse={!!klasseId}
-          beiMitmachen={klasseId && klasse ? () => setFreigabeOffen(true) : undefined}
           zeigen={{
             abdecken: abdeckung !== null,
             scheinwerfer: scheinwerfer !== null,

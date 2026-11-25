@@ -208,6 +208,7 @@ export const FARBEN = [
   { wert: '#1b6b43', name: 'Grün' },
   { wert: '#1d4fc4', name: 'Blau' },
   { wert: '#e68a00', name: 'Orange' },
+  { wert: '#6a1b9a', name: 'Violett' },
 ] as const
 
 export const STAERKEN = [

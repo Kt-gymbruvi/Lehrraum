@@ -192,6 +192,14 @@ const bereit = () => screen.findByText('Auf diesem Gerät gespeichert')
 const tafel = async () => (await ladeLetzteTafel())!
 const seite = async (nr = 0) => (await tafel()).seiten[nr].elemente
 const knopf = (name: string) => screen.getByRole('button', { name })
+/** Form wählen: Knopf der Formen in der Leiste, dann die Variante in der Kapsel */
+const formWahl = async (nutzer: ReturnType<typeof userEvent.setup>, name: string) => {
+  if (!screen.queryByRole('radio', { name })) {
+    const leiste = ['Rechteck', 'Ellipse', 'Linie', 'Pfeil'].map((n) => screen.queryByRole('button', { name: n })).find((k) => k !== null)!
+    await nutzer.click(leiste)
+  }
+  await nutzer.click(screen.getByRole('radio', { name }))
+}
 
 describe('Formen und Text auf der Tafel', () => {
   it('zieht Rechteck, Ellipse, Linie und Pfeil auf; ein bloßes Antippen erzeugt nichts', async () => {
@@ -199,7 +207,7 @@ describe('Formen und Text auf der Tafel', () => {
     render(<Tafel />)
     await bereit()
     for (const [name, y] of [['Rechteck', 10], ['Ellipse', 110], ['Linie', 210], ['Pfeil', 310]] as const) {
-      await nutzer.click(knopf(name))
+      await formWahl(nutzer, name)
       ziehe([20, y], [220, y + 80])
     }
     tippe(400, 400)
@@ -294,7 +302,7 @@ describe('Linienart und Pfeilspitzen', () => {
     const nutzer = userEvent.setup()
     render(<Tafel />)
     await bereit()
-    await nutzer.click(knopf('Pfeil'))
+    await formWahl(nutzer, 'Pfeil')
     await nutzer.click(knopf('Pfeil')) // noch einmal: Linienart und Spitzen
     await nutzer.click(screen.getByRole('button', { name: 'Beide Richtungen' }))
     await nutzer.click(screen.getByRole('button', { name: 'Gestrichelt' }))
@@ -302,7 +310,7 @@ describe('Linienart und Pfeilspitzen', () => {
     ziehe([20, 50], [220, 50])
     await waitFor(async () => expect((await seite())[0]).toMatchObject({ form: 'pfeil', beidseitig: true, linie: 'gestrichelt' }))
     await waitFor(async () => expect(await ladeEinstellungen()).toMatchObject({ linienart: 'gestrichelt', beidseitig: true }))
-    await nutzer.click(knopf('Linie')) // die Linienart gilt für alle Formen, die Spitzen nur für Pfeile
+    await formWahl(nutzer, 'Linie') // die Linienart gilt für alle Formen, die Spitzen nur für Pfeile
     ziehe([20, 150], [220, 150])
     await waitFor(async () => expect((await seite())[1]).toMatchObject({ form: 'linie', linie: 'gestrichelt' }))
     expect((await seite())[1]).not.toHaveProperty('beidseitig')
@@ -364,7 +372,7 @@ describe('Winkel einrasten und gebogene Linien', () => {
     const nutzer = userEvent.setup()
     render(<Tafel />)
     await bereit()
-    await nutzer.click(knopf('Linie'))
+    await formWahl(nutzer, 'Linie')
     ziehe([20, 100], [320, 107]) // knapp neben waagerecht
     await waitFor(async () => expect((await seite())[0]).toMatchObject({ form: 'linie', x1: 20, y1: 100, y2: 100 }))
     await nutzer.click(knopf('Auswahl'))
@@ -385,12 +393,12 @@ describe('Ausgefüllte Formen auf der Tafel', () => {
     const nutzer = userEvent.setup()
     render(<Tafel />)
     await bereit()
-    await nutzer.click(knopf('Rechteck'))
+    await formWahl(nutzer, 'Rechteck')
     await nutzer.click(knopf('Rechteck')) // noch einmal: Umriss oder ausgefüllt
     await nutzer.click(screen.getByRole('button', { name: 'Ausgefüllt' }))
     expect(knopf('Rechteck').title).toContain('ausgefüllt')
     ziehe([20, 10], [220, 90])
-    await nutzer.click(knopf('Ellipse')) // gilt für beide
+    await formWahl(nutzer, 'Ellipse') // gilt für beide
     ziehe([20, 110], [220, 190])
     await waitFor(async () => expect((await seite()).map((e) => (e as Form).gefuellt)).toEqual([true, true]))
     await waitFor(async () => expect((await ladeEinstellungen()).gefuellt).toBe(true))

@@ -1,10 +1,9 @@
 // Farben und Stärken über die Leiste hinaus: Palette, eigene Farbplätze (je Gerät gespeichert), Regler für die Stärke.
 import { FARBEN, STAERKEN } from './modell.ts'
 
-/** Gut lesbare Farben für das Feld „Mehr“ – die sechs der Leiste zuerst, dann typische Textmarkerfarben */
+/** Gut lesbare Farben für das Feld „Mehr“ – die sieben der Kapsel zuerst, dann typische Textmarkerfarben */
 export const PALETTE: { wert: string; name: string }[] = [
   ...FARBEN,
-  { wert: '#6a1b9a', name: 'Violett' },
   { wert: '#ad1457', name: 'Weinrot' },
   { wert: '#00838f', name: 'Petrol' },
   { wert: '#6d4c41', name: 'Braun' },
@@ -55,7 +54,7 @@ export function mitEigenerFarbe(plaetze: string[], farbe: string): string[] {
   return [f, ...plaetze.filter((x) => x !== f)].slice(0, MAX_EIGENE)
 }
 
-/** Ist die Farbe eine der sechs in der Leiste? */
+/** Ist die Farbe eine der sieben in der Kapsel? */
 export const inLeiste = (farbe: string): boolean => FARBEN.some((f) => f.wert === normiereFarbe(farbe))
 /** Ist die Stärke einer der drei Knöpfe? */
 export const staerkeInLeiste = (s: number): boolean => STAERKEN.some((x) => x.wert === s)

@@ -48,7 +48,7 @@ describe('Tafel', () => {
     render(<Tafel />)
     await bereit()
     expect(screen.getByRole('button', { name: 'Stift' })).toHaveAttribute('aria-pressed', 'true')
-    expect(screen.getByRole('button', { name: 'Textmarker' })).toHaveAttribute('aria-pressed', 'false')
+    expect(screen.getByRole('radio', { name: 'Textmarker' })).toHaveAttribute('aria-checked', 'false') // Variante in der Kapsel
     expect(screen.getByRole('button', { name: 'Rückgängig' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Wiederholen' })).toBeDisabled()
     expect(screen.getByRole('button', { name: 'Seite leeren' })).toBeDisabled()

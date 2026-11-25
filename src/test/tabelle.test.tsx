@@ -116,7 +116,8 @@ describe('Tabelle – Bedienung', () => {
     await speichereTafel({ ...neuesTafelbild('Tabelle', 'unendlich'), seiten: [neueSeite()] })
     render(<Tafel />)
     await bereit()
-    await nutzer.click(screen.getByRole('button', { name: 'Tabelle' }))
+    await nutzer.click(screen.getByRole('button', { name: 'Text' }))
+    await nutzer.click(screen.getByRole('radio', { name: 'Tabelle' })) // Variante in der Kapsel
     tippe(100, 80)
     const feld = within(screen.getByRole('dialog', { name: 'Tabelle einfügen' }))
     await nutzer.click(feld.getByRole('button', { name: 'Spalten: weniger' }))

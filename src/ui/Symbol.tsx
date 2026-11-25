@@ -95,6 +95,10 @@ const ZEICHNUNGEN = {
   format: 'M3 6h12v9H3zM17 9h4v11h-8v-3',
   hintergrund: 'M4 4h16v16H4zM4 9h16M4 14h16M9 4v16M14 4v16',
   uebersicht: 'M4 4h6v6H4zM14 4h6v6h-6zM4 14h6v6H4zM14 14h6v6h-6z',
+  // Präsentieren: Bildschirm auf einem Ständer mit Abspielzeichen
+  praesentieren: 'M3 4h18v12H3zM12 16v4M8 20h8M10 7.5v5l4-2.5z',
+  // Alle Leisten zeigen (Bühne verlassen): vier Ecken
+  leistenZeigen: 'M9 4H5a1 1 0 0 0-1 1v4M15 4h4a1 1 0 0 1 1 1v4M9 20H5a1 1 0 0 1-1-1v-4M15 20h4a1 1 0 0 0 1-1v-4',
 } as const
 
 export type SymbolName = keyof typeof ZEICHNUNGEN

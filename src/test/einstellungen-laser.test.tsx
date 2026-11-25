@@ -52,7 +52,8 @@ describe('Einstellungen merken – Bedienung', () => {
     await nutzer.click(knopf('Radierer'))
     await nutzer.click(knopf('Element-Radierer'))
     await nutzer.click(knopf('Radierer Groß'))
-    await nutzer.click(knopf('Textmarker'))
+    await nutzer.click(knopf('Stift'))
+    await nutzer.click(screen.getByRole('radio', { name: 'Textmarker' })) // Variante in der Kapsel
     await nutzer.click(knopf('Rot'))
     await nutzer.click(knopf('Strichstärke breit'))
     await waitFor(async () => expect(await ladeEinstellungen()).toMatchObject({ werkzeug: 'marker', farbe: '#c62828', staerke: 12, radierer: { art: 'element', groesse: 'gross' } }))
