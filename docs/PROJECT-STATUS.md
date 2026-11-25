@@ -8,6 +8,11 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
+## Spiele raus, Geometrie nach links – 25.11.2026 (nicht veröffentlicht, am Gerät ungeprüft)
+- Das Fenster „Spiele“ (Spielraum mit QR-Code, Angebote, laufende Partien) ist aus der Tafel entfernt: Spiele gehören in den Vertretungsbereich der Startseite. Weg sind `fenster/Spiele.tsx`, `spiele.css`, `kern/spielraum.ts`, `speicher/spielraum.ts`, Test `spielraum.test.tsx`, Fensterart `spiele` und das Symbol; gespeicherte Spiele-Fenster fallen in `pruefeFenster` von selbst weg. Die Abschnitte darunter zu „Spiele“ sind damit überholt.
+- Der Knopf „Geometrie“ (Lineal, Geodreieck, Winkelmesser) sitzt jetzt am Ende der Zeichenwerkzeuge in der linken Leiste (`tafel/Geometriewahl.tsx`, nur Symbol, Feld öffnet sich rechts neben der Leiste); die rechte Leiste behält Abdecken und Scheinwerfer. Auch in der Schülerseite.
+- Tests: 33 Dateien, 446 Tests grün; Build grün.
+
 ## Chaos-Flitzer im Spielraum (22.11.2026, Zweig `chaos-flitzer-lobby`, nicht veröffentlicht)
 - Das Fenster „Spiele“ kennt das vierte Spiel „Chaos-Flitzer 3000“ (`kern/spielraum.ts`, `SPIELE`; erlaubte Spiele per Häkchen, Anzeige „Dora sucht Mitspieler: …“ und „Emil spielt Chaos-Flitzer 3000 (4 Spieler)“ in `fenster/Spiele.tsx`). Zusammen mit dem Startseiten-Zweig gleichen Namens veröffentlichen; ohne diese Änderung zeigt eine ältere Tafel Chaos-Flitzer in der Lobby nicht als erlaubtes Spiel an.
 - Tests: Die Erwartungen in `test/spielraum.test.tsx` zählen vier Spiele, neue Prüfung für Angebot und laufendes Spiel von Chaos-Flitzer; alle Tests und Build grün.

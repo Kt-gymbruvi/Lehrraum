@@ -1,8 +1,8 @@
-// Fenster über der Tafel (Uhr, Timer, Stoppuhr, Zufall & Gruppen, Notiz, Arbeitsform, Geräuschampel, Spiele): welche offen sind, wo sie liegen, was vorne ist.
+// Fenster über der Tafel (Uhr, Timer, Stoppuhr, Zufall & Gruppen, Notiz, Arbeitsform, Geräuschampel): welche offen sind, wo sie liegen, was vorne ist.
 // Reine Funktionen. Die Reihenfolge der Liste ist die Stapelfolge: das letzte Fenster liegt vorne.
 import { neueId } from './modell.ts'
 
-export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'zufall', 'notiz', 'arbeitsform', 'geraeusch', 'spiele'] as const
+export const FENSTERARTEN = ['uhr', 'timer', 'stoppuhr', 'zufall', 'notiz', 'arbeitsform', 'geraeusch'] as const
 export type FensterArt = (typeof FENSTERARTEN)[number]
 
 export const NOTIZFARBEN = ['gelb', 'gruen', 'rosa', 'blau'] as const
@@ -35,13 +35,12 @@ export type FensterZustand = {
   skala?: number
 }
 
-export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', zufall: 'Zufall & Gruppen', notiz: 'Notiz', arbeitsform: 'Arbeitsform', geraeusch: 'Geräuschampel', spiele: 'Spiele' }
+export const FENSTERNAMEN: Record<FensterArt, string> = { uhr: 'Uhr', timer: 'Timer', stoppuhr: 'Stoppuhr', zufall: 'Zufall & Gruppen', notiz: 'Notiz', arbeitsform: 'Arbeitsform', geraeusch: 'Geräuschampel' }
 
 /** Reihenfolge und Gruppen der Knöpfe in der rechten Leiste: Zeit, dann Unterricht */
 export const LEISTENGRUPPEN: FensterArt[][] = [
   ['uhr', 'timer', 'stoppuhr'],
   ['zufall', 'notiz', 'arbeitsform', 'geraeusch'],
-  ['spiele'],
 ]
 /** Beschriftung in der Leiste, wo der Name zu lang ist (weiches Trennzeichen) */
 export const LEISTENNAMEN: Partial<Record<FensterArt, string>> = { geraeusch: 'Geräusch\u00adampel' }

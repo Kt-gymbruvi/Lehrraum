@@ -1,14 +1,10 @@
 // Ebene über der Zeichenfläche mit allen offenen Fenstern – und die rechte Leiste, die sie öffnet.
-import { useRef, useState, type ReactNode } from 'react'
-import { createPortal } from 'react-dom'
+import type { ReactNode } from 'react'
 import { aendere, FENSTERNAMEN, LEISTENGRUPPEN, LEISTENNAMEN, MEHRFACH, nachVorn, NUR_KLASSE, schalte, schliesse, type FensterZustand } from '../kern/fenster.ts'
-import { INSTRUMENT_NAMEN, INSTRUMENTARTEN, type InstrumentArt } from '../kern/instrumente.ts'
 import type { Schueler } from '../kern/klassen.ts'
-import { useSchliessenDraussen } from '../tafel/handballen.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 import { Fenster } from './Fenster.tsx'
 import { Arbeitsform, Geraeuschampel, Notiz, Stoppuhr, Timer, Uhr } from './Inhalte.tsx'
-import { Spiele } from './Spiele.tsx'
 import { Zufall } from './Zufall.tsx'
 import './werkzeuge.css'
 
@@ -37,7 +33,6 @@ export function Fensterebene({ fenster, beiAendern, schueler = null, beiText }: 
             {f.art === 'notiz' && <Notiz fenster={f} beiAendern={aendereF} />}
             {f.art === 'arbeitsform' && <Arbeitsform fenster={f} beiAendern={aendereF} />}
             {f.art === 'geraeusch' && <Geraeuschampel fenster={f} beiAendern={aendereF} />}
-            {f.art === 'spiele' && <Spiele />}
           </Fenster>
         )
       })}
@@ -45,60 +40,12 @@ export function Fensterebene({ fenster, beiAendern, schueler = null, beiText }: 
   )
 }
 
-/** Was in der Leiste unter „Zeigen“ steht: Abdecken, Scheinwerfer und die Geometrie-Werkzeuge (liegen über der Tafel, nicht in Fenstern) */
+/** Was in der Leiste unter „Zeigen“ steht: Abdecken und Scheinwerfer (liegen über der Tafel, nicht in Fenstern) */
 export type Zeigewerkzeuge = {
   abdecken: boolean
   scheinwerfer: boolean
-  instrumente: InstrumentArt[]
   beiAbdecken: () => void
   beiScheinwerfer: () => void
-  beiInstrument: (art: InstrumentArt) => void
-}
-
-/** Knopf „Geometrie“ mit Feld: Lineal, Geodreieck, Winkelmesser ein- und ausschalten */
-function Geometriewahl({ an, beiInstrument }: { an: InstrumentArt[]; beiInstrument: (art: InstrumentArt) => void }) {
-  const [lage, setLage] = useState<{ rechts: number; oben: number } | null>(null)
-  const knopf = useRef<HTMLButtonElement>(null)
-  const feld = useRef<HTMLDivElement>(null)
-  const offen = lage !== null
-  useSchliessenDraussen(offen, () => [feld.current, knopf.current], () => setLage(null))
-  const umschalten = () => {
-    if (offen) return setLage(null)
-    const leiste = knopf.current?.closest('aside')?.getBoundingClientRect()
-    const r = knopf.current?.getBoundingClientRect()
-    setLage({ rechts: window.innerWidth - (leiste?.left ?? window.innerWidth - 100) + 8, oben: Math.max(8, Math.min(r?.top ?? 8, window.innerHeight - 240)) })
-  }
-  return (
-    <>
-      <button ref={knopf} type="button" className={'leisten-knopf mit-text hat-feld' + (an.length ? ' an' : '')} aria-label="Geometrie" aria-expanded={offen} title="Lineal, Geodreieck, Winkelmesser" onClick={umschalten}>
-        <Symbol name="geometrie" />
-        <span>Geometrie</span>
-      </button>
-      {lage &&
-        createPortal(
-          <div ref={feld} className="aufklappfeld geometriefeld" role="dialog" aria-label="Geometrie" style={{ right: lage.rechts, top: lage.oben }}>
-            <p className="feld-titel">Auf die Tafel legen</p>
-            {INSTRUMENTARTEN.map((art) => (
-              <button
-                key={art}
-                type="button"
-                className="feld-zeile"
-                aria-pressed={an.includes(art)}
-                onClick={() => {
-                  beiInstrument(art)
-                  setLage(null)
-                }}
-              >
-                <Symbol name={art} />
-                {INSTRUMENT_NAMEN[art]}
-              </button>
-            ))}
-            <p className="hinweis klein">Ziehen verschiebt, der runde Griff dreht. Ein Strich dicht an der Kante wird angelegt.</p>
-          </div>,
-          document.body,
-        )}
-    </>
-  )
 }
 
 /** Rechte Schnellzugriffsleiste – bleibt dauerhaft sichtbar. */
@@ -144,7 +91,6 @@ export function Schnellleiste({ fenster, beiAendern, vorne, klasse = false, zeig
             <Symbol name="scheinwerfer" />
             <span>Scheinwerfer</span>
           </button>
-          <Geometriewahl an={zeigen.instrumente} beiInstrument={zeigen.beiInstrument} />
         </div>
       )}
     </aside>

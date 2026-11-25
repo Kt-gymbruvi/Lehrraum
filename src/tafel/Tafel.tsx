@@ -1096,6 +1096,8 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
           beiEinfuegen={fuegeEin}
           beiLoeschen={loescheAuswahl}
           beiBild={() => bildWahl.current?.click()}
+          instrumente={instrumente.map((i) => i.art)}
+          beiInstrument={schalteInstrument}
         />
         <div className="tafel-spalte">
           <div
@@ -1179,10 +1181,8 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
           zeigen={{
             abdecken: abdeckung !== null,
             scheinwerfer: scheinwerfer !== null,
-            instrumente: instrumente.map((i) => i.art),
             beiAbdecken: () => setAbdeckung((a) => (a ? null : GANZ_ABGEDECKT)),
             beiScheinwerfer: () => setScheinwerfer((s) => (s ? null : SCHEINWERFER_START)),
-            beiInstrument: schalteInstrument,
           }}
           vorne={
             <Hintergrundwahl

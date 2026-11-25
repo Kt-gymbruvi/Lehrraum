@@ -179,6 +179,7 @@ describe('Geometrie-Werkzeuge – Logik', () => {
 // ---------- Bedienung ----------
 const bereit = () => screen.findByText('Auf diesem Gerät gespeichert')
 const leiste = () => within(screen.getByRole('complementary', { name: 'Unterrichtswerkzeuge' }))
+const linkeLeiste = () => within(screen.getByRole('complementary', { name: 'Zeichenwerkzeuge' }))
 const gespeicherteFenster = async () => (await ladeLetzteTafel())?.fenster ?? []
 
 describe('Arbeitsform in der Tafel', () => {
@@ -292,7 +293,7 @@ describe('Abdecken, Scheinwerfer und Geometrie in der Tafel', () => {
     const nutzer = userEvent.setup()
     render(<Tafel />)
     await bereit()
-    const geometrie = leiste().getByRole('button', { name: 'Geometrie' })
+    const geometrie = linkeLeiste().getByRole('button', { name: 'Geometrie' })
     await nutzer.click(geometrie)
     await nutzer.click(within(screen.getByRole('dialog', { name: 'Geometrie' })).getByRole('button', { name: 'Lineal' }))
     expect(geometrie).toHaveClass('an')
@@ -343,7 +344,7 @@ describe('Abdecken, Scheinwerfer und Geometrie in der Tafel', () => {
     const nutzer = userEvent.setup()
     const { container } = render(<Tafel />)
     await bereit()
-    await nutzer.click(leiste().getByRole('button', { name: 'Geometrie' }))
+    await nutzer.click(linkeLeiste().getByRole('button', { name: 'Geometrie' }))
     await nutzer.click(within(screen.getByRole('dialog', { name: 'Geometrie' })).getByRole('button', { name: 'Lineal' }))
     const koerper = container.querySelector('.instrument-koerper')!
     const lage = () => container.querySelector('.instrument')!.getAttribute('transform')

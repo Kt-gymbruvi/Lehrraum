@@ -10,10 +10,12 @@ import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import type { AuswahlArt } from '../kern/auswahl.ts'
 import type { Formwahl } from '../kern/einstellungen.ts'
+import type { InstrumentArt } from '../kern/instrumente.ts'
 import { LINIENARTEN, type Linienart } from '../kern/modell.ts'
 import { begrenzeStaerke, inLeiste, PALETTE, STAERKE_MAX, STAERKE_MIN, staerkeInLeiste } from '../kern/farben.ts'
 import { FARBEN, STAERKEN } from '../kern/modell.ts'
 import { RADIERER_ARTEN, RADIERER_GROESSEN, RADIERER_RADIUS, type Radierer } from '../kern/radieren.ts'
+import { Geometriewahl } from './Geometriewahl.tsx'
 import { useSchliessenDraussen } from './handballen.ts'
 import { Symbol, type SymbolName } from '../ui/Symbol.tsx'
 import type { Werkzeug } from './Zeichenflaeche.tsx'
@@ -51,6 +53,9 @@ type Props = {
   beiLoeschen: () => void
   /** fehlt: kein Bild-Knopf (Schülerseite) */
   beiBild?: () => void
+  /** fehlt (beiInstrument): kein Geometrie-Knopf (Schülerseite). instrumente: Welche Geometrie-Werkzeuge liegen auf der Tafel? */
+  instrumente?: InstrumentArt[]
+  beiInstrument?: (art: InstrumentArt) => void
 }
 
 export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; taste: string }[] = [
@@ -296,6 +301,7 @@ export function Werkzeugleiste(p: Props) {
             <Symbol name="bild" />
           </button>
         )}
+        {p.beiInstrument && <Geometriewahl an={p.instrumente ?? []} beiInstrument={p.beiInstrument} />}
       </div>
 
       <div className="gruppe" role="group" aria-label="Farbe">
