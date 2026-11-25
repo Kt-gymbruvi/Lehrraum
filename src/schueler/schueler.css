@@ -1,6 +1,10 @@
 /* Schülerseite: Einstieg, Namenswahl, Sperre am Ende */
 .schueler-seite {
-  min-height: 100dvh;
+  /* Der Körper der App ist auf „nicht scrollen“ gestellt (die Tafel füllt den Bildschirm) – diese Seite scrollt selbst. */
+  height: 100dvh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   box-sizing: border-box;
   max-width: 44rem;
   margin: 0 auto;
