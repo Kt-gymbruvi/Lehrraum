@@ -35,7 +35,8 @@ describe('Bühne – Bedienung', () => {
     expect(document.querySelector('.tafel')).toHaveClass('buehne')
     expect(screen.getByText('Seite 1 von 1')).toBeInTheDocument()
     for (const name of ['Stift', 'Rechteck', 'Radierer', 'Laserpointer']) expect(knopf(name)).toBeInTheDocument()
-    for (const name of ['Auswahl', 'Text', 'Mehr Farben und Stärken', 'Seitenübersicht', 'Präsentieren', 'Rückgängig']) fehlt(name)
+    for (const name of ['Auswahl', 'Text', 'Mehr Farben und Stärken', 'Seitenübersicht', 'Präsentieren']) fehlt(name)
+    expect(knopf('Rückgängig')).toBeDisabled() // nichts zurückzunehmen
     expect(screen.queryByRole('complementary', { name: 'Unterrichtswerkzeuge' })).toBeNull()
 
     fireEvent.keyDown(window, { key: 'Escape' })

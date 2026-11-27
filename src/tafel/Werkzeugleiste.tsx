@@ -61,6 +61,9 @@ type Props = {
   /** Bühne (Präsentieren): nur Stift, Radierer und Laser, dazu ein Knopf zum Verlassen */
   buehne?: boolean
   beiBuehneEnde?: () => void
+  /** Bühne: Rückgängig-Knopf (kannZurueck: gibt es etwas zurückzunehmen?) */
+  beiZurueck?: () => void
+  kannZurueck?: boolean
 }
 
 export const WERKZEUGE: { wert: Werkzeug; name: string; symbol: SymbolName; taste: string }[] = [
@@ -286,6 +289,13 @@ export function Werkzeugleiste(p: Props) {
         <div className="gruppe" role="group" aria-label="Werkzeug">
           {BUEHNEN_FAMILIEN.map(familienKnopf)}
         </div>
+        {p.beiZurueck && (
+          <div className="gruppe">
+            <button type="button" className="leisten-knopf" disabled={!p.kannZurueck} aria-label="Rückgängig" title="Rückgängig (Strg + Z)" onClick={p.beiZurueck}>
+              <Symbol name="zurueck" />
+            </button>
+          </div>
+        )}
         {p.beiBuehneEnde && (
           <div className="gruppe">
             <button type="button" className="leisten-knopf" aria-label="Alle Leisten zeigen" title="Alle Leisten zeigen – Präsentieren beenden (Esc)" onClick={p.beiBuehneEnde}>

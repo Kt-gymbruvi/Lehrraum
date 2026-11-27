@@ -1183,7 +1183,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       </header>
       )}
       <div className={'tafel-mitte' + (format === 'unendlich' ? ' unendlich' : '') + (leistenZu.links ? ' links-zu' : '') + (leistenZu.rechts ? ' rechts-zu' : '')}>
-        <Werkzeugleiste {...leistenWerte} buehne={buehne} beiBuehneEnde={verlasseBuehne} />
+        <Werkzeugleiste {...leistenWerte} buehne={buehne} beiBuehneEnde={verlasseBuehne} beiZurueck={zurueck} kannZurueck={verlauf.zurueck.length > 0 || seitenSchritte.current.zurueck.length > 0} />
         <div className="tafel-spalte">
           <Kontextkapsel {...leistenWerte} buehne={buehne} geometrie={buehne ? false : leistenWerte.geometrie} ohneBearbeiten={!schueler || buehne} />
           <div
