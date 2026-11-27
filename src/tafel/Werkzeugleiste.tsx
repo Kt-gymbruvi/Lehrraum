@@ -116,7 +116,7 @@ function SegmentKnopf(p: { an: boolean; name: string; titel?: string; text?: str
 const Trenner = () => <span className="trenner" aria-hidden="true" />
 
 /** Formen: Füllung (Rechteck, Ellipse), Spitzen (Pfeil), Linienart (alle) */
-function FormWahl({ art, wahl, beiWahl }: { art: 'rechteck' | 'ellipse' | 'linie' | 'pfeil'; wahl: Formwahl; beiWahl: (w: Formwahl) => void }) {
+function FormWahl({ art, wahl, beiWahl, ohneLinienart }: { art: 'rechteck' | 'ellipse' | 'linie' | 'pfeil'; wahl: Formwahl; beiWahl: (w: Formwahl) => void; ohneLinienart?: boolean }) {
   return (
     <>
       {(art === 'rechteck' || art === 'ellipse') && (
@@ -142,12 +142,16 @@ function FormWahl({ art, wahl, beiWahl }: { art: 'rechteck' | 'ellipse' | 'linie
           <Trenner />
         </>
       )}
-      <Segment name="Linienart" kinder={LINIENARTEN.map((l) => (
-        <SegmentKnopf key={l} an={wahl.linienart === l} name={LINIEN_NAME[l]} beiKlick={() => beiWahl({ ...wahl, linienart: l })}>
-          <Symbol name={LINIEN_SYMBOL[l]} />
-        </SegmentKnopf>
-      ))} />
-      <Trenner />
+      {!ohneLinienart && (
+        <>
+          <Segment name="Linienart" kinder={LINIENARTEN.map((l) => (
+            <SegmentKnopf key={l} an={wahl.linienart === l} name={LINIEN_NAME[l]} beiKlick={() => beiWahl({ ...wahl, linienart: l })}>
+              <Symbol name={LINIEN_SYMBOL[l]} />
+            </SegmentKnopf>
+          ))} />
+          <Trenner />
+        </>
+      )}
     </>
   )
 }
@@ -349,11 +353,12 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
   const schrift = w === 'text' || w === 'tabelle'
   // Farbe oder Stärke außerhalb der Kapsel: der Knopf „Mehr“ zeigt sie als Punkt
   const besonders = !inLeiste(p.farbe) || (inhalt.staerke && !staerkeInLeiste(p.staerke))
-  const mehrOffen = feld && inhalt.farben ? feld : null
-  // Ohne „Bearbeiten“ am Ende steht nach der letzten Gruppe kein Trenner
+  const mehrOffen = feld && inhalt.farben && !p.buehne ? feld : null
+  // Bühne: nichts für den Laserpointer und keine Auswahl – die Kapsel bliebe leer
+  if (p.buehne && (w === 'laser' || !BUEHNEN_FAMILIEN.includes(familie.id))) return null
 
   return (
-    <div className={p.geometrie ? 'kontextkapsel geometrie' : 'kontextkapsel'} role="toolbar" aria-label="Einstellungen des Werkzeugs">
+    <div className={p.geometrie ? 'kontextkapsel geometrie' : p.buehne ? 'kontextkapsel buehne-kapsel' : 'kontextkapsel'} role="toolbar" aria-label="Einstellungen des Werkzeugs">
       {p.geometrie && (
         <>
           <Segment
@@ -421,7 +426,7 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
           <Trenner />
         </>
       )}
-      {!p.geometrie && (w === 'rechteck' || w === 'ellipse' || w === 'linie' || w === 'pfeil') && <FormWahl art={w} wahl={p.formwahl} beiWahl={p.beiFormwahl} />}
+      {!p.geometrie && (w === 'rechteck' || w === 'ellipse' || w === 'linie' || w === 'pfeil') && <FormWahl art={w} wahl={p.formwahl} beiWahl={p.beiFormwahl} ohneLinienart={p.buehne} />}
       {inhalt.farben && (
         <>
           <div className="kapsel-gruppe" role="group" aria-label="Farbe">
@@ -430,6 +435,7 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
                 <span style={{ background: f.wert, color: f.wert }} />
               </button>
             ))}
+            {!p.buehne && (
             <button
               ref={mehrKnopf}
               type="button"
@@ -442,6 +448,7 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
             >
               {besonders ? <span className="staerke-punkt" style={{ width: Math.max(8, Math.min(22, punktGroesse(p.staerke))), height: Math.max(8, Math.min(22, punktGroesse(p.staerke))), background: p.farbe }} /> : <Symbol name="palette" />}
             </button>
+            )}
           </div>
           <Trenner />
         </>
@@ -458,7 +465,7 @@ export function Kontextkapsel(p: Props & { ohneBearbeiten?: boolean }) {
           <Trenner />
         </>
       )}
-      {!p.geometrie && inhalt.hinweis && (
+      {!p.geometrie && !p.buehne && inhalt.hinweis && (
         <>
           <p className="kapsel-hinweis">{inhalt.hinweis}</p>
           <Trenner />

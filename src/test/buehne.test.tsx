@@ -20,8 +20,8 @@ const knopf = (name: string) => screen.getByRole('button', { name })
 const fehlt = (name: string) => expect(screen.queryByRole('button', { name })).toBeNull()
 
 describe('Bühne – Logik', () => {
-  it('zeigt nur Familien, die es gibt: Stift, Radierer, Laser', () => {
-    expect(BUEHNEN_FAMILIEN).toEqual(['stift', 'radierer', 'laser'])
+  it('zeigt nur Familien, die es gibt: Stift, Formen, Radierer, Laser', () => {
+    expect(BUEHNEN_FAMILIEN).toEqual(['stift', 'formen', 'radierer', 'laser'])
     for (const id of BUEHNEN_FAMILIEN) expect(FAMILIEN.some((f) => f.id === id)).toBe(true)
   })
 })
@@ -34,7 +34,7 @@ describe('Bühne – Bedienung', () => {
     await nutzer.click(knopf('Präsentieren'))
     expect(document.querySelector('.tafel')).toHaveClass('buehne')
     expect(screen.getByText('Seite 1 von 1')).toBeInTheDocument()
-    for (const name of ['Stift', 'Radierer', 'Laserpointer']) expect(knopf(name)).toBeInTheDocument()
+    for (const name of ['Stift', 'Rechteck', 'Radierer', 'Laserpointer']) expect(knopf(name)).toBeInTheDocument()
     for (const name of ['Auswahl', 'Text', 'Mehr Farben und Stärken', 'Seitenübersicht', 'Präsentieren', 'Rückgängig']) fehlt(name)
     expect(screen.queryByRole('complementary', { name: 'Unterrichtswerkzeuge' })).toBeNull()
 
@@ -48,6 +48,30 @@ describe('Bühne – Bedienung', () => {
     await nutzer.click(knopf('Präsentieren'))
     await nutzer.click(knopf('Alle Leisten zeigen'))
     expect(document.querySelector('.tafel')).not.toHaveClass('buehne')
+  })
+
+  it('zeigt nur das Wesentliche: Farbe und Stärke beim Stift, Füllung bei Formen – nichts bei Laser', async () => {
+    const nutzer = userEvent.setup()
+    render(<Tafel />)
+    await bereit()
+    await nutzer.click(knopf('Präsentieren'))
+    const kapsel = () => screen.queryByRole('toolbar', { name: 'Einstellungen des Werkzeugs' })
+    expect(kapsel()).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Farbe' })).toBeInTheDocument()
+    expect(screen.getByRole('group', { name: 'Strichstärke' })).toBeInTheDocument()
+    fehlt('Einfügen')
+    fehlt('Mehr Farben und Stärken')
+
+    await nutzer.click(knopf('Rechteck'))
+    expect(screen.getByRole('button', { name: 'Ausgefüllt' })).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Linienart' })).toBeNull()
+
+    await nutzer.click(knopf('Radierer'))
+    expect(screen.getByRole('group', { name: 'Größe des Radierers' })).toBeInTheDocument()
+    expect(screen.queryByRole('group', { name: 'Farbe' })).toBeNull()
+
+    await nutzer.click(knopf('Laserpointer'))
+    expect(kapsel()).toBeNull()
   })
 
   it('Pfeiltasten und Knöpfe blättern; die Tafel bleibt unverändert gespeichert', async () => {

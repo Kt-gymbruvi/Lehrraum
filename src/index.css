@@ -2206,6 +2206,13 @@ input {
 .buehne-leiste .leisten-knopf[aria-pressed='true']:hover:not(:disabled) {
   box-shadow: 0 0 0 1px rgb(255 176 103 / 0.4), 0 8px 24px rgb(255 138 20 / 0.35);
 }
+/* Schlanke Kapsel der Bühne: mittig über dem Blatt, gewählte Farbe immer in Orange umrandet (wie im dunklen Modus) */
+.kontextkapsel.buehne-kapsel {
+  align-self: center;
+}
+.buehne .kontextkapsel .farb-knopf[aria-pressed='true'] span {
+  box-shadow: inset 0 0 0 1px var(--tupfer-rand), 0 0 0 2.5px var(--leiste), 0 0 0 4.5px var(--gewaehlt);
+}
 /* Blättern: kleine Kapsel unter dem Blatt */
 .buehne-seiten {
   align-self: center;

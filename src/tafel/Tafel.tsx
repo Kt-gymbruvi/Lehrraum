@@ -1185,7 +1185,7 @@ export default function Tafel({ klasseId, pruefen = false, gast: gastRoh = false
       <div className={'tafel-mitte' + (format === 'unendlich' ? ' unendlich' : '') + (leistenZu.links ? ' links-zu' : '') + (leistenZu.rechts ? ' rechts-zu' : '')}>
         <Werkzeugleiste {...leistenWerte} buehne={buehne} beiBuehneEnde={verlasseBuehne} />
         <div className="tafel-spalte">
-          {!buehne && <Kontextkapsel {...leistenWerte} ohneBearbeiten={!schueler} />}
+          <Kontextkapsel {...leistenWerte} buehne={buehne} geometrie={buehne ? false : leistenWerte.geometrie} ohneBearbeiten={!schueler || buehne} />
           <div
             className={blatt ? 'tafel-flaeche mit-blatt' : 'tafel-flaeche'}
             ref={flaeche}

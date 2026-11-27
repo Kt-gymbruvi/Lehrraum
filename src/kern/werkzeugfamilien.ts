@@ -35,8 +35,11 @@ export function merke(zuletzt: Zuletzt, w: Werkzeug): Zuletzt {
   return zuletzt[id] === w ? zuletzt : { ...zuletzt, [id]: w }
 }
 
-/** Auf der Bühne (Präsentieren) zeigt die linke Leiste nur diese Familien */
-export const BUEHNEN_FAMILIEN: readonly FamilienId[] = ['stift', 'radierer', 'laser']
+/**
+ * Auf der Bühne (Präsentieren) zeigt die linke Leiste nur diese Familien. Dazu gibt es eine schlanke Kapsel mit dem
+ * Wesentlichen: Variante, Farbe, Stärke, Füllung/Pfeilspitzen der Formen, Art und Größe des Radierers (kein „Mehr“, keine Linienart).
+ */
+export const BUEHNEN_FAMILIEN: readonly FamilienId[] = ['stift', 'formen', 'radierer', 'laser']
 
 /**
  * Was die Kapsel über der Tafel für ein Werkzeug zeigt – außer den Varianten der Familie, den eigenen Einstellungen

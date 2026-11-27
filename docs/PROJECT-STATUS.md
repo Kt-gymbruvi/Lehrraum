@@ -8,6 +8,11 @@ Etappe 4 „Stift“ (Teil 1 und 2) und Etappe 5 (Laserpointer, Einstellungen me
 **Seitenformat und Hintergründe (Etappen 1–4)** sind veröffentlicht (14.11.2026) und bringen **Datenmodell Version 5** und **Klasse Version 2**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird. Am iPad und SMART Board noch nicht geprüft.
 **PDF-Seiten drehen und entfernen** ist veröffentlicht (14.11.2026) und bringt **Datenmodell Version 4**: auf jedem Gerät die Seite einmal neu laden, bevor dort weitergearbeitet wird.
 
+## Bühne mit Einstellungen – 27.11.2026 (nicht veröffentlicht, am Gerät ungeprüft)
+- Auf der Bühne (Präsentieren) gibt es jetzt neben Stift, Radierer und Laser auch die Familie **Formen** und eine schlanke Kapsel über dem Blatt: Variante (Stift | Textmarker, Rechteck/Ellipse/Linie/Pfeil), Farbe, Stärke, Füllung bzw. Pfeilspitzen, beim Radierer Art und Größe. Bewusst nicht dabei: „Mehr“ (weitere Farben, Regler), Linienart, Einfügen/Leeren, Auswahl, Geometrie. Beim Laser keine Kapsel. Code: `BUEHNEN_FAMILIEN` in `kern/werkzeugfamilien.ts`, Prop `buehne` der `Kontextkapsel`.
+- Begradigen durch Halten (Strich mit Stift oder Textmarker halten → exakt gerade Linie) gab es schon (`kern/begradigen.ts`, 600 ms halten, ab 24 px Größe); unverändert.
+- Tests: `buehne.test.tsx` um die Kapsel erweitert; 37 Dateien, 474 Tests grün; Build grün.
+
 ## Kritzeln zum Löschen, Fenster in der Mitte – 25.11.2026 (veröffentlicht, am Gerät ungeprüft)
 - **Kritzeln:** Wird mit Stift oder Textmarker etwas mehrmals hin und her durchgestrichen, verschwindet es beim Abheben samt Gekritzel (ein Schritt, Rückgängig holt es zurück). Logik in `src/kern/kritzeln.ts`: mindestens 4 Richtungsumkehrungen, Weg mindestens 3,5 × Diagonale, mindestens 30 Bildschirm-Pixel groß. Gelöscht wird, was das Gekritzel berührt und zu mindestens 40 % unter ihm liegt; Bilder, PDF-Seiten und Tabellen nie. Trifft es nichts, bleibt es ein normaler Strich. Nicht am Lineal.
 - **Fenster mittig:** Uhr, Timer, Stoppuhr usw. öffnen in der Mitte der Tafel (weitere jeweils 28 px versetzt). Dafür trägt ein neues Fenster kurz `mitte` (Versatz); `Fenster.tsx` misst sich vor dem ersten Bild und legt sich mit `mittig()` hin. `mitte` wird nie gespeichert.
